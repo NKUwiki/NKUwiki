@@ -9,6 +9,19 @@ import { repoUrl, siteUrl } from './site.ts'
 const articles = scanArticles()
 const base = ''
 const description = 'NKUwiki（南开 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
+
+/** 标题文字来自 frontmatter，转义行内语法，避免标题里的符号被当成 Markdown。 */
+function escapeTitleText(title: string) {
+	return title.replace(/[\\`*_[\]<>&]/g, '\\$1')
+}
+
+/** 把一级标题拼在正文最前面（frontmatter 若还在，则接在其后）。 */
+function prependTitleHeading(source: string, title: string) {
+	const heading = `# ${escapeTitleText(title)}\n\n`
+	const frontmatter = source.match(/^(-{3,}\r?\n[\s\S]*?\r?\n-{3,}\r?\n?)/)
+	return frontmatter ? frontmatter[1] + heading + source.slice(frontmatter[1].length) : heading + source
+}
+
 function topicMatch(slug: string, ...folders: string[]) {
 	const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 	const paths = articles.filter(article => folders.includes(article.folders[0])).flatMap(article => [article.url.replace(/\/$/, ''), `/${article.source.replace(/\.md$/, '')}`]).map(escape)
@@ -67,11 +80,7 @@ export default defineConfig({
 		sidebar,
 		search: { provider: 'local', options: {
 			async _render(source, env, md) {
-				const article = articles.find(item => item.source === env.relativePath || outputPath(item.url) === env.relativePath)
-				const html = await md.renderAsync(source, env)
-				if (!article || article.hasHeading)
-					return html
-				return `<h1 id="article-title">${md.utils.escapeHtml(article.title)}</h1>\n${html}`
+				return md.renderAsync(source, env)
 			},
 			locales: { root: { translations: {
 				button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' },
@@ -101,6 +110,19 @@ export default defineConfig({
 				return
 			instance.configured = true
 			cardlist(md)
+			// 正文没有一级标题时，用 frontmatter 的 title 生成标准 Markdown 一级标题拼到正文最前（拥有标准锚点与 .vp-doc 样式）。
+			// wikiTitleInserted 标记防止卡片容器嵌套解析时重复插入。
+			md.core.ruler.before('block', 'article-title', (state) => {
+				if (state.env.wikiTitleInserted)
+					return
+				const article = articles.find(item => item.source === state.env.relativePath || outputPath(item.url) === state.env.relativePath)
+				if (!article || article.hasHeading) {
+					state.env.wikiTitleInserted = true
+					return
+				}
+				state.src = prependTitleHeading(state.src, article.title)
+				state.env.wikiTitleInserted = true
+			})
 			const headingClose = md.renderer.rules.heading_close
 			md.renderer.rules.heading_close = (tokens, index, options, env, self) => {
 				const decoration = tokens[index].tag === 'h2' ? '<span class="heading-wordmark" aria-hidden="true"></span>' : ''
@@ -116,7 +138,7 @@ export default defineConfig({
 		if (article) {
 			page.title = article.title
 			page.lastUpdated = article.lastUpdatedTime || undefined
-			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, articleHeader: !article.hasHeading, empty: article.empty })
+			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, empty: article.empty })
 		}
 	},
 })
