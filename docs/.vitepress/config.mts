@@ -8,6 +8,7 @@ import { repoUrl, siteUrl } from './site.ts'
 
 const articles = scanArticles()
 const base = ''
+const description = 'NKUwiki（南开 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
 function topicMatch(slug: string, ...folders: string[]) {
 	const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 	const paths = articles.filter(article => folders.includes(article.folders[0])).flatMap(article => [article.url.replace(/\/$/, ''), `/${article.source.replace(/\.md$/, '')}`]).map(escape)
@@ -22,7 +23,7 @@ export default defineConfig({
 	base,
 	lang: 'zh-CN',
 	title: 'NKUwiki',
-	description: '南开大学学生共同维护的非官方校园知识库。',
+	description,
 	cleanUrls: true,
 	lastUpdated: false,
 	srcExclude: ['activity/**'],
@@ -32,6 +33,21 @@ export default defineConfig({
 		['link', { rel: 'stylesheet', href: 'https://s4.zstatic.net/npm/inter-ui@4.1.1/inter.css' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-light.svg`, 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-dark.svg`, 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
+		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
+		['meta', { name: 'author', content: 'NKUwiki-Group' }],
+		['meta', { property: 'og:site_name', content: 'NKUwiki' }],
+		['meta', { property: 'og:type', content: 'website' }],
+		['meta', { property: 'og:title', content: 'NKUwiki · 南开大学校园知识库' }],
+		['meta', { property: 'og:description', content: description }],
+		['meta', { property: 'og:url', content: siteUrl }],
+		['script', { type: 'application/ld+json' }, JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			'name': 'NKUwiki',
+			'alternateName': ['NKUwiki', 'nkuwiki', 'NKU wiki', '南开wiki', '南开 wiki', '南开维基', '南开大学 wiki', '南开大学维基'],
+			'url': siteUrl,
+			'inLanguage': 'zh-CN',
+		})],
 	],
 	sitemap: { hostname: siteUrl },
 	themeConfig: {
