@@ -82,3 +82,9 @@ author: 作者名
 
 使用 `@vitepress-plugin/markmap`，在文章中以 `:::markmap` 和 `:::` 包裹 Markdown 导图内容，可在容器开头通过 YAML frontmatter 配置 `markmap` 选项。评优、学分和电气就业导图直接维护在对应文章中，无需导出 HTML 或嵌入 iframe。
 
+## 贡献者
+
+感谢所有[贡献者](https://github.com/Cure2004/NKUwiki/graphs/contributors)参与维护。
+
+[![贡献者](https://contrib.rocks/image?repo=Cure2004/NKUwiki)](https://github.com/Cure2004/NKUwiki/graphs/contributors)
+
