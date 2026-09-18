@@ -15,7 +15,7 @@ const appendTo = () => document.body
 <template>
 <span class="hover-media" :data-share-qr="kind === 'qr' ? src : undefined" :data-share-image="kind === 'image' ? src : undefined">
 	<Tippy ref="popup" interactive trigger="mouseenter focus click" :append-to="appendTo" :max-width="300" theme="wiki" placement="auto">
-		<button class="media-trigger" type="button" :aria-label="label" @keydown.esc="popup?.hide()"><slot><Icon :icon="kind === 'qr' ? qrIcon : imageIcon" aria-hidden="true" /><span>{{ kind === 'qr' ? '扫码' : '查看图片' }}</span></slot></button>
+		<button class="media-trigger" type="button" :aria-label="label" @keydown.esc="popup?.hide()"><slot><Icon :icon="kind === 'qr' ? qrIcon : imageIcon" aria-hidden="true" /><span>{{ kind === 'qr' ? '扫码' : (label || '查看图片') }}</span></slot></button>
 		<template #content><div class="media-popover" @keydown.esc="popup?.hide()"><QrCode v-if="kind === 'qr'" :src="src" :label="label" :size="size" /><img v-else :src="src" :alt="label"><p>{{ kind === 'qr' && src.includes('weixin.qq.com') ? '请使用微信扫码' : label }}</p></div></template>
 	</Tippy>
 </span>
