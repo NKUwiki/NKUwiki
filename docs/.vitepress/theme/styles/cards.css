@@ -306,18 +306,18 @@
 
 .group-contact {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 	justify-content: center;
-	gap: 6px;
+	gap: 0;
 	font-size: 13px;
 	line-height: 1.8;
 }
 
 .group-contact > svg {
-	flex: 0 0 16px;
+	flex: 0 0 14px;
 	align-self: center;
-	width: 16px;
-	height: 16px;
+	width: 14px;
+	height: 14px;
 }
 
 .copy-contact svg {
