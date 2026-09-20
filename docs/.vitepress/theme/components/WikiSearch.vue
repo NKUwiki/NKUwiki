@@ -188,22 +188,30 @@ function onRouteChange() {
 	const strip = (path: string) => path.replace(/\.html$/, '').replace(/\/$/, '')
 	if (jump.url && strip(window.location.pathname) !== strip(withBase(jump.url)))
 		return
-	// 等新页面内容渲染完成后再定位
-	requestAnimationFrame(() => setTimeout(() => jump.section && scrollToSection(jump.section!), 50))
+	scrollToSection(jump.section ?? '')
 }
 
 function scrollToSection(section: string) {
 	const wanted = normalize(section)
 	if (!wanted)
 		return
-	const headings = document.querySelectorAll('.vp-doc h1, .vp-doc h2, .vp-doc h3')
-	const normalized = [...headings].map(el => ({ el, text: normalize(el.textContent ?? '') }))
-	const target = normalized.find(item => item.text === wanted) ?? normalized.find(item => item.text.includes(wanted))
-	if (!target)
-		return
-	target.el.scrollIntoView({ block: 'center' })
-	target.el.classList.add('wiki-search-flash')
-	setTimeout(() => target.el.classList.remove('wiki-search-flash'), 2000)
+	// 新页面内容（尤其 dev 下按需编译的页面 chunk）在路由完成后仍需片刻才渲染，
+	// 轮询等待目标章节标题出现，最多约 3 秒
+	let attempts = 0
+	const tryFind = () => {
+		const headings = document.querySelectorAll('.vp-doc h1, .vp-doc h2, .vp-doc h3')
+		const normalized = [...headings].map(el => ({ el, text: normalize(el.textContent ?? '') }))
+		const target = normalized.find(item => item.text === wanted) ?? normalized.find(item => item.text.includes(wanted))
+		if (target) {
+			target.el.scrollIntoView({ block: 'center' })
+			target.el.classList.add('wiki-search-flash')
+			setTimeout(() => target.el.classList.remove('wiki-search-flash'), 2000)
+			return
+		}
+		if (++attempts < 25)
+			setTimeout(tryFind, 120)
+	}
+	setTimeout(tryFind, 100)
 }
 
 // ================= 全局快捷键（模块层只注册一次，双实例不会重复触发） =================
