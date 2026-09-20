@@ -22,6 +22,20 @@
 	color: var(--vp-c-text-1);
 }
 
+/* 导航栏实例占据原搜索按钮的位置（content-before 槽位，菜单左侧），间距对齐原生样式 */
+@media (min-width: 48rem) {
+	.VPNavBar .content-body .wiki-search-trigger {
+		margin-right: 0.5rem;
+		padding-left: 1.5rem;
+	}
+}
+
+@media (min-width: 60rem) {
+	.VPNavBar .content-body .wiki-search-trigger {
+		padding-left: 2rem;
+	}
+}
+
 .wiki-search-trigger.screen {
 	justify-content: flex-start;
 	width: 100%;
@@ -280,12 +294,18 @@
 }
 
 .result-excerpt-text mark,
-.result-title mark {
-	padding: 0 1px;
+.result-title mark,
+.article-index .article-title mark,
+.index-item-excerpt-text mark {
+	padding: 0 2px;
 	border-radius: 3px;
-	background: color-mix(in srgb, var(--vp-c-brand-1) 18%, transparent);
+	background: color-mix(in srgb, var(--vp-c-brand-1) 24%, transparent);
 	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--vp-c-brand-1) 60%, transparent);
+	text-decoration-thickness: 2px;
 	color: var(--vp-c-brand-1);
+	text-underline-offset: 3px;
 }
 
 /* ================= 底部快捷键提示 ================= */
@@ -362,15 +382,6 @@
 	line-height: 20px;
 	color: var(--vp-c-text-2);
 	-webkit-box-orient: vertical;
-}
-
-.article-index .article-title mark,
-.index-item-excerpt-text mark {
-	padding: 0 1px;
-	border-radius: 3px;
-	background: color-mix(in srgb, var(--vp-c-brand-1) 18%, transparent);
-	font-weight: 600;
-	color: var(--vp-c-brand-1);
 }
 
 /* ================= 跳转定位闪烁 ================= */

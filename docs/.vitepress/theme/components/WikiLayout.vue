@@ -21,7 +21,7 @@ onMounted(() => {
 	<template #nav-bar-title-before>
 		<SiteIcon class="site-icon" />
 	</template>
-	<template #nav-bar-content-after>
+	<template #nav-bar-content-before>
 		<WikiSearch />
 	</template>
 	<template #nav-screen-content-after>
