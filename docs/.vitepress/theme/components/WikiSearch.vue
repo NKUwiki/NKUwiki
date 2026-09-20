@@ -2,6 +2,7 @@
 import type MiniSearch from 'minisearch'
 import type { SearchDoc, SearchScope } from '../../searchCore'
 import type { SearchResult } from '../searchDocs'
+import chevronIcon from '@iconify-icons/ri/arrow-right-s-line'
 import closeIcon from '@iconify-icons/ri/close-line'
 import searchIcon from '@iconify-icons/ri/search-line'
 import historyIcon from '@iconify-icons/ri/time-line'
@@ -297,86 +298,99 @@ function moveSelection(step: number) {
 	if (!results.value.length)
 		return
 	selectedIndex.value = (selectedIndex.value + step + results.value.length) % results.value.length
-	document.querySelector('.wiki-search-result.selected')?.scrollIntoView({ block: 'nearest' })
+	document.querySelector('.result.selected')?.scrollIntoView({ block: 'nearest' })
 }
 </script>
 
 <template>
-<!-- screen 标记移动端菜单里的整行按钮，否则渲染导航栏按钮 -->
+<!-- screen 标记移动端菜单里的整行按钮，否则渲染导航栏按钮（样式对齐原生 VPNavBarSearchButton） -->
 <button class="wiki-search-trigger" :class="{ screen }" aria-label="搜索文档" @click="openModal()">
-	<Icon :icon="searchIcon" class="trigger-icon" />
-	<span v-if="!screen" class="trigger-label">搜索文档</span>
-	<span v-else class="trigger-label">搜索文档<span class="trigger-hint">标题与正文</span></span>
-	<kbd v-if="!screen" class="trigger-key">{{ shortcutLabel }}</kbd>
+	<span class="trigger-icon"><Icon :icon="searchIcon" /></span>
+	<span class="text">搜索文档</span>
+	<span class="keys" aria-hidden="true"><kbd>{{ shortcutLabel }}</kbd></span>
 </button>
 <Teleport v-if="!screen" to="body">
-	<div v-if="modalOpen" class="wiki-search-backdrop" @click.self="closeModal()">
-		<div class="wiki-search-modal" role="dialog" aria-modal="true" aria-label="站内搜索">
-			<div class="wiki-search-bar">
-				<Icon :icon="searchIcon" class="bar-icon" />
+	<div v-if="modalOpen" class="wiki-search-box">
+		<div class="backdrop" @click="closeModal()" />
+		<div class="shell" role="dialog" aria-modal="true" aria-label="站内搜索">
+			<div class="search-bar" @click="inputEl?.focus()">
+				<Icon :icon="searchIcon" class="search-icon" />
 				<input
-					ref="inputEl" v-model="query" type="text" placeholder="搜索标题与正文…"
+					ref="inputEl" v-model="query" class="search-input" type="search" placeholder="搜索标题与正文…" enterkeyhint="go"
 					@keydown.down.prevent="moveSelection(1)"
 					@keydown.up.prevent="moveSelection(-1)"
 					@keydown.enter="results[selectedIndex] && openResult(results[selectedIndex])"
 				>
-				<div class="wiki-search-scopes" role="radiogroup" aria-label="搜索范围">
-					<button
-						v-for="option in scopeOptions" :key="option.value"
-						:class="{ active: scope === option.value }" role="radio"
-						:aria-checked="scope === option.value" @click="scope = option.value"
-					>
-						{{ option.label }}
+				<div class="search-actions">
+					<div class="wiki-search-scopes" role="radiogroup" aria-label="搜索范围">
+						<button
+							v-for="option in scopeOptions" :key="option.value" type="button"
+							:class="{ active: scope === option.value }" role="radio"
+							:aria-checked="scope === option.value" @click="scope = option.value"
+						>
+							{{ option.label }}
+						</button>
+					</div>
+					<span class="search-loading" :class="{ active: indexLoading }" />
+					<button class="clear-button" type="button" :disabled="!query" title="清除搜索" @click="query = ''; inputEl?.focus()">
+						<Icon :icon="closeIcon" />
 					</button>
 				</div>
-				<button class="wiki-search-close" aria-label="关闭搜索" @click="closeModal()">
-					<Icon :icon="closeIcon" />
-				</button>
 			</div>
-			<div class="wiki-search-body">
+			<p v-if="query.trim() && total" class="results-count">
+				共 {{ total }} 条结果
+			</p>
+			<ul class="results">
 				<template v-if="query.trim()">
-					<p v-if="indexLoading && !results.length" class="wiki-search-note">
-						搜索索引加载中…
-					</p>
-					<p v-else-if="total" class="wiki-search-count">
-						共 {{ total }} 条结果
-					</p>
-					<p v-else class="wiki-search-note">
-						没有找到相关结果
-					</p>
-					<a
-						v-for="(result, index) in results" :key="result.id"
-						class="wiki-search-result" :class="{ selected: index === selectedIndex }"
-						:href="withBase(result.id)"
-						@mouseenter="selectedIndex = index" @click.prevent="openResult(result)"
-					>
-						<span class="result-title" v-html="result.titleHtml" />
-						<span class="result-meta">{{ result.meta }}<template v-if="result.tags.length"> · {{ result.tags.join(' / ') }}</template></span>
-						<span v-if="result.excerptHtml" class="result-excerpt">
-							<span v-if="result.section" class="result-section">§ {{ result.section }}</span>
-							<span class="result-excerpt-text" v-html="result.excerptHtml" />
-						</span>
-					</a>
+					<li v-for="(result, index) in results" :key="result.id">
+						<a
+							class="result" :class="{ selected: index === selectedIndex }" :href="withBase(result.id)"
+							@mouseenter="selectedIndex = index" @click.prevent="openResult(result)"
+						>
+							<div>
+								<div class="titles">
+									<span class="title-icon">#</span>
+									<span v-if="result.meta" class="title"><span class="text">{{ result.meta }}</span><Icon :icon="chevronIcon" class="chevron" /></span>
+									<span class="title main"><span class="text" v-html="result.titleHtml" /></span>
+									<span v-if="result.tags.length" class="title-tags">{{ result.tags.map(tag => `#${tag}`).join(' ') }}</span>
+								</div>
+								<div v-if="result.excerptHtml" class="excerpt-wrapper">
+									<div class="excerpt">
+										<span v-if="result.section" class="excerpt-section">§ {{ result.section }} · </span><span v-html="result.excerptHtml" />
+									</div>
+									<div class="excerpt-gradient-bottom" />
+									<div class="excerpt-gradient-top" />
+								</div>
+							</div>
+						</a>
+					</li>
+					<li v-if="!results.length" class="no-results">
+						{{ indexLoading ? '搜索索引加载中…' : '没有找到相关结果' }}
+					</li>
 				</template>
 				<template v-else-if="history.length">
-					<p class="wiki-search-count">
+					<li class="history-label">
 						最近搜索 <button class="history-clear" @click="clearHistory()">
 							清空
 						</button>
-					</p>
-					<button v-for="item in history" :key="item" class="wiki-search-history" @click="pickHistory(item)">
-						<Icon :icon="historyIcon" class="history-icon" />
-						<span>{{ item }}</span>
-					</button>
+					</li>
+					<li v-for="item in history" :key="item">
+						<button class="result history" type="button" @click="pickHistory(item)">
+							<div class="titles">
+								<Icon :icon="historyIcon" class="title-icon history-icon" />
+								<span class="title main"><span class="text">{{ item }}</span></span>
+							</div>
+						</button>
+					</li>
 				</template>
-				<p v-else class="wiki-search-note">
-					支持标题与正文检索，输入即搜
-				</p>
-			</div>
-			<div class="wiki-search-footer">
+				<li v-else class="no-results">
+					输入即搜：支持标题、章节与正文检索
+				</li>
+			</ul>
+			<div class="search-keyboard-shortcuts">
 				<span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
 				<span><kbd>Enter</kbd> 打开</span>
-				<span><kbd>Esc</kbd> 关闭</span>
+				<span><kbd>esc</kbd> 关闭</span>
 			</div>
 		</div>
 	</div>

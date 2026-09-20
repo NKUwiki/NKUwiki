@@ -1,152 +1,223 @@
-/* 站内搜索：导航栏入口、弹窗（结果摘要高亮、范围筛选、最近搜索）与跳转定位闪烁 */
+/* 站内搜索：导航栏入口、弹窗与目录页摘要。
+   弹窗与触发按钮的视觉对齐 VitePress 原生 local search（DocSearch 风格），仅内核为自建实现。 */
 
-/* ================= 导航栏 / 移动端菜单入口 ================= */
+/* ================= 导航栏 / 移动端菜单入口（对齐 VPNavBarSearchButton） ================= */
 
 .wiki-search-trigger {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 5px 10px 5px 12px;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: 6px;
-	background: var(--vp-c-bg);
-	font-size: 13px;
-	line-height: 20px;
+	gap: 0.5rem;
+	height: var(--vp-nav-height);
+	padding: 0.5rem 0.875rem;
+	border: none;
+	background: transparent;
+	font-size: 1.25rem;
+	line-height: 1;
 	color: var(--vp-c-text-2);
-	transition: border-color var(--wiki-duration), color var(--wiki-duration), background var(--wiki-duration);
 	cursor: pointer;
 }
 
-.wiki-search-trigger:hover {
-	border-color: var(--vp-c-brand-1);
-	color: var(--vp-c-text-1);
+.wiki-search-trigger .text,
+.wiki-search-trigger .keys {
+	display: none;
 }
 
-/* 导航栏实例占据原搜索按钮的位置（content-before 槽位，菜单左侧），间距对齐原生样式 */
-@media (min-width: 48rem) {
-	.VPNavBar .content-body .wiki-search-trigger {
-		margin-right: 0.5rem;
-		padding-left: 1.5rem;
-	}
-}
-
-@media (min-width: 60rem) {
-	.VPNavBar .content-body .wiki-search-trigger {
-		padding-left: 2rem;
-	}
-}
-
-.wiki-search-trigger.screen {
-	justify-content: flex-start;
-	width: 100%;
-	margin: 8px 0 12px;
-	padding: 8px 12px;
+.wiki-search-trigger kbd {
+	padding: 0;
+	border: none;
+	box-shadow: none;
+	background: none;
+	font-family: inherit;
+	font-weight: 500;
 }
 
 .trigger-icon {
-	flex: none;
-	width: 15px;
-	height: 15px;
-}
-
-.trigger-label {
 	display: flex;
-	align-items: baseline;
-	gap: 6px;
 }
 
-.trigger-hint {
-	font-size: 12px;
-	color: var(--vp-c-text-3);
+.trigger-icon svg {
+	width: 1em;
+	height: 1em;
 }
 
-.trigger-key {
-	display: inline-block;
-	padding: 0 5px;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: 4px;
-	background: var(--vp-c-bg-soft);
-	font-family: var(--vp-font-family-mono);
-	font-size: 11px;
-	line-height: 18px;
-	color: var(--vp-c-text-3);
+@media (min-width: 48rem) {
+	.wiki-search-trigger {
+		height: auto;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.5rem;
+		background-color: var(--vp-c-bg-alt);
+		font-size: 0.875rem;
+		color: var(--vp-c-text-2);
+	}
+
+	.wiki-search-trigger:hover {
+		background-color: var(--vp-c-bg-alt);
+		color: var(--vp-c-text-1);
+	}
+
+	.wiki-search-trigger .text {
+		display: inline;
+		font-size: 0.8125rem;
+	}
+
+	.wiki-search-trigger .keys {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.375rem;
+		border: 1px solid var(--vp-c-divider);
+		border-radius: 0.25rem;
+		font-size: 0.75rem;
+	}
 }
 
-/* ================= 遮罩与弹窗 ================= */
+/* 移动端菜单里的整行入口 */
+.wiki-search-trigger.screen {
+	justify-content: flex-start;
+	width: 100%;
+	height: 3rem;
+	margin: 8px 0 12px;
+	padding: 0 0.875rem;
+	border-radius: 0.5rem;
+	background: var(--vp-c-bg-alt);
+	font-size: 1rem;
+}
 
-.wiki-search-backdrop {
+.wiki-search-trigger.screen .text {
+	display: inline;
+	font-size: 0.875rem;
+}
+
+/* ================= 弹窗外壳（对齐 VPLocalSearchBox） ================= */
+
+.wiki-search-box {
 	display: flex;
-	align-items: flex-start;
-	justify-content: center;
 	position: fixed;
 	inset: 0;
-	padding: 9vh 16px 16px;
-	background: var(--vp-backdrop-bg-color);
 	z-index: 100;
 }
 
-.wiki-search-modal {
+.wiki-search-box .backdrop {
+	position: absolute;
+	inset: 0;
+	background: var(--vp-backdrop-bg-color);
+	transition: opacity 0.5s;
+}
+
+.wiki-search-box .shell {
 	display: flex;
 	flex-direction: column;
-	overflow: hidden;
-	width: min(620px, 100%);
-	max-height: 72vh;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: var(--wiki-radius-large);
-	box-shadow: var(--vp-shadow-3);
-	background: var(--vp-c-bg-elv);
+	gap: 1rem;
+	position: relative;
+	width: min(100vw - 3.75rem, 56.25rem);
+	height: min-content;
+	max-height: min(100vh - 8rem, 56.25rem);
+	margin: 4rem auto;
+	padding: 0.75rem;
+	border-radius: 0.375rem;
+	background: var(--vp-local-search-bg);
 }
 
-.wiki-search-bar {
+@media not all and (min-width: 48rem) {
+	.wiki-search-box .shell {
+		width: 100vw;
+		height: 100vh;
+		max-height: none;
+		margin: 0;
+		padding: 0.5rem;
+		border-radius: 0;
+	}
+}
+
+/* ================= 搜索栏 ================= */
+
+.wiki-search-box .search-bar {
 	display: flex;
-	flex: none;
 	align-items: center;
-	gap: 8px;
-	padding: 10px 12px;
-	border-bottom: 1px solid var(--vp-c-divider);
+	padding: 0 0.75rem;
+	border: 1px solid var(--vp-c-divider);
+	border-radius: 0.25rem;
+	cursor: text;
 }
 
-.bar-icon {
+.wiki-search-box .search-bar:focus-within {
+	border-color: var(--vp-c-brand-1);
+}
+
+.wiki-search-box .search-icon {
 	flex: none;
-	width: 16px;
-	height: 16px;
-	color: var(--vp-c-text-3);
+	margin: 0.5rem;
+	font-size: 1.125rem;
 }
 
-.wiki-search-bar input {
-	flex: 1;
-	min-width: 0;
+@media not all and (min-width: 48rem) {
+	.wiki-search-box .search-icon {
+		display: none;
+	}
+}
+
+.wiki-search-box .search-input {
+	width: 100%;
+	padding: 0.375rem 0.75rem;
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: 15px;
+	font-size: inherit;
 	color: var(--vp-c-text-1);
 }
 
-.wiki-search-bar input::placeholder {
-	color: var(--vp-c-text-3);
+.wiki-search-box .search-input::-webkit-search-cancel-button {
+	display: none;
 }
 
-.wiki-search-scopes {
+@media not all and (min-width: 48rem) {
+	.wiki-search-box .search-input {
+		padding: 0.375rem 0.25rem;
+	}
+}
+
+.wiki-search-box .search-actions {
 	display: flex;
-	flex: none;
-	overflow: hidden;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: 6px;
+	align-items: center;
+	gap: 0.25rem;
 }
 
-.wiki-search-scopes button {
-	padding: 2px 8px;
-	background: transparent;
-	font-size: 12px;
-	line-height: 20px;
-	color: var(--vp-c-text-3);
-	transition: background var(--wiki-duration), color var(--wiki-duration);
+.wiki-search-box .search-actions button {
+	display: flex;
+	padding: 0.5rem;
+	border: none;
+	background: none;
+	color: var(--vp-c-text-2);
 	cursor: pointer;
 }
 
-.wiki-search-scopes button + button {
-	border-left: 1px solid var(--vp-c-divider);
+.wiki-search-box .search-actions button:not([disabled]):hover {
+	color: var(--vp-c-brand-1);
+}
+
+.wiki-search-box .search-actions .clear-button:disabled {
+	opacity: 0.37;
+	cursor: default;
+}
+
+.wiki-search-box .search-actions svg {
+	width: 1.125rem;
+	height: 1.125rem;
+}
+
+/* 范围筛选：融入原生工具按钮风格的小字分段 */
+.wiki-search-scopes {
+	display: flex;
+	gap: 0.125rem;
+}
+
+.wiki-search-scopes button {
+	padding: 0.375rem 0.375rem;
+	border-radius: 0.25rem;
+	font-size: 0.75rem;
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--vp-c-text-3);
 }
 
 .wiki-search-scopes button.active {
@@ -154,206 +225,236 @@
 	color: var(--vp-c-brand-1);
 }
 
-.wiki-search-close {
-	display: flex;
+/* 加载指示（对齐原生 spinner） */
+.wiki-search-box .search-loading {
 	flex: none;
-	align-items: center;
-	justify-content: center;
-	width: 26px;
-	height: 26px;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--vp-c-text-3);
-	transition: background var(--wiki-duration), color var(--wiki-duration);
-	cursor: pointer;
+	visibility: hidden;
+	width: 1.125rem;
+	height: 1.125rem;
+	margin: 0.5rem;
+	border: 2px solid var(--vp-c-divider);
+	border-top-color: var(--vp-c-brand-1);
+	border-radius: 50%;
 }
 
-.wiki-search-close:hover {
-	background: var(--vp-c-bg-soft);
-	color: var(--vp-c-text-1);
+.wiki-search-box .search-loading.active {
+	visibility: visible;
+	animation: local-search-loading 0.8s linear infinite;
 }
 
-.wiki-search-close svg {
-	width: 15px;
-	height: 15px;
+@keyframes local-search-loading {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
-/* ================= 结果区 ================= */
+/* ================= 结果列表 ================= */
 
-.wiki-search-body {
-	flex: 1;
+.wiki-search-box .results-count {
+	opacity: 75%;
+	font-size: 0.8rem;
+}
+
+.wiki-search-box .results {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	overflow-x: hidden;
 	overflow-y: auto;
-	padding: 6px 6px 10px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 	overscroll-behavior: contain;
 }
 
-.wiki-search-note {
-	padding: 28px 12px;
-	font-size: 13px;
-	text-align: center;
-	color: var(--vp-c-text-3);
-}
-
-.wiki-search-count {
+.wiki-search-box .result {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: 8px 12px 6px;
-	font-size: 12px;
-	color: var(--vp-c-text-3);
-}
-
-.history-clear {
-	font-size: 12px;
-	color: var(--vp-c-text-3);
-	cursor: pointer;
-}
-
-.history-clear:hover {
-	color: var(--vp-c-text-1);
-}
-
-.wiki-search-history {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+	gap: 0.5rem;
 	width: 100%;
-	padding: 7px 12px;
-	border-radius: var(--wiki-radius-small);
-	background: transparent;
-	font-size: 13px;
+	border: solid 2px var(--vp-local-search-result-border);
+	border-radius: 0.25rem;
+	background: none;
+	font-size: 0.9rem;
+	line-height: 1.5;
 	text-align: left;
 	color: var(--vp-c-text-1);
 	cursor: pointer;
 }
 
-.wiki-search-history:hover {
-	background: var(--vp-c-bg-soft);
+.wiki-search-box .result > div {
+	overflow: hidden;
+	width: 100%;
+	margin: 0.75rem;
 }
 
-.history-icon {
-	flex: none;
-	width: 13px;
-	height: 13px;
+@media not all and (min-width: 48rem) {
+	.wiki-search-box .result > div {
+		margin: 0.5rem;
+	}
+}
+
+.wiki-search-box .result.selected {
+	border-color: var(--vp-local-search-result-selected-border);
+}
+
+.wiki-search-box .result.selected .titles,
+.wiki-search-box .result.selected .titles .title-icon {
+	color: var(--vp-c-brand-1);
+}
+
+.wiki-search-box .titles {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.125rem 0;
+}
+
+.wiki-search-box .title {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.wiki-search-box .title.main {
+	font-weight: 500;
+}
+
+.wiki-search-box .title-icon {
+	opacity: 0.5;
+	font-weight: 500;
+	color: var(--vp-c-brand-1);
+}
+
+.wiki-search-box .title .chevron {
+	opacity: 0.5;
+	font-size: 0.875rem;
+}
+
+.wiki-search-box .title-tags {
+	opacity: 0.6;
+	font-size: 0.75rem;
+}
+
+.wiki-search-box .excerpt-wrapper {
+	position: relative;
+	margin-top: 0.25rem;
+}
+
+.wiki-search-box .excerpt {
+	overflow: hidden;
+	opacity: 50%;
+	max-height: 8.75rem;
+	font-size: 0.8rem;
+	line-height: 1.3;
+}
+
+.wiki-search-box .result.selected .excerpt {
+	opacity: 1;
+}
+
+.wiki-search-box .excerpt-section {
+	font-weight: 500;
+	color: var(--vp-c-brand-1);
+}
+
+.wiki-search-box .excerpt-gradient-bottom {
+	position: absolute;
+	bottom: -1px;
+	left: 0;
+	width: 100%;
+	height: 0.5rem;
+	background: linear-gradient(transparent, var(--vp-local-search-result-bg));
+	z-index: 1000;
+}
+
+.wiki-search-box .excerpt-gradient-top {
+	position: absolute;
+	top: -1px;
+	left: 0;
+	width: 100%;
+	height: 0.5rem;
+	background: linear-gradient(var(--vp-local-search-result-bg), transparent);
+	z-index: 1000;
+}
+
+/* 命中标记：对齐原生高亮（品牌色底 + 反色文字） */
+.wiki-search-box .titles :deep(mark),
+.wiki-search-box .excerpt :deep(mark) {
+	padding: 0 0.125rem;
+	border-radius: 0.125rem;
+	background-color: var(--vp-local-search-highlight-bg);
+	font-weight: 500;
+	color: var(--vp-local-search-highlight-text);
+}
+
+.wiki-search-box .no-results {
+	padding: 0.75rem;
+	font-size: 0.9rem;
+	text-align: center;
+}
+
+/* ================= 最近搜索 ================= */
+
+.wiki-search-box .history-label {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	opacity: 75%;
+	padding: 0.25rem 0.75rem;
+	font-size: 0.8rem;
+}
+
+.wiki-search-box .history-clear {
+	font-size: 0.8rem;
 	color: var(--vp-c-text-3);
-}
-
-.wiki-search-result {
-	display: block;
-	padding: 8px 12px;
-	border-radius: var(--wiki-radius-small);
 	cursor: pointer;
 }
 
-.wiki-search-result:hover,
-.wiki-search-result.selected {
-	background: var(--vp-c-bg-soft);
-}
-
-.result-title {
-	display: block;
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 22px;
+.wiki-search-box .history-clear:hover {
 	color: var(--vp-c-text-1);
 }
 
-.result-meta {
-	display: block;
-	margin-top: 1px;
-	font-size: 12px;
-	line-height: 18px;
+.wiki-search-box .result.history .history-icon {
+	font-size: 1rem;
 	color: var(--vp-c-text-3);
 }
 
-.result-excerpt {
-	display: block;
-	margin-top: 4px;
-}
+/* ================= 底部快捷键提示（对齐原生） ================= */
 
-.result-section {
-	font-size: 12px;
-	line-height: 18px;
-	color: var(--vp-c-brand-1);
-}
-
-.result-section::after {
-	content: " · ";
-	color: var(--vp-c-text-3);
-}
-
-.result-excerpt-text {
-	display: block;
-	display: -webkit-box;
-	overflow: hidden;
-	font-size: 12.5px;
-	-webkit-line-clamp: 3;
-	line-height: 20px;
-	color: var(--vp-c-text-2);
-	-webkit-box-orient: vertical;
-}
-
-.result-excerpt-text mark,
-.result-title mark,
-.article-index .article-title mark,
-.index-item-excerpt-text mark {
-	padding: 0 2px;
-	border-radius: 3px;
-	background: color-mix(in srgb, var(--vp-c-brand-1) 24%, transparent);
-	font-weight: 600;
-	text-decoration: underline;
-	text-decoration-color: color-mix(in srgb, var(--vp-c-brand-1) 60%, transparent);
-	text-decoration-thickness: 2px;
-	color: var(--vp-c-brand-1);
-	text-underline-offset: 3px;
-}
-
-/* ================= 底部快捷键提示 ================= */
-
-.wiki-search-footer {
+.wiki-search-box .search-keyboard-shortcuts {
 	display: flex;
 	flex: none;
-	gap: 16px;
-	padding: 8px 14px;
-	border-top: 1px solid var(--vp-c-divider);
-	font-size: 12px;
-	color: var(--vp-c-text-3);
+	flex-wrap: wrap;
+	gap: 1rem;
+	opacity: 75%;
+	font-size: 0.8rem;
+	line-height: 1.09375;
 }
 
-.wiki-search-footer kbd {
-	display: inline-block;
-	margin-right: 3px;
-	padding: 0 4px;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: 4px;
-	background: var(--vp-c-bg-soft);
-	font-family: var(--vp-font-family-mono);
-	font-size: 11px;
-	line-height: 16px;
+.wiki-search-box .search-keyboard-shortcuts span {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
 }
 
-/* 移动端：弹窗近全屏，隐藏快捷键提示与范围筛选里的长标签 */
-@media (max-width: 768px) {
-	.wiki-search-backdrop {
-		padding: 0;
-	}
-
-	.wiki-search-modal {
-		width: 100%;
-		height: 100%;
-		max-height: 100vh;
-		border: none;
-		border-radius: 0;
-	}
-
-	.wiki-search-footer {
+@media not all and (min-width: 48rem) {
+	.wiki-search-box .search-keyboard-shortcuts {
 		display: none;
 	}
+}
 
-	.wiki-search-scopes button {
-		padding: 2px 6px;
-		font-size: 11px;
-	}
+.wiki-search-box .search-keyboard-shortcuts kbd {
+	display: inline-block;
+	min-width: 1.5rem;
+	padding: 0.1875rem 0.375rem;
+	border: 1px solid rgba(128, 128, 128, 0.15);
+	border-radius: 0.25rem;
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
+	background: rgba(128, 128, 128, 0.1);
+	vertical-align: middle;
+	text-align: center;
 }
 
 /* ================= 目录/标签/最近更新页的限定范围搜索摘要 ================= */
