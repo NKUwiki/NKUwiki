@@ -22,6 +22,7 @@
   "dependencies": {
     "@iconify-icons/ri": "^2.0.0",
     "@iconify/vue": "^5.0.1",
+    "minisearch": "^7.2.0",
     "modern-screenshot": "^4.7.0",
     "tippy.js": "^6.3.7",
     "uqr": "^0.1.3",
