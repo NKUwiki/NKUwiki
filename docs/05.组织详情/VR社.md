@@ -1,0 +1,13 @@
+---
+title: VR社
+description: 南开大学VR社的组织详情，条目信息正在补充。
+author: NKUwiki
+date: 2026-09-20
+categories:
+  - 组织详情
+tags:
+  - 社团
+  - 科技
+permalink: /pages/VRClub
+lastUpdated: 2026-09-20
+---
