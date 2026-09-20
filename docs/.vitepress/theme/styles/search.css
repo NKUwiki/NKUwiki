@@ -390,6 +390,28 @@
 	animation: wiki-search-flash 2s ease-out;
 }
 
+/* 正文里包裹命中文本的临时 <mark>：底色更实、带下划线，确保一眼可见，2 秒后由脚本拆除 */
+mark.wiki-search-flash {
+	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-color: var(--vp-c-brand-1);
+	text-decoration-thickness: 2px;
+	color: var(--vp-c-brand-1);
+	animation: wiki-search-flash-text 2s ease-out;
+	text-underline-offset: 3px;
+}
+
+@keyframes wiki-search-flash-text {
+	0%,
+	50% {
+		background-color: color-mix(in srgb, var(--vp-c-brand-1) 32%, transparent);
+	}
+
+	100% {
+		background-color: color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent);
+	}
+}
+
 @keyframes wiki-search-flash {
 	0%,
 	40% {
