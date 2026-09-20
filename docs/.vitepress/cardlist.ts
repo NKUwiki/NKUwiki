@@ -13,6 +13,12 @@ function pickImageSrc(cell = '') {
 		|| plainText(cell)
 }
 
+/** 从单元格取第一个链接地址（供整卡跳转使用） */
+const pickHref = (cell = '') => cell.match(/<a\b[^>]*?\shref="([^"]+)"/i)?.[1]
+
+/** 转义 HTML 属性值，避免链接里的 & 等字符破坏标签 */
+const escapeAttr = (value = '') => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 /**
  * 飞书官方 logo（取自 Flathub 应用图标，256×256 视图），单色化以与整套图标统一。
  *  原三段 path 为青/蓝/深蓝实色，此处统一改为 currentColor，由 CSS 上成品牌蓝。
@@ -64,6 +70,7 @@ export function cardlist(md: MarkdownRenderer) {
 		let isHeader = false
 		let inTable = false
 		let avatarIndex = -1
+		let articleIndex = -1
 		for (const token of tokens) {
 			switch (token.type) {
 				case 'table_open':
@@ -84,15 +91,22 @@ export function cardlist(md: MarkdownRenderer) {
 				case 'tr_open':
 					cells = []
 					break
-				case 'tr_close':
+				case 'tr_close': {
 					if (isHeader) {
 						headers = cells
 						isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
 						avatarIndex = headers.findIndex(header => /头像/.test(header))
+						// “文章/详情”列存放整卡跳转链接（与标题解耦，标题只作展示）。
+						articleIndex = headers.findIndex(header => /文章|详情/.test(header))
 						html[html.length - 1] = `<div class="campus-card-grid ${isGroup ? 'group-cards' : 'food-cards'}" role="list">`
 						break
 					}
-					html.push('<article class="campus-card" role="listitem">')
+					// 整卡跳转链接取自“文章/详情”列：注入一个铺满整卡的覆盖层 <a> 作为跳转入口，
+					// 卡片内交互元素（加入方式、二维码、复制等）通过 z-index 置于其上，仍可正常点击。
+					const titleHref = articleIndex > -1 ? pickHref(cells[articleIndex]) : undefined
+					html.push(`<article class="campus-card"${titleHref ? ' data-card-link' : ''} role="listitem">`)
+					if (titleHref)
+						html.push(`<a class="card-overlay-link" href="${escapeAttr(titleHref)}" aria-hidden="true" tabindex="-1"></a>`)
 					if (isGroup) {
 						const qq = cells[1]?.replace(/<[^>]*>/g, '').match(/\b\d{5,12}\b/)?.[0] || ''
 						const avatar = avatarIndex > -1 ? pickImageSrc(cells[avatarIndex]) : ''
@@ -105,11 +119,10 @@ export function cardlist(md: MarkdownRenderer) {
 					}
 					html.push(`<h3 class="campus-card-title">${cells[0]}</h3>`)
 					for (let i = 1; i < cells.length; i++) {
-						if (!cells[i].trim())
-							continue
-						if (i === avatarIndex)
-							continue
 						const label = headers[i] || ''
+						// 跳过空单元格、头像列，以及仅供整卡跳转的“文章/详情”列（该列只作数据，不显示在卡片上）。
+						if (!cells[i].trim() || i === avatarIndex || i === articleIndex || /文章|详情/.test(label))
+							continue
 						const value = renderCardIcons(cells[i].replace(/<QrCode\b/g, '<HoverMedia kind="qr"'))
 						if (isGroup && /备注/.test(label)) {
 							html.push(`<div class="card-badges">${value}</div>`)
@@ -133,6 +146,7 @@ export function cardlist(md: MarkdownRenderer) {
 					}
 					html.push('</article>')
 					break
+				}
 				case 'inline':
 					if (inTable)
 						cells.push(md.renderer.renderInline(token.children || [], md.options, state.env))

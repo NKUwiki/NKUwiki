@@ -56,6 +56,7 @@
 	overflow: hidden;
 	overflow-wrap: anywhere;
 	padding: 1.5rem;
+	border: 1px solid transparent;
 	border-radius: 0.5rem;
 	background: var(--vp-c-bg-soft);
 	text-align: center;
@@ -75,6 +76,35 @@
 	font-size: 1rem;
 	line-height: 1.55;
 	text-wrap: balance;
+}
+
+/* 整卡可点击：卡片内注入的覆盖层链接（card-overlay-link）铺满整卡。
+   鼠标悬停时只在卡片边缘给出反馈（描边变品牌色），不改变背景色。 */
+.campus-card[data-card-link] {
+	transition: border-color var(--wiki-duration);
+	cursor: pointer;
+}
+
+.campus-card[data-card-link]:hover {
+	border-color: var(--vp-c-brand-1);
+}
+
+.campus-card[data-card-link] .card-overlay-link {
+	position: absolute;
+	inset: 0;
+	text-decoration: none;
+	color: inherit;
+	z-index: 0;
+}
+
+/* 卡片内的交互元素（加入方式链接、二维码、复制按钮等）置于覆盖层之上，仍可独立点击。 */
+.campus-card[data-card-link] .group-contact a,
+.campus-card[data-card-link] .card-description a,
+.campus-card[data-card-link] button,
+.campus-card[data-card-link] .hover-media,
+.campus-card[data-card-link] .copy-contact {
+	position: relative;
+	z-index: 1;
 }
 
 .group-avatar {
