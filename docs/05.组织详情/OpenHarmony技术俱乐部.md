@@ -7,7 +7,7 @@ categories:
   - 组织详情
 tags:
   - 社团
-  - 科技
+  - 学术
 permalink: /pages/OpenHarmony
 lastUpdated: 2026-09-20
 ---
