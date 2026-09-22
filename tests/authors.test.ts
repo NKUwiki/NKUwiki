@@ -21,7 +21,11 @@ function commit(name: string, email: string, ...files: string[]): string {
 	return `\u001E${name}\u001F${email}\n${files.join('\n')}\n`
 }
 
-test('frontmatter author 只支持对象数组写法', () => {
+test('frontmatter author 支持字符串、对象与数组写法', () => {
+	// 一个字符串就是一个作者的名字，不再按空格或顿号切分
+	assert.deepEqual(frontmatterAuthors('示例作者').map(author => author.name), ['示例作者'])
+	assert.deepEqual(frontmatterAuthors('示例作者 NKUwiki-Group').map(author => author.name), ['示例作者 NKUwiki-Group'])
+	assert.deepEqual(frontmatterAuthors(['示例作者', 'Liu']).map(author => author.name), ['示例作者', 'Liu'])
 	const authors = frontmatterAuthors([
 		{ name: '示例编者', email: 'editor@example.com' },
 		{ name: '示例作者', email: 'mailto:author@example.com', avatar: 'https://img.example.com/avatar.png' },
@@ -31,11 +35,9 @@ test('frontmatter author 只支持对象数组写法', () => {
 	assert.equal(authors[0].avatar, undefined)
 	assert.equal(authors[1].email, 'author@example.com')
 	assert.equal(authors[1].avatar, 'https://img.example.com/avatar.png')
-	// 字符串、单个对象、名字字符串元素、缺 name、链接、数字等一律忽略
-	assert.deepEqual(frontmatterAuthors('示例作者'), [])
-	assert.deepEqual(frontmatterAuthors('示例作者 NKUwiki-Group'), [])
-	assert.deepEqual(frontmatterAuthors({ name: '示例作者' }), [])
-	assert.deepEqual(frontmatterAuthors(['示例作者', 'Liu']), [])
+	// 单个对象写法
+	assert.deepEqual(frontmatterAuthors({ name: '示例作者' }).map(author => author.name), ['示例作者'])
+	// 缺 name、链接、数字、嵌套数组、null 等一律忽略
 	assert.deepEqual(frontmatterAuthors([{ link: 'mailto:a@b.com' }, 42, ['甲'], null]), [])
 	assert.deepEqual(frontmatterAuthors(null), [])
 	assert.equal(frontmatterAuthors([{ name: '示例作者', link: 'mailto:author@example.com' }])[0].email, undefined)

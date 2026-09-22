@@ -53,6 +53,27 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 	}
 })
 
+test('author 支持字符串、对象与数组写法，缺省时回退 NKUwiki-Group', () => {
+	const root = mkdtempSync(join(tmpdir(), 'nku-author-name-'))
+	try {
+		mkdirSync(join(root, '01.专题'))
+		writeFileSync(join(root, '01.专题/01.字符串.md'), '---\ntitle: 字符串\nauthor: 示例作者 NKUwiki-Group\n---\n正文')
+		writeFileSync(join(root, '01.专题/02.数组.md'), '---\ntitle: 数组\nauthor: [{ name: 甲 }, { name: 乙 }, 丙]\n---\n正文')
+		writeFileSync(join(root, '01.专题/03.缺省.md'), '---\ntitle: 缺省\n---\n正文')
+		const authors = Object.fromEntries(scanArticles(root).map(article => [article.title, article.author]))
+		assert.deepEqual(authors, {
+			字符串: '示例作者 NKUwiki-Group',
+			数组: '甲、乙、丙',
+			缺省: 'NKUwiki-Group',
+		})
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
 test('lastUpdated is explicit and never falls back to creation dates or legacy updated', () => {
 	const root = mkdtempSync(join(tmpdir(), 'ncepu-dates-'))
 	try {
