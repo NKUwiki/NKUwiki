@@ -78,15 +78,8 @@ export default defineConfig({
 			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: topicMatch('contribute', '贡献与其他') },
 		],
 		sidebar,
-		search: { provider: 'local', options: {
-			async _render(source, env, md) {
-				return md.renderAsync(source, env)
-			},
-			locales: { root: { translations: {
-				button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' },
-				modal: { displayDetails: '显示详情', resetButtonTitle: '清除搜索', backButtonTitle: '关闭搜索', noResultsText: '没有找到相关结果', footer: { selectText: '选择', navigateText: '切换', closeText: '关闭' } },
-			} } },
-		} },
+		// 站内搜索由自建组件承担（theme/components/WikiSearch.vue + search.ts 构建期索引）：
+		// 内置 localSearch 的 MiniSearch 默认分词不识别中文，正文整句成一个词元，无法按词命中。
 		socialLinks: [{ icon: 'github', link: repoUrl }],
 		externalLinkIcon: true,
 		langMenuLabel: '切换语言',
