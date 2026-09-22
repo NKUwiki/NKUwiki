@@ -7,7 +7,7 @@ import { computed } from 'vue'
 import AuthorAvatar from './AuthorAvatar.vue'
 
 const { frontmatter } = useData()
-/** 由 config.transformPageData 写入：frontmatter 作者与 Git 提交历史作者去重后的完整列表。 */
+/** 由 config.transformPageData 写入：frontmatter 声明的作者列表。 */
 const authors = computed<Author[]>(() => Array.isArray(frontmatter.value.authors) ? frontmatter.value.authors as Author[] : [])
 </script>
 
@@ -17,7 +17,7 @@ const authors = computed<Author[]>(() => Array.isArray(frontmatter.value.authors
 		<Icon :icon="userIcon" aria-hidden="true" />本文作者
 	</h2>
 	<ul class="article-authors-list">
-		<li v-for="(author, index) in authors" :key="`${author.name}-${author.email || index}`" class="article-author-item" :title="author.commits ? `${author.name} · ${author.commits} 次提交` : author.name">
+		<li v-for="(author, index) in authors" :key="`${author.name}-${author.email || index}`" class="article-author-item">
 			<AuthorAvatar :name="author.name" :avatar="author.avatar" :fallback="author.fallback" />
 			<span class="article-author-body">
 				<a v-if="author.url" class="article-author-name" :href="author.url" target="_blank" rel="noopener noreferrer">{{ author.name }}</a>

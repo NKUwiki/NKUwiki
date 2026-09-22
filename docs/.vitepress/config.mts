@@ -4,7 +4,7 @@ import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { collectAuthors } from './authors.ts'
 import { cardlist } from './cardlist.ts'
-import { buildTree, docsRoot, outputPath, scanArticles } from './catalog.ts'
+import { buildTree, outputPath, scanArticles } from './catalog.ts'
 import { repoUrl, siteUrl } from './site.ts'
 
 const articles = scanArticles()
@@ -129,8 +129,8 @@ export default defineConfig({
 			page.title = article.title
 			page.lastUpdated = article.lastUpdatedTime || undefined
 			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, empty: article.empty })
-			// 页尾作者列表：frontmatter 与 Git 提交历史合并去重，构建期算好后随页面数据下发
-			page.frontmatter.authors = collectAuthors(article.source, page.frontmatter.author, docsRoot)
+			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发
+			page.frontmatter.authors = collectAuthors(page.frontmatter.author)
 		}
 	},
 })
