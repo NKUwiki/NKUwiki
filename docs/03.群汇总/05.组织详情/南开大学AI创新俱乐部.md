@@ -1,8 +1,6 @@
 ---
 title: 南开大学AI创新俱乐部
 description: 南开大学 AI 创新俱乐部的组织详情：沙龙分享、实操工作坊、学期制项目实践与自主创新。
-author:
-  - name: NKUwiki
 date: 2026-09-20
 categories:
   - 群汇总

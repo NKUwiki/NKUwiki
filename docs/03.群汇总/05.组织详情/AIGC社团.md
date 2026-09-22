@@ -1,8 +1,6 @@
 ---
 title: AIGC社团
 description: 南开大学AIGC社团的组织详情，条目信息正在补充。
-author:
-  - name: NKUwiki
 date: 2026-09-20
 categories:
   - 群汇总

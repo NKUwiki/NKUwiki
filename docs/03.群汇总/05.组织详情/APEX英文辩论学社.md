@@ -1,8 +1,6 @@
 ---
 title: APEX英文辩论学社
 description: 南开大学 APEX 英文辩论学社的组织详情：BP 制英语辩论训练、校际友谊赛与正式联赛、主题沙龙与带训。
-author:
-  - name: NKUwiki
 date: 2026-09-20
 categories:
   - 群汇总
