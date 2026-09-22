@@ -11,6 +11,21 @@ function strings(value: unknown): string[] {
 	return [...new Set(values.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean))]
 }
 
+/**
+ * frontmatter 的 `author` 有两种写法：单个字符串（旧写法），
+ * 或 `{ name, email, avatar }` 对象数组（配合页尾作者列表）。列表页只显示姓名。
+ */
+function authorNames(value: unknown): string {
+	if (typeof value === 'string')
+		return value.trim()
+	if (!Array.isArray(value))
+		return ''
+	return value
+		.flatMap(item => (item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string' ? [(item as { name: string }).name.trim()] : []))
+		.filter(Boolean)
+		.join('、')
+}
+
 function hasTitleHeading(content: string): boolean {
 	let fence = ''
 	for (const line of content.replace(/^:::markmap[^\S\n]*\n[\s\S]*?^:::[^\S\n]*$/gm, '').split('\n')) {
@@ -60,7 +75,7 @@ export function scanArticles(root = docsRoot) {
 				categories: strings([...folders, ...strings(fm.categories).flatMap(category => category.split(/\s+-\s+/))]),
 				tags: strings(fm.tags),
 				date: fm.date ? new Date(fm.date).toISOString().slice(0, 10) : '',
-				author: typeof fm.author === 'string' ? fm.author : fm.author?.name || 'NKUwiki-Group',
+				author: authorNames(fm.author) || 'NKUwiki-Group',
 				lastUpdated,
 				lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
 				hasHeading: hasTitleHeading(content),

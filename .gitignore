@@ -3,6 +3,7 @@ node_modules/
 .pnpm-store/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+docs/.vitepress/.temp/
 .DS_Store
 *.log
 .zcode/
