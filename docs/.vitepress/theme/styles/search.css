@@ -379,9 +379,11 @@
 	z-index: 1000;
 }
 
-/* 命中标记：对齐原生高亮（品牌色底 + 反色文字） */
-.wiki-search-box .titles :deep(mark),
-.wiki-search-box .excerpt :deep(mark) {
+/* 命中标记：对齐原生高亮（品牌色底 + 反色文字）
+   mark 由 highlightText/buildExcerpt 生成、经 v-html 渲染在 .titles / .excerpt 内，是普通后代元素，
+   本文件是全局 CSS，不要用 Vue 的 :deep()：浏览器不识别该伪类，逗号选择器列表一条失效整条规则作废。 */
+.wiki-search-box .titles mark,
+.wiki-search-box .excerpt mark {
 	padding: 0 0.125rem;
 	border-radius: 0.125rem;
 	background-color: var(--vp-local-search-highlight-bg);
