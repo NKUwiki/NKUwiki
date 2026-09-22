@@ -71,6 +71,7 @@ export default defineConfig({
 			{ text: '浅谈学习', link: '/categories/?category=浅谈学习' },
 			{ text: '校园生活', link: '/categories/?category=校园生活' },
 			{ text: '群汇总', link: '/categories/?category=群汇总' },
+			{ text: '计算机知识', link: '/categories/?category=计算机知识' },
 			{ text: '全部分类', link: '/categories/' },
 			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: categoryMatch('贡献与其他') },
 		],
