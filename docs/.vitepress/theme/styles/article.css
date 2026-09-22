@@ -195,7 +195,6 @@
 }
 
 .article-byline,
-.article-author,
 .article-date {
 	display: flex;
 	flex-wrap: wrap;
@@ -424,6 +423,17 @@ a.article-author-name:hover {
 	flex-direction: column;
 	gap: 6px;
 	min-width: 0;
+}
+
+/* 子分类条目和文章条目同款，只在标题下面多一个「子分类」徽标 */
+.article-kind {
+	align-self: flex-start;
+	padding: 2px 8px;
+	border-radius: var(--wiki-radius-small);
+	background: var(--vp-c-brand-soft);
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--vp-c-brand-1);
 }
 
 .article-list:not(.article-cards) > li {

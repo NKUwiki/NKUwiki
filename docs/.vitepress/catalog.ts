@@ -1,25 +1,15 @@
-import type { Article, Catalog, DirectoryItem } from './types.ts'
+import type { Article, Catalog, DirectoryItem, TaxonomyCount } from './types.ts'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
+import { categoryPaths, collectCategories } from './category.ts'
 
 export const docsRoot = fileURLToPath(new URL('../', import.meta.url))
 const label = (name: string) => name.replace(/^\d+\./, '').replace(/\.md$/, '')
 function strings(value: unknown): string[] {
 	const values: unknown[] = Array.isArray(value) ? value : [value]
 	return [...new Set(values.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean))]
-}
-
-/** frontmatter 里 author 的展示名：字符串、`{ name }` 对象，或它们的数组（用「、」连接）。 */
-function authorName(value: unknown): string {
-	if (typeof value === 'string')
-		return value.trim()
-	if (Array.isArray(value))
-		return value.map(authorName).filter(Boolean).join('、')
-	if (value && typeof value === 'object' && typeof (value as { name?: unknown }).name === 'string')
-		return (value as { name: string }).name.trim()
-	return ''
 }
 
 function hasTitleHeading(content: string): boolean {
@@ -68,10 +58,11 @@ export function scanArticles(root = docsRoot) {
 				url,
 				title: fm.title || label(entry.name),
 				folders,
-				categories: strings([...folders, ...strings(fm.categories).flatMap(category => category.split(/\s+-\s+/))]),
+				// 目录层级本身就是分类层级（03.群汇总/05.组织详情/x.md → 群汇总/组织详情），
+				// frontmatter 的 categories 可再用缩进补充层级；两者都按完整路径去重
+				categories: [...new Set([folders.join('/'), ...categoryPaths(fm.categories)].filter(Boolean))],
 				tags: strings(fm.tags),
 				date: fm.date ? new Date(fm.date).toISOString().slice(0, 10) : '',
-				author: authorName(fm.author) || 'NKUwiki-Group',
 				lastUpdated,
 				lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
 				hasHeading: hasTitleHeading(content),
@@ -118,12 +109,13 @@ export function buildTree(articles: Article[], depth = 0): DirectoryItem[] {
 
 export function loadCatalog(root = docsRoot): Catalog {
 	const articles = scanArticles(root)
-	const count = (field: 'categories' | 'tags') => {
-		const counts = new Map<string, number>()
-		for (const article of articles) {
-			for (const name of article[field]) counts.set(name, (counts.get(name) || 0) + 1)
-		}
-		return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+	return { articles, tree: buildTree(articles), categories: collectCategories(articles), tags: countTags(articles) }
+}
+
+function countTags(articles: Article[]): TaxonomyCount[] {
+	const counts = new Map<string, number>()
+	for (const article of articles) {
+		for (const tag of article.tags) counts.set(tag, (counts.get(tag) || 0) + 1)
 	}
-	return { articles, tree: buildTree(articles), categories: count('categories'), tags: count('tags') }
+	return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
 }

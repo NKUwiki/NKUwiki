@@ -22,7 +22,6 @@ export interface SearchDoc {
 	folders: string[]
 	categoriesList: string[]
 	tagsList: string[]
-	author: string
 	lastUpdated: string
 }
 

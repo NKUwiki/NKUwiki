@@ -1,10 +1,16 @@
-.VPSidebar .directory-trigger {
+/* 侧栏顶部一行：「全部分类」+ 收起左侧目录的按钮 */
+.sidebar-top {
 	display: flex;
-	justify-content: flex-start;
-	width: 100%;
+	align-items: center;
+	gap: 4px;
+	border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.VPSidebar .directory-trigger {
+	flex: 1;
+	min-width: 0;
 	margin-bottom: 0;
 	padding: 10px 0;
-	border-bottom: 1px solid var(--vp-c-divider);
 }
 
 .wiki-wide {
@@ -441,43 +447,63 @@
 	height: 18px;
 }
 
-/* Nested counters follow the generated sidebar tree, including collapsed groups. */
-.VPSidebar .nav,
-.VPSidebar .items {
-	counter-reset: sidebar;
+/* 桌面端可以把左侧目录整个收起来，正文随之变宽：
+   展开时按钮在侧栏顶部，收起后变成左边缘上的小按钮，方便再展开。
+   手机上本来就是抽屉式菜单；首页、分类页等没有左侧目录的页面也不显示这个按钮 */
+.wiki-sidebar-toggle {
+	display: none;
 }
 
-.VPSidebarItem {
-	counter-increment: sidebar;
+@media (min-width: 60rem) {
+	html:has(.VPContent.has-sidebar) .sidebar-top .wiki-sidebar-toggle,
+	html[data-wiki-sidebar="collapsed"]:has(.VPContent.has-sidebar) .wiki-sidebar-toggle-floating {
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
+		color: var(--vp-c-text-2);
+		transition: color var(--wiki-duration), background var(--wiki-duration);
+	}
+
+	.sidebar-top .wiki-sidebar-toggle:hover,
+	.wiki-sidebar-toggle-floating:hover {
+		color: var(--vp-c-text-1);
+		background: var(--vp-c-default-soft);
+	}
+
+	.wiki-sidebar-toggle svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.wiki-sidebar-toggle-floating {
+		position: fixed;
+		z-index: 26;
+		inset-block-start: calc(var(--vp-nav-height) + 5px);
+		inset-inline-start: 8px;
+		border: 1px solid var(--vp-c-divider);
+		background: var(--vp-c-bg);
+	}
+
+	html[data-wiki-sidebar="collapsed"] .VPSidebar {
+		display: none;
+	}
+
+	html[data-wiki-sidebar="collapsed"] .VPContent.has-sidebar {
+		padding-left: 0;
+	}
+
+	/* 收起后正文可以再宽一些，但保留一段行宽上限，避免长行难读。
+	   VitePress 的 .VPDoc.has-aside .content-container 是 scoped 样式，这里要选得比它更具体 */
+	html[data-wiki-sidebar="collapsed"] .VPDoc.has-aside .content-container {
+		max-width: 860px;
+	}
 }
 
-.VPSidebarItem > .item::before {
-	content: counter(sidebar) / "";
-	flex-shrink: 0;
-	align-self: baseline;
-	width: 0;
-	padding-block: 4px;
-	font-size: 10px;
-	letter-spacing: -0.05em;
-	line-height: 24px;
-	white-space: nowrap;
-	text-align: right;
-	color: var(--vp-c-text-3);
-	transform: translateX(-10px);
-}
-
-.VPSidebarItem.is-active > .item::before {
-	color: var(--vp-c-brand-1);
-}
-
-.VPSidebarItem.level-0 > .item::before {
-	content: counter(sidebar, cjk-ideographic) / "";
-}
-
-.VPSidebarItem:is(.level-2, .level-5) > .item::before {
-	content: counter(sidebar, lower-alpha) / "";
-}
-
-.VPSidebarItem.level-3 > .item::before {
-	content: counter(sidebar, lower-roman) / "";
+@media (min-width: 90rem) {
+	/* VitePress 在超宽屏上把正文居中，收起目录后左侧留白要跟着调整 */
+	html[data-wiki-sidebar="collapsed"] .VPContent.has-sidebar {
+		padding-left: calc((100% - var(--vp-layout-max-width)) / 2);
+	}
 }

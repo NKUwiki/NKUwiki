@@ -66,10 +66,7 @@ function remoteAvatar(rawEmail: string, url: string): string {
 /**
  * 把 frontmatter 的 `author` 归一化成作者列表。
  *
- * 支持三种写法：
- * - 字符串：`author: 示例作者`，一个字符串就是一个作者的名字，不做任何切分；
- * - 对象：`author: { name, email, avatar }`，`email` 直接写邮箱或写成 `mailto:`；
- * - 数组：`author: [示例作者, Liu]` 或对象数组，多个作者必须用数组声明。
+ * 只支持一种写法：数组，元素是 `{ name, email, avatar }` 对象。
  *
  * ```
  * author:
@@ -80,18 +77,14 @@ function remoteAvatar(rawEmail: string, url: string): string {
  *     avatar: https://img.example.com/avatar.png
  * ```
  *
- * `name` 必填（缺了整条忽略）；`avatar` 是图片地址。
- * 名字里带空格、顿号都当成一个名字的一部分，多个作者不要拼在一个字符串里。
+ * `name` 必填（缺了整条忽略）；`email` 可直接写邮箱或写成 `mailto:`；`avatar` 是图片地址。
+ * 字符串、单个对象、数组里的字符串元素都不再支持，会被忽略。
  */
 export function frontmatterAuthors(value: unknown): Author[] {
+	if (!Array.isArray(value))
+		return []
 	const authors: Author[] = []
-	for (const item of Array.isArray(value) ? value : [value]) {
-		if (typeof item === 'string') {
-			const name = item.trim()
-			if (name)
-				authors.push({ name, origin: 'frontmatter' })
-			continue
-		}
+	for (const item of value) {
 		if (!item || typeof item !== 'object')
 			continue
 		const { name, email, avatar } = item as Record<string, unknown>

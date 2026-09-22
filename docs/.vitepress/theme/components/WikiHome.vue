@@ -31,8 +31,8 @@ import WikiChips from './WikiChips.vue'
 
 // ================= 首页静态内容配置 =================
 
-// “探索专题”卡片区的数据源：每一项是 [专题名, 一句话简介]。
-// 需要增删或改名专题时在这里维护，同时同步 topicLinks 中的映射。
+// “按分类浏览”卡片区的数据源：每一项是 [分类名, 一句话简介]。
+// 卡片统一跳到 /categories/?category=分类名，和「全部分类」共用一个页面。
 const topics = [
 	['新生入学', '从录取通知书到校园第一天'],
 	['浅谈学习', '课程信息、学习资料、课程与教师评价'],
@@ -40,11 +40,6 @@ const topics = [
 	['校园生活', '常用信息与日常生活指南'],
 	['贡献与其他', '一起补充、修订和分享知识'],
 ]
-
-// 专题名 → 该专题落地页 URL 中的 slug（对应 docs/topics/ 下的同名目录）。
-// 模板会优先读取这里的映射；未被映射的专题（如“贡献与其他”）
-// 会回退到默认链接 /pages/BasicContribution/（贡献指南页）。
-const topicLinks: Record<string, string> = { 新生入学: 'newcomers', 浅谈学习: 'study', 校园生活: 'life', 群汇总: 'groups', 贡献与其他: 'contribution' }
 
 // ================= 动态数据加工 =================
 
@@ -71,14 +66,14 @@ function isExternal(link?: string) {
 		<div>
 			<h1>NKU<span>wiki</span></h1>
 			<p class="hero-subtitle">
-				在南开，从这里开始。
+				汲公能之志，汇众人之识。
 			</p>
 			<p class="hero-description">
-				南开大学学生共同维护的非官方校园知识库。<br>把散落的经验，整理成下一位同学用得上的指南。
+				南开大学学生共同维护的非官方校园知识库。
 			</p>
 			<!-- 主要行动按钮：跳转新生指南；第二个链接前往文章分类索引页 /categories/ -->
 			<div class="hero-actions">
-				<a class="primary" :href="withBase('/pages/Preparation')">阅读新生指南 <span aria-hidden="true">↗</span></a><a :href="withBase('/categories/')">浏览全部目录 →</a>
+				<a class="primary" :href="withBase('/pages/Preparation')">阅读新生指南 <span aria-hidden="true">↗</span></a><a :href="withBase('/categories/')">浏览全部分类 →</a>
 			</div>
 		</div>
 		<!-- Hero 右侧小卡片：校徽、校区范围、由 data loader 统计的条目总数、一句话定位 -->
@@ -91,18 +86,18 @@ function isExternal(link?: string) {
 	<div class="home-columns">
 		<!-- ========== 左栏：专题、共建引导与活动 ========== -->
 		<div>
-			<!-- “探索专题”：带标题的全部专题入口卡片区 -->
-			<section aria-labelledby="topics-title">
+			<!-- “按分类浏览”：带标题的全部分类入口卡片区 -->
+			<section aria-labelledby="categories-title">
 				<div class="section-heading">
 					<!-- aria-labelledby 让标题与本节语义关联，便于读屏器识别 -->
-					<h2 id="topics-title">
-						探索专题
-					</h2><a :href="withBase('/categories/')">全部目录 →</a>
+					<h2 id="categories-title">
+						按分类浏览
+					</h2><a :href="withBase('/categories/')">全部分类 →</a>
 				</div>
 				<div class="topic-grid">
-					<!-- 动态专题卡片：v-for 遍历 topics 并解构出 [name, desc]；
-					href 优先使用 topicLinks 的 slug，映射不到的专题回退到贡献指南页 -->
-					<a v-for="[name, desc] in topics" :key="name" class="topic-card" :href="topicLinks[name] ? withBase(`/topics/${topicLinks[name]}/`) : withBase('/pages/BasicContribution/')">
+					<!-- 动态分类卡片：v-for 遍历 topics 并解构出 [name, desc]，
+					每张卡片跳转到分类页并选中同名分类 -->
+					<a v-for="[name, desc] in topics" :key="name" class="topic-card" :href="withBase(`/categories/?category=${encodeURIComponent(name)}`)">
 						<h3>{{ name }}</h3><p>{{ desc }}</p><span class="topic-arrow" aria-hidden="true">↗</span>
 					</a>
 					<!-- 友情链接作为一张特殊卡片排在网格末尾（community-card 样式），
@@ -116,14 +111,9 @@ function isExternal(link?: string) {
 				<h2 id="community-title">
 					你的经验，也能帮助下一位同学。
 				</h2>
-				<p>欢迎补充。分享资料时，请注明校区等信息。</p>
 				<!-- 次级 CTA：了解贡献流程 / 到 GitHub 反馈问题 -->
 				<div class="hero-actions">
 					<a class="primary" :href="withBase('/pages/BasicContribution/')">了解如何贡献</a><a :href="`${repoUrl}/issues`">反馈问题 →</a>
-				</div>
-				<!-- 快捷入口：分类页、课程评价、内推信息与贡献者列表 -->
-				<div class="community-links">
-					<a :href="`${repoUrl}/graphs/contributors`">感谢所有贡献者 ↗</a>
 				</div>
 			</section>
 
@@ -166,7 +156,7 @@ function isExternal(link?: string) {
 		<!-- ========== 右栏（aside）：动态信息与联系方式 ========== -->
 		<aside class="home-aside">
 			<!-- 最近更新：取上方加工出的 latest 前 5 篇文章，
-				显示标题，并由 ArticleByline 展示 lastUpdated 日期与 author -->
+				显示标题，并由 ArticleByline 展示 lastUpdated 日期 -->
 			<section>
 				<div class="section-heading">
 					<h2>最近更新</h2><a :href="withBase('/archives/')">更多 →</a>
@@ -174,7 +164,7 @@ function isExternal(link?: string) {
 				<ol class="recent-list">
 					<li v-for="article in latest" :key="article.url">
 						<a :href="withBase(article.url)">{{ article.title }}</a>
-						<ArticleByline :date="article.lastUpdated" :author="article.author" />
+						<ArticleByline :date="article.lastUpdated" />
 					</li>
 				</ol>
 			</section>

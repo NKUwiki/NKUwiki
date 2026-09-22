@@ -89,7 +89,6 @@ function toDoc(article: Article, content: string): SearchDoc {
 		folders: article.folders,
 		categoriesList: article.categories,
 		tagsList: article.tags,
-		author: article.author,
 		lastUpdated: article.lastUpdated || article.date,
 	}
 }

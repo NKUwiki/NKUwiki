@@ -16,7 +16,7 @@ export function loadSearchDocs(): Promise<SearchDoc[]> {
 export function createIndex(docs: SearchDoc[]): MiniSearch<SearchDoc> {
 	const index = new MiniSearch<SearchDoc>({
 		fields: ['title', 'headings', 'tags', 'text'],
-		storeFields: ['title', 'text', 'sections', 'folders', 'categoriesList', 'tagsList', 'author', 'lastUpdated'],
+		storeFields: ['title', 'text', 'sections', 'folders', 'categoriesList', 'tagsList', 'lastUpdated'],
 		// 索引侧追加分词变体（吉他↔吉它），查询侧保持原词，双方共用同一分词器
 		tokenize: tokenizeForIndex,
 		searchOptions: {
@@ -51,7 +51,6 @@ export interface SearchResult {
 	folders?: string[]
 	categoriesList?: string[]
 	tagsList?: string[]
-	author?: string
 	lastUpdated?: string
 }
 

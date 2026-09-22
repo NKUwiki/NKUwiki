@@ -20,7 +20,7 @@ export async function createShareImage(source: HTMLElement, title: string, url: 
 	if (compact) {
 		const description = document.createElement('p')
 		description.className = 'share-description'
-		description.textContent = '在南开，从这里开始。新生入学、学习经验、校园生活——来自同学，服务同学。'
+		description.textContent = '汲公能之志，汇众人之识。新生入学、学习经验、校园生活——来自同学，服务同学。'
 		const topics = document.createElement('ul')
 		for (const node of [...source.querySelectorAll('h2')].filter(node => !node.closest('[data-share-exclude]')).slice(0, 6)) {
 			const item = document.createElement('li')

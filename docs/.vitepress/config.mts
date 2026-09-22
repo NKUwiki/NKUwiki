@@ -23,10 +23,11 @@ function prependTitleHeading(source: string, title: string) {
 	return frontmatter ? frontmatter[1] + heading + source.slice(frontmatter[1].length) : heading + source
 }
 
-function topicMatch(slug: string, ...folders: string[]) {
+/** 某个目录下所有文章的路由，用来给「参与共建」这类导航项做高亮 */
+function categoryMatch(...folders: string[]) {
 	const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 	const paths = articles.filter(article => folders.includes(article.folders[0])).flatMap(article => [article.url.replace(/\/$/, ''), `/${article.source.replace(/\.md$/, '')}`]).map(escape)
-	return `^(?:/topics/(?:${slug})|${paths.join('|')})/?$`
+	return `^(?:${paths.join('|')})/?$`
 }
 const rewrites = new Map(articles.map(article => [article.source, outputPath(article.url)]))
 const sidebar = Object.fromEntries(articles.map(article => [article.url, [
@@ -66,17 +67,12 @@ export default defineConfig({
 	sitemap: { hostname: siteUrl },
 	themeConfig: {
 		nav: [
-			{ text: '新生入学', link: '/topics/newcomers/', activeMatch: topicMatch('newcomers', '新生入学') },
-			{ text: '浅谈学习', link: '/topics/study/', activeMatch: topicMatch('study', '浅谈学习') },
-			{ text: '校园生活', link: '/topics/life/', activeMatch: topicMatch('life', '校园生活') },
-			{ text: '群汇总', link: '/topics/groups/', activeMatch: topicMatch('groups', '群汇总') },
-			{ text: '全部目录', link: '/categories/' },
-			{ text: '探索', activeMatch: `${topicMatch('computing', '计算机知识专题')}|^/(categories|tags|archives)(/|$)`, items: [
-				{ text: '文章分类', link: '/categories/' },
-				{ text: '标签', link: '/tags/' },
-				{ text: '最近更新', link: '/archives/' },
-			] },
-			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: topicMatch('contribute', '贡献与其他') },
+			{ text: '新生入学', link: '/categories/?category=新生入学' },
+			{ text: '浅谈学习', link: '/categories/?category=浅谈学习' },
+			{ text: '校园生活', link: '/categories/?category=校园生活' },
+			{ text: '群汇总', link: '/categories/?category=群汇总' },
+			{ text: '全部分类', link: '/categories/' },
+			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: categoryMatch('贡献与其他') },
 		],
 		sidebar,
 		// 站内搜索由自建组件承担（theme/components/WikiSearch.vue + search.ts 构建期索引）：

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
 import test from 'node:test'
 import { buildTree, loadCatalog, outputPath, scanArticles } from '../docs/.vitepress/catalog.ts'
+import { categoryChildren, categoryPaths, resolveCategory } from '../docs/.vitepress/category.ts'
 
 test('existing article URLs are unique and all articles appear once in the directory', () => {
 	const articles = scanArticles()
@@ -17,15 +18,29 @@ test('existing article URLs are unique and all articles appear once in the direc
 	assert.equal(outputPath('/pages/FriendshipLinks/'), 'pages/FriendshipLinks/index.md')
 })
 
-test('category counts include both directory ancestors and legacy categories without duplicates', () => {
+test('category paths merge directory levels with nested frontmatter without duplicates', () => {
 	const { articles, tags, categories } = loadCatalog()
 	const article = articles.find(article => article.title === '入学准备')!
 	assert.ok(article.categories.includes('新生入学'))
 	assert.equal(article.categories.filter(category => category === '新生入学').length, 1)
-	for (const [field, counts] of [['tags', tags], ['categories', categories]] as const) {
-		for (const { name, count } of counts) assert.equal(count, articles.filter(article => article[field].includes(name)).length)
-	}
+	// 目录层级（群汇总/组织详情）与 frontmatter 的「群汇总 - 组织详情」是同一条路径
+	const club = articles.find(article => article.title === '电影协会')!
+	assert.deepEqual(club.categories, ['群汇总/组织详情'])
+	for (const { name, count } of tags) assert.equal(count, articles.filter(article => article.tags.includes(name)).length)
+	// 分类统计的是「直接属于该路径」的文章数，不含子分类
+	for (const { path, count } of categories) assert.equal(count, articles.filter(article => article.categories.includes(path)).length)
 	assert.ok(articles.every(article => !article.lastUpdated || /^\d{4}-\d{2}-\d{2}$/.test(article.lastUpdated)))
+})
+
+test('分类支持缩进层级，子分类可以逐级进入且按末级名字解析链接', () => {
+	assert.deepEqual(categoryPaths(['群汇总 - 组织详情']), ['群汇总/组织详情'])
+	assert.deepEqual(categoryPaths(['群汇总', '校园生活']), ['群汇总', '校园生活'])
+	assert.deepEqual(categoryPaths(null), [])
+	const { categories } = loadCatalog()
+	assert.equal(categories.find(category => category.path === '组织详情'), undefined)
+	assert.equal(resolveCategory(categories, '组织详情'), '群汇总/组织详情')
+	assert.equal(resolveCategory(categories, '群汇总'), '群汇总')
+	assert.deepEqual(categoryChildren(categories, '群汇总').map(category => category.path), ['群汇总/组织详情'])
 })
 
 test('new files use numeric directory order, preserve tags, infer missing titles, and reject duplicate routes', () => {
@@ -45,27 +60,6 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 		assert.equal(buildTree(scanArticles(root))[0].items![0].text, '子专题')
 		writeFileSync(join(root, '01.专题/03.重复.md'), '---\npermalink: /pages/test\n---')
 		assert.throws(() => scanArticles(root), /重复 permalink/)
-	}
-	finally {
-		const target = relative(tmpdir(), root)
-		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
-		rmSync(root, { recursive: true, force: true })
-	}
-})
-
-test('author 支持字符串、对象与数组写法，缺省时回退 NKUwiki-Group', () => {
-	const root = mkdtempSync(join(tmpdir(), 'nku-author-name-'))
-	try {
-		mkdirSync(join(root, '01.专题'))
-		writeFileSync(join(root, '01.专题/01.字符串.md'), '---\ntitle: 字符串\nauthor: 示例作者 NKUwiki-Group\n---\n正文')
-		writeFileSync(join(root, '01.专题/02.数组.md'), '---\ntitle: 数组\nauthor: [{ name: 甲 }, { name: 乙 }, 丙]\n---\n正文')
-		writeFileSync(join(root, '01.专题/03.缺省.md'), '---\ntitle: 缺省\n---\n正文')
-		const authors = Object.fromEntries(scanArticles(root).map(article => [article.title, article.author]))
-		assert.deepEqual(authors, {
-			字符串: '示例作者 NKUwiki-Group',
-			数组: '甲、乙、丙',
-			缺省: 'NKUwiki-Group',
-		})
 	}
 	finally {
 		const target = relative(tmpdir(), root)
