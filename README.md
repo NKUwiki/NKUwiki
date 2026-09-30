@@ -66,7 +66,7 @@ NKUwiki/
 ├── pnpm-lock.yaml              # 锁定依赖版本
 ├── pnpm-workspace.yaml         # pnpm 安装脚本白名单
 ├── LICENSE                     # MIT 许可证
-└── README.MD                   # 本文件
+└── README.md                   # 本文件
 ```
 
 目录展示时会自动去掉数字前缀；新增文章放入对应编号目录即可，侧栏、分类与标签会自动生成，无需手工维护。
