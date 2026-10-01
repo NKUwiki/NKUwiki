@@ -63,8 +63,8 @@ Copyright (c) 2026 NKUwiki-Group
 - 协议摘要（通俗说明）：<https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans>
 
 以下为 Creative Commons 官方英文法律条款全文：
-```text
 
+```text
 Attribution-NonCommercial-ShareAlike 4.0 International
 
 =======================================================================
