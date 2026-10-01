@@ -3,6 +3,19 @@
 
 /* ================= 导航栏 / 移动端菜单入口（对齐 VPNavBarSearchButton） ================= */
 
+/* 与 VitePress 原生 VPNavBarSearch 一致的左侧间距（组件位于 nav-bar-content-before 槽位） */
+@media (min-width: 48rem) {
+	.wiki-search-trigger:not(.screen) {
+		margin-left: 1.5rem;
+	}
+}
+
+@media (min-width: 60rem) {
+	.wiki-search-trigger:not(.screen) {
+		margin-left: 2rem;
+	}
+}
+
 .wiki-search-trigger {
 	display: flex;
 	align-items: center;
