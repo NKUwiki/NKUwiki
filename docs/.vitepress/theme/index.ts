@@ -1,5 +1,6 @@
 import type { Theme } from 'vitepress'
 import type { Component } from 'vue'
+import { NolebaseGitChangelogPlugin } from '@nolebase/vitepress-plugin-git-changelog/client'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { defineAsyncComponent } from 'vue'
 import ArticleIndex from './components/ArticleIndex.vue'
@@ -13,6 +14,7 @@ import WidePage from './components/WidePage.vue'
 import WikiHome from './components/WikiHome.vue'
 import WikiLayout from './components/WikiLayout.vue'
 import { syncSidebarCollapsed } from './sidebar'
+import '@nolebase/vitepress-plugin-git-changelog/client/style.css'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
 
@@ -62,6 +64,14 @@ export default {
 		app.component('QrCode', QrCode)
 		app.component('ArticleIndex', ArticleIndex)
 		app.component('DownloadPageImage', DownloadPageImage)
+		// Nolebase 文件历史：注册文案与日期本地化（页面底部由 WikiLayout 渲染 NolebaseGitChangelog 组件）
+		app.use(NolebaseGitChangelogPlugin, {
+			locales: {
+				'zh-CN': {
+					lastEditedDateFnsLocaleName: 'zhCN',
+				},
+			},
+		})
 		// Nolebase 增强可读性：桌面端聚光灯默认开启。
 		// 仅在用户从未改动过该设置（localStorage 无记录）时写入默认值，之后完全尊重用户选择；
 		// 触屏设备上插件自身会禁用聚光灯，不受此默认值影响。SSR 阶段无 localStorage，自动跳过。

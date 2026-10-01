@@ -1,5 +1,6 @@
 import type { MarkdownRenderer } from 'vitepress'
 import { fileURLToPath } from 'node:url'
+import { GitChangelog } from '@nolebase/vitepress-plugin-git-changelog/vite'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { collectAuthors } from './authors.ts'
@@ -94,10 +95,22 @@ export default defineConfig({
 	},
 	vite: {
 		base,
-		plugins: [markmapPlugin({ containerHeight: 500 })],
+		plugins: [
+			markmapPlugin({ containerHeight: 500 }),
+			// 文件历史：构建期收集每篇 Markdown 的 Git 提交记录，供页面底部的 NolebaseGitChangelog 组件展示
+			GitChangelog({
+				repoURL: repoUrl,
+				include: ['**/*.md', '!node_modules'],
+			}),
+		],
 		resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
-		// Nolebase 增强可读性的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
-		ssr: { noExternal: ['@nolebase/vitepress-plugin-enhanced-readabilities'] },
+		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
+		ssr: {
+			noExternal: [
+				'@nolebase/vitepress-plugin-enhanced-readabilities',
+				'@nolebase/vitepress-plugin-git-changelog',
+			],
+		},
 	},
 	markdown: {
 		config: (md) => {
