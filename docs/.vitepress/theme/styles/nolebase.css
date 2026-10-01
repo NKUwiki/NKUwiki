@@ -1,0 +1,20 @@
+/* Nolebase 文件历史（GitChangelog）配色对齐主题包预览：
+   用 VitePress 中性变量替换组件 UnoCSS 写死的绿色背景，深浅色模式自动跟随。 */
+
+.vp-nolebase-git-changelog {
+	background-color: var(--vp-c-bg-soft) !important;
+	border: 1px solid var(--vp-c-divider);
+	border-radius: 8px;
+}
+
+/* 提交哈希保持品牌色，弱化其余文字 */
+.vp-nolebase-git-changelog code {
+	color: var(--vp-c-brand-1);
+}
+
+/* 置于侧边的聚光灯竖线：比组件默认（-24px）再靠左一些
+   （组件为 scoped 样式，需 !important 覆盖） */
+.VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock.VPNolebaseEnhancedReadabilitiesSpotlightHoverBlockAside::before {
+	left: -34px !important;
+}
+
