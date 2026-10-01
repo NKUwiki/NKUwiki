@@ -50,15 +50,15 @@ pnpm preview     # 预览生产产物，http://localhost:4173/
 
 推送 `main` 后由 GitHub Actions 自动构建并发布到 GitHub Pages；发往 `main` 的 PR 上 CI 会自动运行 `pnpm check` 与 `pnpm build`。完整协作流程详见[贡献指南](CONTRIBUTING.md)。
 
-## 贡献者
-
-感谢所有[贡献者](https://github.com/NKUwiki/NKUwiki/graphs/contributors)参与维护。
-
-[![贡献者](https://contrib.rocks/image?repo=NKUwiki/NKUwiki)](https://github.com/NKUwiki/NKUwiki/graphs/contributors)
-
 ## 许可证
 
 本项目采用**双协议许可**：
 
 - **源代码**：[MIT License](./LICENSE)
 - **文档内容**：[CC BY-NC-SA 4.0](./LICENSE-CONTENT.md)
+
+## 贡献者
+
+感谢所有[贡献者](https://github.com/NKUwiki/NKUwiki/graphs/contributors)参与维护。
+
+[![贡献者](https://contrib.rocks/image?repo=NKUwiki/NKUwiki)](https://github.com/NKUwiki/NKUwiki/graphs/contributors)
