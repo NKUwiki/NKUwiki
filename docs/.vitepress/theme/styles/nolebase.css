@@ -13,10 +13,11 @@
 	color: var(--vp-c-brand-1);
 }
 
-/* 置于侧边的聚光灯竖线：比组件默认（-24px）再靠左一些。
+/* 置于侧边的聚光灯竖线：比组件默认（-24px）再靠左一些，颜色与 brand-3 一致。
    组件为 scoped 样式（两个类 + [data-v] 属性 = 0,3,0），
    此处重复类名提升到 0,4,0 压过它，避免使用 !important。 */
 .VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock.VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock.VPNolebaseEnhancedReadabilitiesSpotlightHoverBlockAside.VPNolebaseEnhancedReadabilitiesSpotlightHoverBlockAside::before {
 	left: -34px;
+	background-color: var(--vp-c-brand-3);
 }
 
