@@ -71,6 +71,11 @@
 	border-radius: var(--wiki-radius-small);
 }
 
+/* 加粗文字底部色带下划线（参照 xupt-wiki：brand-soft 渐变铺元素底部 40%） */
+.vp-doc strong {
+	background: linear-gradient(var(--vp-c-brand-soft), var(--vp-c-brand-soft)) no-repeat center bottom / 100% 40%;
+}
+
 .site-icon {
 	width: 28px;
 	height: 28px;
