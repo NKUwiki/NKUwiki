@@ -10,7 +10,7 @@ import { repoUrl, siteUrl } from './site.ts'
 
 const articles = scanArticles()
 const base = ''
-const description = 'NKUwiki（南开 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
+const description = 'NKUwiki（南开校园 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
 
 /** 标题文字来自 frontmatter，转义行内语法，避免标题里的符号被当成 Markdown。 */
 function escapeTitleText(title: string) {
@@ -91,7 +91,10 @@ export default defineConfig({
 		docFooter: { prev: '上一篇', next: '下一篇' },
 		editLink: { pattern: `${repoUrl}/blame/main/docs/:path`, text: '源代码' },
 		lastUpdated: { text: '最后更新于', formatOptions: { dateStyle: 'medium' } },
-		footer: { message: '由南开大学学生共同维护的非官方校园知识库 · 内容采用 CC BY-NC-SA 4.0 许可', copyright: `© 2026–${new Date().getFullYear()} NKUwiki-Group · 源代码 MIT License` },
+		footer: {
+      message: `由南开大学学生共同维护的非官方校园知识库`,
+      copyright: 'Copyright © 2026 <a href="https://github.com/NKUwiki/NKUwiki" style="color:inherit;">NKUwiKi</a><br>本站内容采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans" style="color:inherit;">CC BY-NC-SA 4.0</a> 声明'
+    },
 	},
 	vite: {
 		base,
