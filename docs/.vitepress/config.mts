@@ -92,7 +92,13 @@ export default defineConfig({
 		lastUpdated: { text: '最后更新于', formatOptions: { dateStyle: 'medium' } },
 		footer: { message: '由南开大学学生共同维护的非官方校园知识库', copyright: `© 2026–${new Date().getFullYear()} NKUwiki-Group · MIT License` },
 	},
-	vite: { base, plugins: [markmapPlugin({ containerHeight: 500 })], resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } } },
+	vite: {
+		base,
+		plugins: [markmapPlugin({ containerHeight: 500 })],
+		resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
+		// Nolebase 增强可读性的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
+		ssr: { noExternal: ['@nolebase/vitepress-plugin-enhanced-readabilities'] },
+	},
 	markdown: {
 		config: (md) => {
 			// VitePress 生产构建会对同一实例重复应用本配置，重入会嵌套包裹 renderer 规则（水印出现两份）

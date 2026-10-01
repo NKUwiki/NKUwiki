@@ -62,6 +62,11 @@ export default {
 		app.component('QrCode', QrCode)
 		app.component('ArticleIndex', ArticleIndex)
 		app.component('DownloadPageImage', DownloadPageImage)
+		// Nolebase 增强可读性：桌面端聚光灯默认开启。
+		// 仅在用户从未改动过该设置（localStorage 无记录）时写入默认值，之后完全尊重用户选择；
+		// 触屏设备上插件自身会禁用聚光灯，不受此默认值影响。SSR 阶段无 localStorage，自动跳过。
+		if (typeof localStorage !== 'undefined' && localStorage.getItem('vitepress-nolebase-enhanced-readabilities-spotlight-mode') === null)
+			localStorage.setItem('vitepress-nolebase-enhanced-readabilities-spotlight-mode', 'true')
 		router.onAfterRouteChange = () => {
 			if (typeof window !== 'undefined')
 				window.dispatchEvent(new Event('wiki:route-change'))

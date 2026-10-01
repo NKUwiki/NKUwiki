@@ -2,6 +2,11 @@
 import { useData, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { defineAsyncComponent, onMounted, watch } from 'vue'
+import {
+	NolebaseEnhancedReadabilitiesMenu,
+	NolebaseEnhancedReadabilitiesScreenMenu,
+} from '@nolebase/vitepress-plugin-enhanced-readabilities/client'
+import '@nolebase/vitepress-plugin-enhanced-readabilities/client/style.css'
 import ArticleAuthors from './ArticleAuthors.vue'
 import ArticleMeta from './ArticleMeta.vue'
 import SidebarToggle from './SidebarToggle.vue'
@@ -30,8 +35,12 @@ onMounted(() => {
 	<template #nav-bar-content-before>
 		<WikiSearch />
 	</template>
+	<template #nav-bar-content-after>
+		<NolebaseEnhancedReadabilitiesMenu />
+	</template>
 	<template #nav-screen-content-after>
 		<WikiSearch screen />
+		<NolebaseEnhancedReadabilitiesScreenMenu />
 	</template>
 	<template #sidebar-nav-before>
 		<div class="sidebar-top">
