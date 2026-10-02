@@ -494,6 +494,17 @@
 		padding-left: 0;
 	}
 
+	/* 收起侧栏后，导航栏背景面与底部横线不再按 has-sidebar 给侧栏留位：
+	   VitePress 会从侧栏宽度处起绘（--vp-nav-col-offset），侧栏 display:none
+	   后左侧露出透明区，滚动时正文文字会透进导航栏、底部横线也会断开 */
+	html[data-wiki-sidebar="collapsed"] .VPNavBar.has-sidebar {
+		--vp-nav-col-offset: 0px;
+	}
+
+	html[data-wiki-sidebar="collapsed"] .VPNavBar.has-sidebar:not(.home)::before {
+		background-color: var(--vp-nav-bg-color);
+	}
+
 	/* 收起后正文可以再宽一些，但保留一段行宽上限，避免长行难读。
 	   VitePress 的 .VPDoc.has-aside .content-container 是 scoped 样式，这里要选得比它更具体 */
 	html[data-wiki-sidebar="collapsed"] .VPDoc.has-aside .content-container {
