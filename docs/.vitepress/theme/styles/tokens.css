@@ -11,8 +11,6 @@
 	--vp-c-brand-2: hsl(var(--wiki-hue) 56% 34%);
 	--vp-c-brand-3: hsl(var(--wiki-hue) 52% 38%);
 	--vp-c-brand-soft: color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent);
-	--vp-font-family-base: "InterVariable", "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
-	--vp-font-family-mono: "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
 }
 .dark {
 	--vp-c-brand-1: hsl(var(--wiki-hue) 46% 68%);
@@ -20,9 +18,12 @@
 	--vp-c-brand-3: hsl(var(--wiki-hue) 44% 38%);
 }
 
+/* 字体采用 VitePress 默认方案：默认主题的 fonts.css 提供按语言子集化的
+   Inter（拉丁/西文）与中文系统字体回退栈，此处不再自定义字体族。
+   下面的 Inter 排版特性（等宽数字、圆引号等）对默认主题自带的 Inter 同样生效。 */
 /* ESLint's CSS grammar does not yet recognize the standard @styleset descriptors. */
 /* eslint-disable css/no-invalid-at-rules */
-@font-feature-values "InterVariable", "Inter" {
+@font-feature-values "Inter" {
 	@styleset {
 		open-digits: 1;
 		disambiguation: 2;
