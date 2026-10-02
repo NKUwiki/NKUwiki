@@ -8,3 +8,14 @@
 	left: -34px;
 	background-color: var(--vp-c-brand-3);
 }
+
+/* 顶栏里 GitHub 与「阅读增强」之间的竖分隔线：组件默认左右各 0.5rem，
+   但左侧 GitHub 图形只留 8px 间距、右侧按钮有 12px 内边距加一个箭头，
+   视觉上分隔线偏向 GitHub 一侧（左 18.5px / 右 30.1px）。
+   菜单是右锚定的：单加 margin-left 只会把菜单左边界带着左移，线的绝对位置不变，
+   反而挤动顶栏左侧内容。改为把间距从右侧移到左侧——0.875rem + 0.125rem 仍为 1rem，
+   菜单总宽不变，线右移到两个图形正中（两侧各约 24px）。 */
+.VPNolebaseEnhancedReadabilitiesMenu::before {
+	margin-right: 0.125rem;
+	margin-left: 0.875rem;
+}
