@@ -13,10 +13,15 @@ import QrCode from './components/QrCode.vue'
 import WidePage from './components/WidePage.vue'
 import WikiHome from './components/WikiHome.vue'
 import WikiLayout from './components/WikiLayout.vue'
+import { highlightHashTarget, installHeadingHighlight } from './headingHighlight'
 import { syncSidebarCollapsed } from './sidebar'
 import '@nolebase/vitepress-plugin-git-changelog/client/style.css'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
+
+// 必须在模块顶层注册：要比 VitePress createRouter 的 window 捕获监听更早，
+// 才能在 preventDefault 后拦下 VitePress 默认的瞬时锚点跳转（详见 headingHighlight.ts 文件头）
+installHeadingHighlight()
 
 /**
  * 分类页的「新生入学」等导航入口都用 /categories/?category=xxx 表示，
@@ -80,6 +85,8 @@ export default {
 		router.onAfterRouteChange = () => {
 			if (typeof window !== 'undefined')
 				window.dispatchEvent(new Event('wiki:route-change'))
+			// 跨页带 #hash 进来时，标题已经滚到位，这里补一次高亮
+			highlightHashTarget()
 		}
 	},
 } satisfies Theme

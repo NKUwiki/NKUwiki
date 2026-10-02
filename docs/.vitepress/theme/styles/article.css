@@ -347,6 +347,58 @@ a.article-author-name:hover {
 	-webkit-text-stroke: 1px var(--vp-c-divider);
 }
 
+/* 锚点跳转时给目标标题亮起的提示色块，class 由 theme/headingHighlight.ts 添加 */
+.vp-doc :where(h1, h2, h3, h4, h5, h6).wiki-heading-highlight {
+	position: relative;
+	/* 把负层级的色块圈在标题内部，避免跑到祖先背景底下 */
+	isolation: isolate;
+}
+
+.vp-doc :where(h1, h2, h3, h4, h5, h6).wiki-heading-highlight::after {
+	content: "";
+	position: absolute;
+	inset: -6px -12px;
+	border-radius: var(--wiki-radius-small);
+	background: color-mix(in srgb, var(--vp-c-brand-1) 22%, transparent);
+	animation: wiki-heading-flash 2s ease-out both;
+	pointer-events: none;
+	z-index: -1;
+}
+
+/* h2 自带顶部分割线（border-top）：负 z-index 的色块会盖在元素自身边框上，
+   因此 h2 的色块从内边距盒顶端开始，正好落在分割线下方而不遮住它 */
+.vp-doc :where(h2).wiki-heading-highlight::after {
+	inset-block-start: 0;
+}
+
+@keyframes wiki-heading-flash {
+	0% {
+		opacity: 0;
+		transform: scale(0.96);
+	}
+
+	14% {
+		opacity: 1;
+		transform: none;
+	}
+
+	70% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vp-doc :where(h1, h2, h3, h4, h5, h6).wiki-heading-highlight::after {
+		opacity: 1;
+		transform: none;
+		animation: none;
+	}
+}
+
 .heading-wordmark {
 	display: none;
 }
