@@ -71,8 +71,9 @@ function formatRelative(iso: string): string {
 		<details class="git-history-details">
 			<summary class="git-history-summary">
 				<span class="git-history-summary-main">
+					<!-- 与 Nolebase GitChangelog 同一个图标（octicon history-16），直接内联以免依赖插件内部的 UnoCSS 类 -->
 					<svg class="git-history-icon" viewBox="0 0 16 16" aria-hidden="true">
-						<path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z" />
+						<path d="m.427 1.927 1.215 1.215a8.002 8.002 0 1 1-1.6 5.685.75.75 0 1 1 1.493-.154 6.5 6.5 0 1 0 1.18-4.458l1.358 1.358A.25.25 0 0 1 3.896 6H.25A.25.25 0 0 1 0 5.75V2.104a.25.25 0 0 1 .427-.177M7.75 4a.75.75 0 0 1 .75.75v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.75.75 0 0 1 7 8.25v-3.5A.75.75 0 0 1 7.75 4" />
 					</svg>
 					<span>最后编辑于 {{ lastEdited }}</span>
 				</span>
@@ -123,6 +124,13 @@ function formatRelative(iso: string): string {
 	border: 1px solid var(--vp-c-divider);
 	border-radius: var(--wiki-radius);
 	background: var(--vp-c-bg-soft);
+	/* 悬停时整框描边渐变到品牌色（动效参照 Nolebase GitChangelog：color ease-in-out 200ms） */
+	transition: border-color ease-in-out, background-color ease-in-out;
+	transition-duration: 200ms;
+}
+
+.git-history-details:hover {
+	border-color: color-mix(in srgb, var(--vp-c-brand-1) 45%, var(--vp-c-divider));
 }
 
 /* details 收起时彻底隐藏列表：给子元素显式设置 display 后，
@@ -142,6 +150,8 @@ function formatRelative(iso: string): string {
 	padding: 14px 16px;
 	font-size: 14px;
 	color: var(--vp-c-text-2);
+	transition: color ease-in-out;
+	transition-duration: 200ms;
 	list-style: none;
 	cursor: pointer;
 	user-select: none;
@@ -149,10 +159,6 @@ function formatRelative(iso: string): string {
 
 .git-history-summary::-webkit-details-marker {
 	display: none;
-}
-
-.git-history-summary:hover {
-	color: var(--vp-c-brand-1);
 }
 
 .git-history-summary-main,
@@ -165,6 +171,8 @@ function formatRelative(iso: string): string {
 .git-history-summary-main {
 	font-weight: 600;
 	color: var(--vp-c-text-1);
+	transition: color ease-in-out;
+	transition-duration: 200ms;
 }
 
 .git-history-summary-action {
@@ -172,6 +180,16 @@ function formatRelative(iso: string): string {
 	font-size: 13px;
 	font-weight: 400;
 	color: var(--vp-c-text-3);
+	transition: color ease-in-out;
+	transition-duration: 200ms;
+}
+
+/* 悬停时整条摘要（含图标）渐变到品牌色 */
+.git-history-summary:hover,
+.git-history-summary:hover .git-history-summary-main,
+.git-history-summary:hover .git-history-summary-action,
+.git-history-summary:hover .git-history-chevron {
+	color: var(--vp-c-brand-1);
 }
 
 /* 标题不加任何定制：完全沿用 .vp-doc h2 默认样式（含悬停显示的 # 锚点） */
@@ -195,7 +213,7 @@ function formatRelative(iso: string): string {
 	height: 16px;
 	color: var(--vp-c-text-3);
 	fill: currentColor;
-	transition: transform 0.2s ease;
+	transition: transform 0.2s ease, color ease-in-out 0.2s;
 }
 
 .git-history-details[open] .git-history-chevron {
