@@ -18,7 +18,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "tsx --test tests/*.test.ts",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm gen:history && pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {
     "@iconify-icons/ri": "^2.0.0",
