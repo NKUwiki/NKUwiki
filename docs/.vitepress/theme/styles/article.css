@@ -205,6 +205,14 @@
 	color: var(--vp-c-text-2);
 }
 
+/* 索引/首页列表里的日期行（ArticleByline）：图标与时间同行，容器窄时也不换行拆开 */
+.article-date {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 3px;
+}
+
 /* 标题行：标题居左，标签紧跟标题右侧 */
 .article-title-row {
 	display: flex;
