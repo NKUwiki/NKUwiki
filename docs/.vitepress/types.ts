@@ -24,6 +24,10 @@ export interface Article {
 	lastUpdatedTime: number
 	hasHeading: boolean
 	empty: boolean
+	/** 正文字数：中日韩按字计，其余按词计，代码块与公式不计入 */
+	wordCount: number
+	/** 由 wordCount 换算的预计阅读分钟数；没有正文时为 0 */
+	readingMinutes: number
 }
 
 export interface DirectoryItem {

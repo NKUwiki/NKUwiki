@@ -29,6 +29,35 @@ function hasTitleHeading(content: string): boolean {
 	return false
 }
 
+/** 预计阅读速度：每分钟字数（中文阅读通行取值，与参考主题一致） */
+const WORDS_PER_MINUTE = 500
+
+/**
+ * 统计 Markdown 正文字数。
+ *
+ * 中日韩字符逐字计数，其余语言按词计数，代码块、行内代码、公式、图片、HTML 标签等
+ * 占位性或不可读的内容不计入；链接与 Markdown 的强调符号只保留可读文本。
+ */
+export function countWords(content: string): number {
+	const text = content
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/~~~[\s\S]*?~~~/g, ' ')
+		.replace(/<!--[\s\S]*?-->/g, ' ')
+		.replace(/\$\$[\s\S]*?\$\$/g, ' ')
+		.replace(/`[^`\n]*`/g, ' ')
+		.replace(/\$[^$\n]*\$/g, ' ')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^\s*:::.*$/gm, ' ')
+		.replace(/<[^>]*>/g, ' ')
+	const cjk = text.match(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/g) ?? []
+	const words = text
+		.replace(/[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]/g, ' ')
+		.split(/[^\p{L}\p{N}'’-]+/u)
+		.filter(Boolean)
+	return cjk.length + words.length
+}
+
 export function scanArticles(root = docsRoot) {
 	const articles: Article[] = []
 	function visit(dir: string) {
@@ -48,6 +77,7 @@ export function scanArticles(root = docsRoot) {
 			const { data: fm, content } = matter(readFileSync(file, 'utf8'))
 			if (fm.article === false)
 				continue
+			const wordCount = countWords(content)
 			const lastUpdated = fm.lastUpdated ? new Date(fm.lastUpdated).toISOString().slice(0, 10) : ''
 			const folders = source.split('/').slice(0, -1).map(label)
 			const url = fm.permalink || `/${source.replace(/\.md$/, '')}`
@@ -67,6 +97,8 @@ export function scanArticles(root = docsRoot) {
 				lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
 				hasHeading: hasTitleHeading(content),
 				empty: !content.trim(),
+				wordCount,
+				readingMinutes: wordCount ? Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)) : 0,
 			})
 		}
 	}

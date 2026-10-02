@@ -11,6 +11,9 @@ const { frontmatter: fm } = useData()
 const author = computed(() => typeof fm.value.author === 'string' ? fm.value.author : fm.value.author?.name)
 const authorUrl = computed(() => typeof fm.value.author === 'object' ? fm.value.author?.url || fm.value.author?.link : undefined)
 const date = computed(() => fm.value.date ? new Date(fm.value.date).toISOString().slice(0, 10) : '')
+// 字数与预计阅读时间：构建期在 catalog.ts 里算好，随页面数据下发，避免运行时再扫一遍正文
+const wordCount = computed(() => typeof fm.value.wordCount === 'number' ? fm.value.wordCount : 0)
+const readingMinutes = computed(() => typeof fm.value.readingMinutes === 'number' ? fm.value.readingMinutes : 0)
 </script>
 
 <template>
@@ -22,7 +25,7 @@ const date = computed(() => fm.value.date ? new Date(fm.value.date).toISOString(
 			</li>
 		</ol>
 	</nav>
-	<div v-if="author || date" class="article-byline">
+	<div v-if="author || date || wordCount" class="article-byline">
 		<span v-if="author" class="article-author">
 			<Icon :icon="userIcon" aria-hidden="true" />
 			<a v-if="authorUrl" :href="authorUrl" target="_blank" rel="noopener noreferrer">{{ author }}</a>
@@ -32,6 +35,7 @@ const date = computed(() => fm.value.date ? new Date(fm.value.date).toISOString(
 			<Icon :icon="timeIcon" aria-hidden="true" />
 			<time :datetime="date">{{ date }}</time>
 		</span>
+		<span v-if="wordCount" class="article-length" title="字数按正文计（不含代码、公式与图片），阅读时间按每分钟 500 字估算">{{ wordCount }}字<template v-if="readingMinutes"> / 约{{ readingMinutes }}分钟</template></span>
 	</div>
 	<WikiChips :items="tagChips(fm.tags || [])" class="tags" label="文章标签" />
 	<p v-if="fm.empty" class="empty-state">

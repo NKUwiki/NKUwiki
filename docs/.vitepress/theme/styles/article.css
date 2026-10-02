@@ -205,7 +205,8 @@
 }
 
 .article-byline,
-.article-date {
+.article-date,
+.article-length {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -227,6 +228,11 @@
 .article-byline a {
 	text-decoration: none;
 	color: inherit;
+}
+
+/* 字数与阅读时长固定在行尾，给该行前部留出放其他 frontmatter 信息的位置 */
+.article-length {
+	margin-inline-start: auto;
 }
 
 /* 页尾作者列表：frontmatter 与 Git 提交历史合并去重后全部列出，可能十人以上 */

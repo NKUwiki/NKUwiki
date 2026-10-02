@@ -151,7 +151,7 @@ export default defineConfig({
 		if (article) {
 			page.title = article.title
 			page.lastUpdated = article.lastUpdatedTime || undefined
-			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, empty: article.empty })
+			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes })
 			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发
 			page.frontmatter.authors = collectAuthors(page.frontmatter.author)
 		}

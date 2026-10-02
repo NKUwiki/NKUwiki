@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
 import test from 'node:test'
-import { buildTree, loadCatalog, outputPath, scanArticles } from '../docs/.vitepress/catalog.ts'
+import { buildTree, countWords, loadCatalog, outputPath, scanArticles } from '../docs/.vitepress/catalog.ts'
 import { categoryChildren, categoryPaths, resolveCategory } from '../docs/.vitepress/category.ts'
 
 test('existing article URLs are unique and all articles appear once in the directory', () => {
@@ -60,6 +60,33 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 		assert.equal(buildTree(scanArticles(root))[0].items![0].text, '子专题')
 		writeFileSync(join(root, '01.专题/03.重复.md'), '---\npermalink: /pages/test\n---')
 		assert.throws(() => scanArticles(root), /重复 permalink/)
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
+test('word count ignores code, formulas, links and counts CJK per character', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ncepu-wordcount-'))
+	try {
+		mkdirSync(join(root, '01.专题'))
+		// 四个汉字按字计，代码块整段不计入
+		assert.equal(countWords('南开大学\n\n```js\nconst a = 1\n```\n'), 4)
+		// 英文按词计，行内代码不计入，链接保留可读文字
+		assert.equal(countWords('see [the docs](https://a.b) and `npm run build`'), 4)
+		// 行内公式与图片不计入
+		assert.equal(countWords('欧拉公式 $e^{i\\pi}+1=0$ 结果 ![图](/a.png)'), 6)
+		assert.equal(countWords(''), 0)
+		writeFileSync(join(root, '01.专题/01.空.md'), '')
+		writeFileSync(join(root, '01.专题/02.正文.md'), '南开大学')
+		const [blank, written] = scanArticles(root)
+		assert.equal(blank.wordCount, 0)
+		assert.equal(blank.readingMinutes, 0)
+		assert.equal(written.wordCount, 4)
+		// 不足 500 字也按 1 分钟算，够读才对得上体感
+		assert.equal(written.readingMinutes, 1)
 	}
 	finally {
 		const target = relative(tmpdir(), root)
