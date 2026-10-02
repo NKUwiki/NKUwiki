@@ -26,7 +26,7 @@ const commits = computed<CommitEntry[]>(() => {
 })
 
 const lastCommit = computed(() => commits.value[0] ?? null)
-const lastEdited = computed(() => lastCommit.value ? formatDate(lastCommit.value.date) : '')
+const lastEdited = computed(() => lastCommit.value ? formatRelative(lastCommit.value.date) : '')
 
 function formatDate(iso: string): string {
 	const date = new Date(iso)
@@ -35,54 +35,86 @@ function formatDate(iso: string): string {
 	const pad = (value: number) => String(value).padStart(2, '0')
 	return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
+
+/** 折叠栏用相对时间（「4 个月前」），展开列表仍用精确时间 */
+function formatRelative(iso: string): string {
+	const date = new Date(iso)
+	if (Number.isNaN(date.getTime()))
+		return iso
+	const diffMinutes = Math.round((date.getTime() - Date.now()) / 60000)
+	const rtf = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' })
+	if (Math.abs(diffMinutes) < 60)
+		return rtf.format(diffMinutes, 'minute')
+	const diffHours = Math.round(diffMinutes / 60)
+	if (Math.abs(diffHours) < 24)
+		return rtf.format(diffHours, 'hour')
+	const diffDays = Math.round(diffHours / 24)
+	if (Math.abs(diffDays) < 30)
+		return rtf.format(diffDays, 'day')
+	const diffMonths = Math.round(diffDays / 30)
+	if (Math.abs(diffMonths) < 12)
+		return rtf.format(diffMonths, 'month')
+	return rtf.format(Math.round(diffDays / 365), 'year')
+}
 </script>
 
 <template>
-<section v-if="commits.length" class="git-history" aria-label="页面历史">
-	<h2 id="页面历史" class="git-history-title">
-		<svg class="git-history-title-icon" viewBox="0 0 16 16" aria-hidden="true">
-			<path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z" />
-		</svg>
-		页面历史
-	</h2>
-	<details class="git-history-details">
-		<summary class="git-history-summary">
-			<span class="git-history-summary-main">
-				<span>最后编辑于 {{ lastEdited }}</span>
-			</span>
-			<span class="git-history-summary-action">查看完整历史</span>
-			<svg class="git-history-chevron" viewBox="0 0 16 16" aria-hidden="true">
-				<path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
-			</svg>
-		</summary>
-		<ul class="git-history-list">
-			<li v-for="commit in commits" :key="commit.hash" class="git-history-item">
-				<span class="git-history-hash-block">
-					<a
-						class="git-history-hash"
-						:href="`${repoUrl}/commit/${commit.hash}`"
-						target="_blank"
-						rel="noopener noreferrer"
-						:title="`查看提交 ${commit.hash}`"
-					>{{ commit.hash }}</a>
+<!-- 包一层 vp-doc 容器（同 SJTU 主题 AppFooter 的做法）：
+     doc-after 插槽本身在 .vp-doc 之外，包上后标题才能拿到标准 h2 样式
+     （分割线、24px、悬停显示 # 锚点），无需自行复刻样式 -->
+<div v-if="commits.length" class="vp-doc">
+	<section class="git-history" aria-label="页面历史">
+		<h2 id="页面历史">
+			<a class="header-anchor" href="#页面历史" aria-label="Permalink to &quot;页面历史&quot;" />
+			页面历史
+		</h2>
+		<details class="git-history-details">
+			<summary class="git-history-summary">
+				<span class="git-history-summary-main">
+					<svg class="git-history-icon" viewBox="0 0 16 16" aria-hidden="true">
+						<path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z" />
+					</svg>
+					<span>最后编辑于 {{ lastEdited }}</span>
 				</span>
-				<span class="git-history-message" :title="commit.message">{{ commit.message }}</span>
-				<span class="git-history-meta">
-					<a
-						v-if="commit.github"
-						class="git-history-author"
-						:href="`https://github.com/${commit.github}`"
-						target="_blank"
-						rel="noopener noreferrer"
-						:title="`${commit.author} 的 GitHub 主页`"
-					>{{ commit.author }}</a>
-					<span v-else class="git-history-author">{{ commit.author }}</span>
-					<span class="git-history-time">于 {{ formatDate(commit.date) }}</span>
+				<span class="git-history-summary-action">
+					<svg class="git-history-sort-icon" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M9 3 5 6.99h3V14h2V6.99h3L9 3Zm7 14.01V10h-2v7.01h-3L15 21l4-3.99h-3Z" />
+					</svg>
+					查看完整历史
 				</span>
-			</li>
-		</ul>
-	</details>
-</section>
+				<svg class="git-history-chevron" viewBox="0 0 16 16" aria-hidden="true">
+					<path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
+				</svg>
+			</summary>
+			<ul class="git-history-list">
+				<li v-for="commit in commits" :key="commit.hash" class="git-history-item">
+					<span class="git-history-hash-block">
+						<a
+							class="git-history-hash"
+							:href="`${repoUrl}/commit/${commit.hash}`"
+							target="_blank"
+							rel="noopener noreferrer"
+							:title="`查看提交 ${commit.hash}`"
+						>{{ commit.hash }}</a>
+					</span>
+					<span class="git-history-message" :title="commit.message">{{ commit.message }}</span>
+					<span class="git-history-meta">
+						<a
+							v-if="commit.github"
+							class="git-history-author"
+							:href="`https://github.com/${commit.github}`"
+							target="_blank"
+							rel="noopener noreferrer"
+							:title="`${commit.author} 的 GitHub 主页`"
+						>{{ commit.author }}</a>
+						<span v-else class="git-history-author">{{ commit.author }}</span>
+						<span class="git-history-time">于 {{ formatDate(commit.date) }}</span>
+					</span>
+				</li>
+			</ul>
+		</details>
+	</section>
+</div>
 </template>
 
 <style scoped>
@@ -93,11 +125,20 @@ function formatDate(iso: string): string {
 	background: var(--vp-c-bg-soft);
 }
 
+/* details 收起时彻底隐藏列表：给子元素显式设置 display 后，
+   部分浏览器不再应用默认的收起隐藏，导致收起状态下列表仍占位，
+   把框撑高一截并在底部露出列表边缘 */
+.git-history-details:not([open]) .git-history-list {
+	display: none;
+}
+
 .git-history-summary {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
+	/* vp-doc 容器会给 summary 带 1rem 上下外边距，重置掉以免撑高折叠条 */
+	margin: 0;
 	padding: 14px 16px;
 	font-size: 14px;
 	color: var(--vp-c-text-2);
@@ -123,6 +164,7 @@ function formatDate(iso: string): string {
 
 .git-history-summary-main {
 	font-weight: 600;
+	color: var(--vp-c-text-1);
 }
 
 .git-history-summary-action {
@@ -132,29 +174,18 @@ function formatDate(iso: string): string {
 	color: var(--vp-c-text-3);
 }
 
-/* 区块标题与「本文作者」标题同款：小号、带品牌色图标，弱于正文大标题 */
-.git-history {
-	margin-top: 40px;
-}
+/* 标题不加任何定制：完全沿用 .vp-doc h2 默认样式（含悬停显示的 # 锚点） */
 
-.git-history-title {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	margin: 0 0 14px;
-	padding: 0;
-	border: 0;
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 20px;
-	color: var(--vp-c-text-1);
-}
-
-.git-history-title-icon {
+.git-history-icon {
 	flex: 0 0 auto;
+	width: 16px;
+	height: 16px;
+	fill: currentColor;
+}
+
+.git-history-sort-icon {
 	width: 14px;
 	height: 14px;
-	color: var(--vp-c-brand-1);
 	fill: currentColor;
 }
 
