@@ -3,16 +3,15 @@ import {
 	NolebaseEnhancedReadabilitiesMenu,
 	NolebaseEnhancedReadabilitiesScreenMenu,
 } from '@nolebase/vitepress-plugin-enhanced-readabilities/client'
-import { NolebaseGitChangelog } from '@nolebase/vitepress-plugin-git-changelog/client'
 import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import ArticleMeta from './ArticleMeta.vue'
+import GitHistory from './GitHistory.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
 import '@nolebase/vitepress-plugin-enhanced-readabilities/client/style.css'
-import '@nolebase/vitepress-plugin-git-changelog/client/style.css'
 
 // 搜索组件按需加载：MiniSearch 与弹窗代码不进首屏主包
 const WikiSearch = defineAsyncComponent(() => import('./WikiSearch.vue'))
@@ -61,7 +60,7 @@ onMounted(() => {
 	</template>
 	<!-- 文件历史：frontmatter 设 hideChangelog: true 可隐藏单篇 -->
 	<template #doc-after>
-		<NolebaseGitChangelog v-if="frontmatter.hideChangelog !== true" :key="changelogKey" />
+		<GitHistory v-if="frontmatter.hideChangelog !== true" :key="changelogKey" />
 	</template>
 </DefaultTheme.Layout>
 </template>

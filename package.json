@@ -10,8 +10,9 @@
     "pnpm": ">=11"
   },
   "scripts": {
-    "dev": "vitepress dev docs",
-    "build": "vitepress build docs",
+    "dev": "node docs/.vitepress/scripts/gen-history.mjs && vitepress dev docs",
+    "build": "node docs/.vitepress/scripts/gen-history.mjs && vitepress build docs",
+    "gen:history": "node docs/.vitepress/scripts/gen-history.mjs",
     "preview": "vitepress preview docs",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint .",

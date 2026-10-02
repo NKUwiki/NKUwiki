@@ -7,3 +7,4 @@ docs/.vitepress/.temp/
 .DS_Store
 *.log
 .zcode/
+docs/.vitepress/history.json
