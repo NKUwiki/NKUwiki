@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import { defineAsyncComponent } from 'vue'
 import ArticleIndex from './components/ArticleIndex.vue'
+import ArticleMeta from './components/ArticleMeta.vue'
 import CopyContact from './components/CopyContact.vue'
 import DownloadPageImage from './components/DownloadPageImage.vue'
 import FriendLinks from './components/FriendLinks.vue'
@@ -67,6 +68,8 @@ export default {
 		app.component('CopyContact', CopyContact)
 		app.component('QrCode', QrCode)
 		app.component('ArticleIndex', ArticleIndex)
+		// 文章元信息（面包屑/作者/标签）在构建期随标题一起注入 Markdown 正文流（见 config.mts 的 article-title 规则）
+		app.component('ArticleMeta', ArticleMeta)
 		app.component('DownloadPageImage', DownloadPageImage)
 		// Nolebase 增强可读性：桌面端聚光灯默认开启。
 		// 仅在用户从未改动过该设置（localStorage 无记录）时写入默认值，之后完全尊重用户选择；

@@ -7,7 +7,6 @@ import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
 import ArticleAuthors from './ArticleAuthors.vue'
-import ArticleMeta from './ArticleMeta.vue'
 import GitHistory from './GitHistory.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
@@ -51,9 +50,6 @@ onMounted(() => {
 			<a class="directory-trigger" :href="withBase('/categories/')">全部分类</a>
 			<SidebarToggle />
 		</div>
-	</template>
-	<template #doc-before>
-		<ArticleMeta />
 	</template>
 	<template #doc-footer-before>
 		<ArticleAuthors />

@@ -2,8 +2,9 @@
 	margin-bottom: 24px;
 }
 
-.article-meta .tags {
-	margin-top: 12px;
+/* 标签挂在标题行右端，不再单独占一行 */
+.article-title-row .tags {
+	margin-top: 0;
 }
 
 .muted {
@@ -204,35 +205,43 @@
 	color: var(--vp-c-text-2);
 }
 
-.article-byline,
-.article-date,
-.article-length {
+/* 标题行：标题居左，标签紧跟标题右侧 */
+.article-title-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	margin-block: 8px;
+}
+
+.article-title-row h1 {
+	margin: 0;
+}
+
+/* wide 布局下标题与标签作为一组居中 */
+.wiki-wide .article-title-row {
+	justify-content: center;
+}
+
+/* 标题下方的信息行：作者、最近更新、字数、预计阅读时间 */
+.article-info {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 3px;
-}
-
-.article-byline {
-	gap: 8px 16px;
-	margin-block: 12px;
+	gap: 6px 18px;
 	font-size: 12px;
 	color: var(--vp-c-text-2);
 }
 
-.article-byline svg {
+.article-info-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.article-info-item svg {
 	width: 14px;
 	height: 14px;
-}
-
-.article-byline a {
-	text-decoration: none;
-	color: inherit;
-}
-
-/* 字数与阅读时长固定在行尾，给该行前部留出放其他 frontmatter 信息的位置 */
-.article-length {
-	margin-inline-start: auto;
 }
 
 /* 页尾作者列表：frontmatter 与 Git 提交历史合并去重后全部列出，可能十人以上 */

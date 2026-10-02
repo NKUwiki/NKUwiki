@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
 import { repoUrl } from '../../site'
-import ArticleMeta from './ArticleMeta.vue'
 
 const { page } = useData()
 </script>
@@ -9,7 +8,6 @@ const { page } = useData()
 <template>
 <main class="wiki-wide">
 	<div class="wiki-article-content vp-doc">
-		<ArticleMeta />
 		<Content />
 	</div>
 	<footer class="wide-footer">

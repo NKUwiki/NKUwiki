@@ -12,16 +12,10 @@ const articles = scanArticles()
 const base = ''
 const description = 'NKUwiki（南开校园 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
 
-/** 标题文字来自 frontmatter，转义行内语法，避免标题里的符号被当成 Markdown。 */
-function escapeTitleText(title: string) {
-	return title.replace(/[\\`*_[\]<>&]/g, '\\$1')
-}
-
-/** 把一级标题拼在正文最前面（frontmatter 若还在，则接在其后）。 */
-function prependTitleHeading(source: string, title: string) {
-	const heading = `# ${escapeTitleText(title)}\n\n`
+/** 把一段块内容插到 frontmatter（若在）之后、正文最前面。 */
+function prependToBody(source: string, block: string) {
 	const frontmatter = source.match(/^(-{3,}\r?\n[\s\S]*?\r?\n-{3,}\r?\n?)/)
-	return frontmatter ? frontmatter[1] + heading + source.slice(frontmatter[1].length) : heading + source
+	return frontmatter ? frontmatter[1] + block + source.slice(frontmatter[1].length) : block + source
 }
 
 /** 某个目录下所有文章的路由，用来给「参与共建」这类导航项做高亮 */
@@ -121,18 +115,17 @@ export default defineConfig({
 				return
 			instance.configured = true
 			cardlist(md)
-			// 正文没有一级标题时，用 frontmatter 的 title 生成标准 Markdown 一级标题拼到正文最前（拥有标准锚点与 .vp-doc 样式）。
+			// 文章元信息（分类/标题/字数/标签）整体由 ArticleMeta 组件渲染，构建期注入正文最前。
+			// 标题不再以 Markdown 一级标题插入：组件内的标题与字数同行排版，全站标题统一来自
+			// frontmatter（正文不应再自带一级标题，历史遗留的 18 处已清理）。
 			// wikiTitleInserted 标记防止卡片容器嵌套解析时重复插入。
 			md.core.ruler.before('block', 'article-title', (state) => {
 				if (state.env.wikiTitleInserted)
 					return
 				const article = articles.find(item => item.source === state.env.relativePath || outputPath(item.url) === state.env.relativePath)
-				if (!article || article.hasHeading) {
-					state.env.wikiTitleInserted = true
-					return
-				}
-				state.src = prependTitleHeading(state.src, article.title)
 				state.env.wikiTitleInserted = true
+				if (article)
+					state.src = prependToBody(state.src, '<ArticleMeta />\n\n')
 			})
 			const headingClose = md.renderer.rules.heading_close
 			md.renderer.rules.heading_close = (tokens, index, options, env, self) => {
