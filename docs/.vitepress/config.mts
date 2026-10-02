@@ -45,8 +45,6 @@ export default defineConfig({
 	srcExclude: ['activity/**'],
 	rewrites: source => rewrites.get(source) || source,
 	head: [
-		['link', { rel: 'stylesheet', href: 'https://s4.zstatic.net/npm/inter-ui@4.1.1/inter-variable.css' }],
-		['link', { rel: 'stylesheet', href: 'https://s4.zstatic.net/npm/inter-ui@4.1.1/inter.css' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-light.svg`, 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-dark.svg`, 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
