@@ -68,6 +68,24 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 	}
 })
 
+test('side bar tree opens only the current article category path', () => {
+	const articles = scanArticles()
+	const categoryOf = (title: string) => articles.find(article => article.title === title)!.folders
+	// 只展开当前分类：其余分类（含子分类）保持折叠
+	const plain = buildTree(articles, 0, categoryOf('入学准备'))
+	assert.deepEqual(plain.filter(item => !item.collapsed).map(item => item.text), ['新生入学'])
+	const clubs = plain.find(item => item.text === '群汇总')!
+	assert.equal(clubs.collapsed, true)
+	assert.equal(clubs.items!.find(item => item.text === '组织详情')!.collapsed, true)
+	// 当前文章所在的子分类逐级展开
+	const nested = buildTree(articles, 0, categoryOf('电影协会'))
+	const open = nested.find(item => item.text === '群汇总')!
+	assert.equal(open.collapsed, false)
+	assert.equal(open.items!.find(item => item.text === '组织详情')!.collapsed, false)
+	// 不传路径时全部折叠
+	assert.ok(buildTree(articles).every(item => item.collapsed === true))
+})
+
 test('word count ignores code, formulas, links and counts CJK per character', () => {
 	const root = mkdtempSync(join(tmpdir(), 'ncepu-wordcount-'))
 	try {

@@ -26,7 +26,9 @@ function categoryMatch(...folders: string[]) {
 }
 const rewrites = new Map(articles.map(article => [article.source, outputPath(article.url)]))
 const sidebar = Object.fromEntries(articles.map(article => [article.url, [
-	...buildTree(articles.filter(other => other.folders[0] === article.folders[0])),
+	// 侧栏是整站目录：所有分类都列出，默认只展开当前文章所在的分类路径，
+	// 其余分类保持折叠（点分类标题可展开，图标在标题左侧）
+	...buildTree(articles, 0, article.folders),
 ]]))
 
 export default defineConfig({

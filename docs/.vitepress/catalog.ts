@@ -117,7 +117,14 @@ export function outputPath(url: string) {
 	return url.slice(1) + (url.endsWith('/') ? 'index.md' : '.md')
 }
 
-export function buildTree(articles: Article[], depth = 0): DirectoryItem[] {
+/**
+ * 把文章按目录层级聚成目录树。
+ *
+ * `openPath` 是「进入页面时默认展开的那一条分类路径」（就是当前文章的 folders，
+ * 例如 [`群汇总`, `组织详情`]）：逐层比对，命中的分类展开、其余折叠。
+ * 这样侧栏默认只展开当前分类，其它分类保持折叠；不传则全部折叠。
+ */
+export function buildTree(articles: Article[], depth = 0, openPath: string[] = []): DirectoryItem[] {
 	const items: DirectoryItem[] = []
 	const groups = new Map<string, Article[]>()
 	for (const article of articles) {
@@ -128,13 +135,13 @@ export function buildTree(articles: Article[], depth = 0): DirectoryItem[] {
 		}
 		if (!groups.has(folder)) {
 			groups.set(folder, [])
-			items.push({ text: folder, collapsed: depth > 0, items: [] })
+			items.push({ text: folder, collapsed: openPath[depth] !== folder, items: [] })
 		}
 		groups.get(folder)!.push(article)
 	}
 	for (const item of items) {
 		if (!item.link)
-			item.items = buildTree(groups.get(item.text)!, depth + 1)
+			item.items = buildTree(groups.get(item.text)!, depth + 1, openPath)
 	}
 	return items
 }

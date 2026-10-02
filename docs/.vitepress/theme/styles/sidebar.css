@@ -1,0 +1,78 @@
+/* 左侧目录（分类树）与右侧大纲的交互样式。
+   目标形态参考文档站常见做法：整站分类都列出、默认只展开当前分类，
+   展开图标在分类左侧，分类与文章之间有明确的缩进关系，
+   当前文章整行亮一个色块，悬停文章加下划线。
+   注意：默认主题的这些样式带 scoped 属性选择器，特异性不低，
+   这里统一用 #VPSidebarNav / .VPDocAsideOutline .content 提升一级，确保覆盖生效。 */
+
+/* 分类之间用间距区分，不再画横线：整站目录看起来更像一棵树 */
+#VPSidebarNav .group + .group {
+	padding-top: 0;
+	border-top: none;
+}
+
+/* 每一行统一向外撑 0.5rem 再补回等量内边距：
+   文字位置和默认主题完全一致，但色块/底色的命中区能左右各溢出 8px */
+#VPSidebarNav .VPSidebarItem > .item {
+	width: auto;
+	margin-inline: -0.5rem;
+	padding-inline: 0.5rem;
+	border-radius: var(--wiki-radius-small);
+	transition: background-color var(--wiki-duration);
+}
+
+/* 展开 / 收起图标移到分类标题左侧。
+   盒子沿用默认主题的 2rem × 2rem（正好是一行文字的高度，图标在框内居中），
+   只调顺序与左右外边距：框左缘与上方「全部分类」那行的文字左缘对齐，
+   图标与分类文字的间距保持 4px，图标中心与文字中心天然在同一水平线上。 */
+#VPSidebarNav .VPSidebarItem > .item > .caret {
+	align-self: center;
+	order: -1;
+	width: 2rem;
+	height: 2rem;
+	margin-right: -0.25rem;
+	margin-left: -0.5rem;
+}
+
+#VPSidebarNav .VPSidebarItem > .item > .caret .caret-icon {
+	font-size: 1rem;
+	line-height: 1;
+}
+
+/* 文章相对分类标题缩进一级，缩进量正好等于图标占位（2rem 框 - 0.75rem 抵消 = 1.25rem），
+   所以文章的文字与分类的文字左对齐；层级靠缩进表达，不再用默认主题那条竖线 */
+#VPSidebarNav .VPSidebarItem .items {
+	padding-left: 1.25rem;
+	border-left: none;
+}
+
+/* 当前所在文章：整行品牌色块，文字加重；默认主题的左侧细条由色块取代 */
+#VPSidebarNav .VPSidebarItem.is-active > .item {
+	background: var(--vp-c-brand-soft);
+}
+
+#VPSidebarNav .VPSidebarItem.is-active > .item > .link > .text,
+#VPSidebarNav .VPSidebarItem.is-active > .item > .text {
+	font-weight: 600;
+}
+
+#VPSidebarNav .VPSidebarItem > .item > .indicator {
+	display: none;
+}
+
+/* 悬停文章：下划线（整行响应，鼠标落在文字右侧空白处也算） */
+#VPSidebarNav .VPSidebarItem.is-link > .item:hover .text {
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+}
+
+/* 悬停分类：给一点底色，提示这一行可以点开 */
+#VPSidebarNav .VPSidebarItem.collapsible > .item:hover {
+	background: var(--vp-c-default-soft);
+}
+
+/* 右侧大纲：悬停标题同样加下划线，和左侧目录保持一致 */
+.VPDocAsideOutline .content .outline-link:hover {
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+}
