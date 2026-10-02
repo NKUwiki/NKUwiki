@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import historyData from '../../history.json'
 import { repoUrl } from '../../site'
 
@@ -27,6 +27,17 @@ const commits = computed<CommitEntry[]>(() => {
 
 const lastCommit = computed(() => commits.value[0] ?? null)
 const lastEdited = computed(() => lastCommit.value ? formatRelative(lastCommit.value.date) : '')
+
+/** 排序切换：默认按时间倒序（最新在前），点击图标改为正序（旧提交在前） */
+const isDescending = ref(true)
+const isOpen = ref(false)
+const sortedCommits = computed(() => isDescending.value ? commits.value : [...commits.value].reverse())
+
+function toggleSort() {
+	// 与参考实现一致：仅在列表展开时可切换，折叠时点击无反馈容易让人以为控件失灵
+	if (isOpen.value)
+		isDescending.value = !isDescending.value
+}
 
 function formatDate(iso: string): string {
 	const date = new Date(iso)
@@ -68,7 +79,7 @@ function formatRelative(iso: string): string {
 			<a class="header-anchor" href="#页面历史" aria-label="Permalink to &quot;页面历史&quot;" />
 			页面历史
 		</h2>
-		<details class="git-history-details">
+		<details class="git-history-details" @toggle="isOpen = ($event.target as HTMLDetailsElement).open">
 			<summary class="git-history-summary">
 				<span class="git-history-summary-main">
 					<!-- 与 Nolebase GitChangelog 同一个图标（octicon history-16），直接内联以免依赖插件内部的 UnoCSS 类 -->
@@ -78,9 +89,21 @@ function formatRelative(iso: string): string {
 					<span>最后编辑于 {{ lastEdited }}</span>
 				</span>
 				<span class="git-history-summary-action">
-					<svg class="git-history-sort-icon" viewBox="0 0 24 24" aria-hidden="true">
-						<path d="M9 3 5 6.99h3V14h2V6.99h3L9 3Zm7 14.01V10h-2v7.01h-3L15 21l4-3.99h-3Z" />
-					</svg>
+					<button
+						type="button"
+						class="git-history-sort"
+						:disabled="!isOpen"
+						:title="isDescending ? '当前：最新提交在前，点击切换为最早在前' : '当前：最早提交在前，点击切换为最新在前'"
+						:aria-label="isDescending ? '按时间倒序排列，点击切换为正序' : '按时间正序排列，点击切换为倒序'"
+						@click.prevent.stop="toggleSort"
+					>
+						<svg v-if="isDescending" class="git-history-sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+							<path d="M0 4.25a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 4.25m0 4a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75m0 4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75M13.5 10h2.25a.25.25 0 0 1 .177.427l-3 3a.25.25 0 0 1-.354 0l-3-3A.25.25 0 0 1 9.75 10H12V3.75a.75.75 0 0 1 1.5 0z" />
+						</svg>
+						<svg v-else class="git-history-sort-icon" viewBox="0 0 16 16" aria-hidden="true">
+							<path d="m12.927 2.573 3 3A.25.25 0 0 1 15.75 6H13.5v6.75a.75.75 0 0 1-1.5 0V6H9.75a.25.25 0 0 1-.177-.427l3-3a.25.25 0 0 1 .354 0M0 12.25a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75m0-4a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 8.25m0-4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 4.25" />
+						</svg>
+					</button>
 					查看完整历史
 				</span>
 				<svg class="git-history-chevron" viewBox="0 0 16 16" aria-hidden="true">
@@ -88,7 +111,7 @@ function formatRelative(iso: string): string {
 				</svg>
 			</summary>
 			<ul class="git-history-list">
-				<li v-for="commit in commits" :key="commit.hash" class="git-history-item">
+				<li v-for="commit in sortedCommits" :key="commit.hash" class="git-history-item">
 					<span class="git-history-hash-block">
 						<a
 							class="git-history-hash"
@@ -199,6 +222,23 @@ function formatRelative(iso: string): string {
 	width: 16px;
 	height: 16px;
 	fill: currentColor;
+}
+
+/* 排序切换按钮：仅是个去掉默认样式的图标按钮 */
+.git-history-sort {
+	display: inline-flex;
+	align-items: center;
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+}
+
+.git-history-sort:disabled {
+	opacity: 0.6;
+	cursor: default;
 }
 
 .git-history-sort-icon {
