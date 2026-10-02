@@ -113,6 +113,64 @@ test('word count ignores code, formulas, links and counts CJK per character', ()
 	}
 })
 
+test('order decides sibling order, unset entries keep their natural order behind ordered ones', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ncepu-order-'))
+	try {
+		mkdirSync(join(root, '01.甲'))
+		mkdirSync(join(root, '01.甲/01.子'))
+		mkdirSync(join(root, '02.乙'))
+		// 甲：更后(order 1) 会排到 后(order 2) 前面，没写 order 的 无序号 留在最后
+		writeFileSync(join(root, '01.甲/10.后.md'), '---\ntitle: 后\norder: 2\n---\n正文')
+		writeFileSync(join(root, '01.甲/20.更后.md'), '---\ntitle: 更后\norder: 1\n---\n正文')
+		writeFileSync(join(root, '01.甲/30.无序号.md'), '---\ntitle: 无序号\n---\n正文')
+		// 子目录按自己文章的最小值(3)参与同级排序，落在 后(2) 与 无序号 之间
+		writeFileSync(join(root, '01.甲/01.子/01.子文章.md'), '---\ntitle: 子文章\norder: 3\n---\n正文')
+		// 乙：只有一篇文章但 order 更小，整个分类排到 01.甲 前面
+		writeFileSync(join(root, '02.乙/01.乙文章.md'), '---\ntitle: 乙文章\norder: 0\n---\n正文')
+		// 写成字符串的数字同样有效，非数字当作没写
+		writeFileSync(join(root, '02.乙/02.字符串.md'), '---\ntitle: 字符串\norder: "3"\n---\n正文')
+		writeFileSync(join(root, '02.乙/03.非法.md'), '---\ntitle: 非法\norder: 靠前\n---\n正文')
+		const articles = scanArticles(root)
+		const orderOf = (title: string) => articles.find(article => article.title === title)!.order
+		assert.equal(orderOf('后'), 2)
+		assert.equal(orderOf('字符串'), 3)
+		assert.equal(orderOf('无序号'), undefined)
+		assert.equal(orderOf('非法'), undefined)
+		assert.deepEqual(buildTree(articles).map(item => item.text), ['乙', '甲'])
+		const jia = buildTree(articles).find(item => item.text === '甲')!
+		assert.deepEqual(jia.items!.map(item => item.text), ['更后', '后', '子', '无序号'])
+		assert.deepEqual(buildTree(articles).find(item => item.text === '乙')!.items!.map(item => item.text), ['乙文章', '字符串', '非法'])
+		// 分类顺序与侧栏同口径：取分类内（含子分类）文章 order 的最小值
+		const { categories } = loadCatalog(root)
+		assert.deepEqual(categories.map(category => category.path), ['乙', '甲', '甲/子'])
+		assert.equal(categories.find(category => category.path === '甲')!.order, 1)
+		assert.equal(categories.find(category => category.path === '甲/子')!.order, 3)
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
+test('a folder can pin its own position with an index.md order', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ncepu-order-index-'))
+	try {
+		mkdirSync(join(root, '01.甲'))
+		mkdirSync(join(root, '02.乙'))
+		writeFileSync(join(root, '01.甲/01.文章.md'), '---\ntitle: 甲文章\norder: 1\n---\n正文')
+		writeFileSync(join(root, '02.乙/01.文章.md'), '---\ntitle: 乙文章\norder: 0\n---\n正文')
+		// 乙的 index.md 写了 order: 9，显式指定优先于「目录内文章的最小值」，于是乙退到甲后面
+		writeFileSync(join(root, '02.乙/index.md'), '---\ntitle: 乙概览\norder: 9\n---\n正文')
+		assert.deepEqual(buildTree(scanArticles(root)).map(item => item.text), ['甲', '乙'])
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
 test('lastUpdated is explicit and never falls back to creation dates or legacy updated', () => {
 	const root = mkdtempSync(join(tmpdir(), 'ncepu-dates-'))
 	try {

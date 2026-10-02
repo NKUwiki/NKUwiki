@@ -7,6 +7,7 @@ import { Icon } from '@iconify/vue'
 import { withBase } from 'vitepress'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { categoryChildren, resolveCategory } from '../../category'
+import { orderOf } from '../../order'
 import { buildExcerpt, expandQuery, highlightText, tokenize } from '../../searchCore'
 import { data } from '../catalog.data'
 import { tagChips } from '../chips'
@@ -118,7 +119,8 @@ const articles = computed(() => data.articles.filter((article) => {
 			? !activeCategory.value || article.categories.includes(activeCategory.value)
 			: !selected.value || article.tags.includes(selected.value)
 	return matches && (!query.value.trim() || hits.value.has(article.url))
-}).sort((a, b) => (b.lastUpdated || b.date).localeCompare(a.lastUpdated || a.date) || a.title.localeCompare(b.title, 'zh-CN')))
+	// 写了 order 的按数字升序排在前面，没写的保持原规则（更新日期倒序、再按标题）
+}).sort((a, b) => orderOf(a.order) - orderOf(b.order) || (b.lastUpdated || b.date).localeCompare(a.lastUpdated || a.date) || a.title.localeCompare(b.title, 'zh-CN')))
 const groups = computed(() => {
 	const result = new Map<string, Article[]>()
 	// 选中分类后先建好这一组：即使它还没有直属文章，子分类条目也要有地方显示
