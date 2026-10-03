@@ -29,8 +29,9 @@ function formatDate(raw: unknown) {
 
 const date = computed(() => formatDate(fm.value.date))
 const lastUpdated = computed(() => formatDate(fm.value.lastUpdated))
-// 表格卡片页（群汇总、友情链接这类 layout: wide 页面）写 hideStats: true 隐藏字数与阅读时间，日期保留
-const hideStats = computed(() => fm.value.hideStats === true)
+// 宽版页面（群汇总、友情链接这类 layout: wide 表格卡片页）以卡片为主体，
+// 不展示字数与阅读时间；创建与更新日期保留
+const hideStats = computed(() => fm.value.layout === 'wide')
 // 标题锚点：标题改由本组件渲染，模仿 markdown-it 生成的 id（小写、空格转连字符）
 const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[/?#&]/g, ''))
 </script>
