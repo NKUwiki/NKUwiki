@@ -90,6 +90,7 @@ export default defineConfig({
 			{ text: '群汇总', link: '/categories/?category=群汇总' },
 			{ text: '计算机知识', link: '/categories/?category=计算机知识' },
 			{ text: '全部分类', link: '/categories/' },
+			{ text: '校园地图', link: '/map/' },
 			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: categoryMatch('贡献与其他') },
 		],
 		sidebar,

@@ -8,6 +8,8 @@
     "resolveJsonModule": true,
     "types": ["node", "vitepress/client"],
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
