@@ -19,16 +19,19 @@ NKUwiki/
 ├── .github/workflows/static.yml     # GitHub Actions：构建并发布到 GitHub Pages
 ├── docs/                            # VitePress 文档根目录
 │   ├── index.md                     # 首页
-│   ├── .vitepress/                  # 站点配置、目录索引与主题
+│   ├── .vitepress/                  # 站点配置与业务模块
 │   │   ├── config.mts               # 站点配置：导航、markdown 扩展、主题
-│   │   ├── catalog.ts               # 扫描编号目录，生成侧栏、分类、标签与归档
-│   │   ├── cardlist.ts              # ::: cardlist 表格转卡片
-│   │   ├── search.ts                # 构建期全文搜索索引
-│   │   └── theme/                   # 自定义主题：Vue 组件与分层样式
+│   │   ├── lib/                     # 业务模块（构建期与双端共享）
+│   │   │   ├── content/             # 文章目录扫描、分类、排序、cardlist 渲染
+│   │   │   ├── data/                # 站点数据：成员、作者、活动、站点常量
+│   │   │   ├── search/              # 构建期搜索索引与搜索纯函数
+│   │   │   └── types.ts             # 全局共享类型
+│   │   ├── scripts/                 # 构建辅助脚本（页面历史生成）
+│   │   └── theme/                   # 自定义主题：组件、样式与 composables
 │   ├── public/                      # 静态资源：文章图片（img/）、站点图标、CNAME
 │   ├── 01.新生入学/ 02.浅谈学习/ 03.群汇总/ 04.校园生活/ 05.计算机知识/
 │   ├── 10.贡献与其他/               # 协作说明、关于我们、友情链接
-│   └── topics/ categories/ tags/ archives/ activity/    # 自动生成的索引与活动页
+│   └── map.md categories/ tags/ archives/ activity/    # 地图页与自动生成的索引、活动页
 ├── tests/                           # 目录索引与卡片的数据测试
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
 ├── tsconfig.json                    # TypeScript 配置
