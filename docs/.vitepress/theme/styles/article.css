@@ -260,6 +260,9 @@
 	align-items: center;
 	gap: 8px;
 	margin-top: 24px;
+	/* 原「最后更新于」空壳占位的等量留白（该区域已整体隐藏），
+	   保证没有 lastUpdated 的文章胶囊也不会贴到翻页分隔线 */
+	margin-bottom: 14px;
 }
 
 .article-author-item {
@@ -313,10 +316,10 @@ a.article-author-pill:hover {
 	text-overflow: ellipsis;
 }
 
-/* 页脚的「最后更新于」：VitePress 2 alpha 里是否渲染只看 page.lastUpdated 有没有值，
-   而这个值同时是 sitemap lastmod 的数据源，不能删；顶层 lastUpdated: false 也拦不住它，
-   所以在这里隐藏渲染节点。编辑链接（源代码）已在 config.mts 移除 */
-.VPDocFooter .last-updated {
+/* 页脚的「最后更新于」区域按设计不展示（编辑链接也已移除），但其他页面里
+   它的空壳仍占位、给作者胶囊与翻页分隔线之间留出呼吸感；
+   这里把整个区域隐藏，改由 .article-authors 的 margin-bottom 统一提供这段间距 */
+.VPDocFooter .edit-info {
 	display: none;
 }
 
