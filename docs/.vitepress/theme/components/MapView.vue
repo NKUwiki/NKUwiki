@@ -762,7 +762,7 @@ onUnmounted(() => {
             :class="{ active: selected?.id === b.id }"
             @click="onSelect(b)"
           >
-            <span class="cat-icon" :style="{ color: (CATEGORY_CONFIG[b.category] || {}).color || '#2C8AC9' }" v-html="categoryIconMarkup(b.category, 14)"></span>
+            <span class="cat-icon" :style="{ color: (CATEGORY_CONFIG[b.category] || {}).color || '#711A5F' }" v-html="categoryIconMarkup(b.category, 14)"></span>
             <span class="building-info">
               <span class="building-name">{{ b.name }}</span>
               <span v-if="b.desc" class="building-desc">{{ b.desc }}</span>
@@ -947,11 +947,13 @@ onUnmounted(() => {
    CQU-openlib 设计体系（抄自其 theme/colors.ts，OKLCH）
    ============================================================ */
 .map-section {
-  --c-primary: #015D95;
-  --c-primary-hover: #014A78;
-  --c-primary-soft: rgba(1, 93, 149, 0.1);
-  --c-primary-faint: rgba(1, 93, 149, 0.06);
-  --c-mist: rgba(1, 93, 149, 0.06);
+  /* 品牌色直接引用站点 token（南开青莲紫），亮暗模式自动跟随全站，
+     不再保留 QUT 的蓝色系硬编码 */
+  --c-primary: var(--vp-c-brand-1);
+  --c-primary-hover: var(--vp-c-brand-2);
+  --c-primary-soft: var(--vp-c-brand-soft);
+  --c-primary-faint: color-mix(in srgb, var(--vp-c-brand-1) 6%, transparent);
+  --c-mist: color-mix(in srgb, var(--vp-c-brand-1) 6%, transparent);
   --c-ink: #213547;
   --c-muted: #838387;
   --c-line: rgba(33, 53, 71, 0.09);
@@ -973,11 +975,8 @@ onUnmounted(() => {
 }
 
 html.dark .map-section {
-  --c-primary: #4AB3E8;
-  --c-primary-hover: #7CC4EC;
-  --c-primary-soft: rgba(74, 179, 232, 0.16);
-  --c-primary-faint: rgba(74, 179, 232, 0.09);
-  --c-mist: rgba(74, 179, 232, 0.09);
+  /* 品牌色不再重复定义：--c-primary 系列引用的 --vp-c-brand-* 在 .dark 下
+     已由站点 tokens.css 换成提亮档，这里只覆盖中性色 */
   --c-ink: rgba(235, 235, 245, 0.92);
   --c-muted: rgba(235, 235, 245, 0.52);
   --c-line: rgba(235, 235, 245, 0.11);

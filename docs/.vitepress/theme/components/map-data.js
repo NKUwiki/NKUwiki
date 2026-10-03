@@ -13,23 +13,25 @@
  */
 
 export const CATEGORY_CONFIG = {
-  teaching:   { label: '教学楼',   color: '#015D95' },
-  dormitory:  { label: '学生宿舍', color: '#2C8AC9' },
-  canteen:    { label: '食堂',     color: '#5BA3D6' },
-  library:    { label: '图书馆',   color: '#01416B' },
-  sports:     { label: '运动场馆', color: '#9BC4E2' },
-  admin:      { label: '行政楼',   color: '#015D95' },
-  gate:       { label: '校门',     color: '#2C8AC9' },
-  hospital:   { label: '校医院',   color: '#5BA3D6' },
-  theater:    { label: '剧场',     color: '#0E6FA8' },
-  busstation: { label: '校车站',   color: '#5A82B8' },
-  landmark:   { label: '地标建筑', color: '#015D95' },
-  college:    { label: '学院楼',   color: '#0E6FA8' },
-  food:       { label: '附近美食', color: '#7BA8E0' },
-  shop:       { label: '商铺',     color: '#6C8FD4' },
-  express:    { label: '快递点',   color: '#4A7CC0' },
-  tool:       { label: '维修点',   color: '#0E6FA8' },
-  transit:    { label: '轨道交通', color: '#3B6BA5' }
+  /* 分类色 = 南开青莲紫（站点主色 #711A5F，hue 312）按 QUT 原版明暗层次派生的梯度，
+     保持「同类相近、异类可辨」的相对关系 */
+  teaching:   { label: '教学楼',   color: '#711A5F' },
+  dormitory:  { label: '学生宿舍', color: '#9F388A' },
+  canteen:    { label: '食堂',     color: '#B851A4' },
+  library:    { label: '图书馆',   color: '#57144A' },
+  sports:     { label: '运动场馆', color: '#C987BC' },
+  admin:      { label: '行政楼',   color: '#711A5F' },
+  gate:       { label: '校门',     color: '#9F388A' },
+  hospital:   { label: '校医院',   color: '#B851A4' },
+  theater:    { label: '剧场',     color: '#862773' },
+  busstation: { label: '校车站',   color: '#A9449A' },
+  landmark:   { label: '地标建筑', color: '#711A5F' },
+  college:    { label: '学院楼',   color: '#862773' },
+  food:       { label: '附近美食', color: '#BE63B0' },
+  shop:       { label: '商铺',     color: '#AE4A9E' },
+  express:    { label: '快递点',   color: '#A03E92' },
+  tool:       { label: '维修点',   color: '#862773' },
+  transit:    { label: '轨道交通', color: '#93317F' }
 }
 
 /* 分类 SVG 图标 path 数据（Lucide 风格，抄自 CQU-openlib markerIcons.ts） */
