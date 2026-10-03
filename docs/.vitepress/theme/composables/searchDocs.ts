@@ -1,15 +1,15 @@
 // 搜索数据的客户端入口：首次使用时才动态加载构建期生成的索引文档，
 // 并提供 MiniSearch 索引的构建与统一检索（分词、容错、筛选范围）。
-import type { SearchDoc, SearchScope, SearchSection } from '../searchCore'
+import type { SearchDoc, SearchScope, SearchSection } from '../../lib/search/searchCore'
 import MiniSearch from 'minisearch'
-import { fuzzyTolerance, scopeFields, tokenize, tokenizeForIndex } from '../searchCore'
+import { fuzzyTolerance, scopeFields, tokenize, tokenizeForIndex } from '../../lib/search/searchCore'
 
 let docsPromise: Promise<SearchDoc[]> | undefined
 
 /** 懒加载全部搜索文档（.data 模块单独成 chunk，不占首屏）。 */
 export function loadSearchDocs(): Promise<SearchDoc[]> {
 	// 必须带 .ts 后缀：VitePress 的 data loader 插件按 /\.data\.(m|t|j)s$/ 识别改写
-	docsPromise ??= import('./search.data.ts').then(module => module.data)
+	docsPromise ??= import('../search.data.ts').then(module => module.data)
 	return docsPromise
 }
 

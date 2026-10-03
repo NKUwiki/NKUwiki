@@ -4,7 +4,7 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "paths": { "@/*": ["./docs/.vitepress/*"] },
+
     "resolveJsonModule": true,
     "types": ["node", "vitepress/client"],
     "allowImportingTsExtensions": true,

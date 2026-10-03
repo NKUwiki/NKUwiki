@@ -1,11 +1,11 @@
-import type { SearchDoc, SearchSection } from './searchCore.ts'
 // 构建期搜索索引：扫描全部条目，抽取标题、章节与正文纯文本，生成 SearchDoc[]。
 // 客户端经 search.data.ts 懒加载这份数据，再用 MiniSearch + searchCore 的分词建索引。
-import type { Article } from './types.ts'
+import type { Article } from '../types.ts'
+import type { SearchDoc, SearchSection } from './searchCore.ts'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import matter from 'gray-matter'
-import { docsRoot, scanArticles } from './catalog.ts'
+import { docsRoot, scanArticles } from '../content/catalog.ts'
 
 /** 单篇正文截断上限：足够覆盖最长条目，防止个别超大页面撑爆索引体积。 */
 const MAX_TEXT_LENGTH = 20000

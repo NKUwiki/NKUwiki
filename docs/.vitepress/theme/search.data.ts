@@ -1,6 +1,6 @@
-import type { SearchDoc } from '../searchCore.ts'
-import { docsRoot } from '../catalog.ts'
-import { buildSearchDocs } from '../search.ts'
+import type { SearchDoc } from '../lib/search/searchCore.ts'
+import { docsRoot } from '../lib/content/catalog.ts'
+import { buildSearchDocs } from '../lib/search/search.ts'
 
 export declare const data: SearchDoc[]
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildSearchDocs, extractBody } from '../docs/.vitepress/search.ts'
-import { buildExcerpt, expandQuery, highlightText, tokenize, tokenizeForIndex } from '../docs/.vitepress/searchCore.ts'
+import { buildSearchDocs, extractBody } from '../docs/.vitepress/lib/search/search.ts'
+import { buildExcerpt, expandQuery, highlightText, tokenize, tokenizeForIndex } from '../docs/.vitepress/lib/search/searchCore.ts'
 
 test('query-side expansion appends synonym variants to the search string', () => {
 	assert.equal(expandQuery('吉它社团'), '吉它社团 吉他')

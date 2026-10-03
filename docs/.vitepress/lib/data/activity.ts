@@ -1,8 +1,8 @@
-import type { Activity } from './types.ts'
+import type { Activity } from '../types.ts'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import matter from 'gray-matter'
-import { docsRoot } from './catalog.ts'
+import { docsRoot } from '../content/catalog.ts'
 
 export const activityRoot = join(docsRoot, 'activity')
 const ignored = /^(?:\.|_|README)/i

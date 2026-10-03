@@ -2,7 +2,7 @@
 import { useData } from 'vitepress'
 import { computed, ref } from 'vue'
 import historyData from '../../history.json'
-import { repoUrl } from '../../site'
+import { repoUrl } from '../../lib/data/site'
 
 interface CommitEntry {
 	hash: string

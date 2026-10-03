@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChipItem } from '../chips'
+import type { ChipItem } from '../composables/chips'
 import { withBase } from 'vitepress'
 
 defineProps<{ items: ChipItem[], selected?: string, label?: string }>()

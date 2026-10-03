@@ -1,4 +1,4 @@
-import type { Article, CategoryCount } from './types.ts'
+import type { Article, CategoryCount } from '../types.ts'
 import { NO_ORDER, orderOf } from './order.ts'
 
 /**

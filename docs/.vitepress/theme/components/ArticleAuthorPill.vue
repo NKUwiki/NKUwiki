@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Author } from '../../types.ts'
+import type { Author } from '../../lib/types.ts'
 import AuthorAvatar from './AuthorAvatar.vue'
 
 defineProps<{ author: Author }>()

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Author } from '../../types.ts'
+import type { Author } from '../../lib/types.ts'
 import { useData } from 'vitepress'
 import { computed } from 'vue'
 import { Tippy } from 'vue-tippy'

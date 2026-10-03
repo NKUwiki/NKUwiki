@@ -2,10 +2,10 @@ import type { MarkdownRenderer } from 'vitepress'
 import { fileURLToPath } from 'node:url'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
-import { collectAuthors } from './authors.ts'
-import { cardlist } from './cardlist.ts'
-import { buildTree, outputPath, scanArticles } from './catalog.ts'
-import { repoUrl, siteUrl } from './site.ts'
+import { cardlist } from './lib/content/cardlist.ts'
+import { buildTree, outputPath, scanArticles } from './lib/content/catalog.ts'
+import { collectAuthors } from './lib/data/authors.ts'
+import { repoUrl, siteUrl } from './lib/data/site.ts'
 
 /**
  * markmap 插件会往 VitePress 客户端入口（client/app/index）静态注入

@@ -1,4 +1,4 @@
-import type { Article, Catalog, DirectoryItem, TaxonomyCount } from './types.ts'
+import type { Article, Catalog, DirectoryItem, TaxonomyCount } from '../types.ts'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,7 +6,7 @@ import matter from 'gray-matter'
 import { categoryPaths, collectCategories } from './category.ts'
 import { minOrder, NO_ORDER, orderOf } from './order.ts'
 
-export const docsRoot = fileURLToPath(new URL('../', import.meta.url))
+export const docsRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const label = (name: string) => name.replace(/^\d+\./, '').replace(/\.md$/, '')
 function strings(value: unknown): string[] {
 	const values: unknown[] = Array.isArray(value) ? value : [value]

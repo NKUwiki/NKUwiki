@@ -1,4 +1,4 @@
-import type { TaxonomyCount } from '../types'
+import type { TaxonomyCount } from '../../lib/types'
 
 export interface ChipItem {
 	text: string

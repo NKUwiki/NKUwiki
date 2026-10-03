@@ -1,11 +1,11 @@
-import type { DirectoryItem } from '../docs/.vitepress/types.ts'
+import type { DirectoryItem } from '../docs/.vitepress/lib/types.ts'
 import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
 import test from 'node:test'
-import { buildTree, countWords, loadCatalog, outputPath, scanArticles } from '../docs/.vitepress/catalog.ts'
-import { categoryChildren, categoryPaths, resolveCategory } from '../docs/.vitepress/category.ts'
+import { buildTree, countWords, loadCatalog, outputPath, scanArticles } from '../docs/.vitepress/lib/content/catalog.ts'
+import { categoryChildren, categoryPaths, resolveCategory } from '../docs/.vitepress/lib/content/category.ts'
 
 test('existing article URLs are unique and all articles appear once in the directory', () => {
 	const articles = scanArticles()

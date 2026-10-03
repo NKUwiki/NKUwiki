@@ -1,4 +1,4 @@
-import type { Author } from './types.ts'
+import type { Author } from '../types.ts'
 import { members } from './members.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/

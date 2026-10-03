@@ -1,5 +1,5 @@
-import type { Catalog } from '../types.ts'
-import { docsRoot, loadCatalog } from '../catalog.ts'
+import type { Catalog } from '../lib/types.ts'
+import { docsRoot, loadCatalog } from '../lib/content/catalog.ts'
 
 export declare const data: Catalog
 

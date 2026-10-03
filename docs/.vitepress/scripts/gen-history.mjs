@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const docsDir = resolve(__dirname, '..', '..')
 const repoRoot = resolve(__dirname, '..', '..', '..')
 const outPath = resolve(__dirname, '..', 'history.json')
-const mappingPath = resolve(__dirname, '..', 'contributors-mapping.json')
+const mappingPath = resolve(__dirname, 'contributors-mapping.json')
 
 const COMMIT_SEP = '\u001E'
 const FIELD_SEP = '\u001F'

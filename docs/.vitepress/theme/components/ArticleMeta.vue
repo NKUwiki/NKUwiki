@@ -6,7 +6,7 @@ import refreshIcon from '@iconify-icons/ri/refresh-line'
 import { Icon } from '@iconify/vue'
 import { useData, withBase } from 'vitepress'
 import { computed } from 'vue'
-import { tagChips } from '../chips'
+import { tagChips } from '../composables/chips'
 import WikiChips from './WikiChips.vue'
 
 const { frontmatter: fm } = useData()

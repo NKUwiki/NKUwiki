@@ -2,7 +2,7 @@
 import sidebarFoldIcon from '@iconify-icons/ri/sidebar-fold-line'
 import sidebarUnfoldIcon from '@iconify-icons/ri/sidebar-unfold-line'
 import { Icon } from '@iconify/vue'
-import { sidebarCollapsed, toggleSidebarCollapsed } from '../sidebar'
+import { sidebarCollapsed, toggleSidebarCollapsed } from '../composables/sidebar'
 </script>
 
 <template>

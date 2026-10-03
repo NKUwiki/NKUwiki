@@ -1,8 +1,8 @@
-import type { Activity } from '../types.ts'
+import type { Activity } from '../lib/types.ts'
 import { createMarkdownRenderer } from 'vitepress'
-import { activityRoot, loadActivities } from '../activity.ts'
-import { docsRoot } from '../catalog.ts'
 import config from '../config.mts'
+import { docsRoot } from '../lib/content/catalog.ts'
+import { activityRoot, loadActivities } from '../lib/data/activity.ts'
 
 export declare const data: Activity[]
 

@@ -3,7 +3,7 @@
 
 import { withBase } from 'vitepress'
 
-import { repoUrl, siteUrl } from '../../site'
+import { repoUrl, siteUrl } from '../../lib/data/site'
 
 // activity.data.ts 读取 docs/activity/ 下的 Markdown 活动公告，
 // 首页“活动”区只从这里取数，平时维护活动只需增删 Markdown 文件。
@@ -18,7 +18,7 @@ import { data } from '../catalog.data'
 
 // tagChips() 把标签数据（字符串或 { name, count } 对象）转换为
 // WikiChips 组件需要的 ChipItem 数组，并自动生成标签筛选页的链接。
-import { tagChips } from '../chips'
+import { tagChips } from '../composables/chips'
 
 // 下面是首页用到的内部展示组件：
 // ArticleByline —— 文章的日期 / 作者信息行；
