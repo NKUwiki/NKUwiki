@@ -19,34 +19,31 @@ NKUwiki/
 ├── .github/workflows/static.yml     # GitHub Actions：构建并发布到 GitHub Pages
 ├── docs/                            # VitePress 文档根目录
 │   ├── index.md                     # 首页
-│   ├── .vitepress/                  # 站点配置与业务模块
+│   ├── map.md                       # 校园地图页
+│   ├── .vitepress/                  # 站点配置、业务模块与主题（详见其内 README）
 │   │   ├── config.mts               # 站点配置：导航、markdown 扩展、主题
-│   │   ├── lib/                     # 业务模块（构建期与双端共享）
-│   │   │   ├── content/             # 文章目录扫描、分类、排序、cardlist 渲染
-│   │   │   ├── data/                # 站点数据：成员、作者、活动、站点常量
-│   │   │   ├── search/              # 构建期搜索索引与搜索纯函数
-│   │   │   └── types.ts             # 全局共享类型
-│   │   ├── scripts/                 # 构建辅助脚本（页面历史生成）
-│   │   └── theme/                   # 自定义主题：组件、样式与 composables
+│   │   ├── lib/                     # 业务模块：content 文章目录 / data 站点数据 / search 站内搜索
+│   │   ├── scripts/                 # 构建辅助：从 Git 历史生成页面更新时间
+│   │   └── theme/                   # 自定义主题：components 组件 / composables 逻辑 / styles 样式
 │   ├── public/                      # 静态资源：文章图片（img/）、站点图标、CNAME
 │   ├── 01.新生入学/ 02.浅谈学习/ 03.群汇总/ 04.校园生活/ 05.计算机知识/
 │   ├── 10.贡献与其他/               # 协作说明、关于我们、友情链接
-│   └── map.md categories/ tags/ archives/ activity/    # 地图页与自动生成的索引、活动页
-├── tests/                           # 目录索引与卡片的数据测试
+│   └── categories/ tags/ archives/ activity/    # 专题页与归档
+├── tests/                           # 数据层单元测试
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
 ├── tsconfig.json                    # TypeScript 配置
 └── package.json                     # 依赖与脚本
 ```
 
-内容目录以「编号.名称」组织，展示时自动去掉数字前缀；编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
+内容目录以「编号.名称」组织，展示时自动去掉数字前缀；`.vitepress/lib` 按「跑在哪 + 管什么」分类：构建期模块进 `lib`（内容、数据、搜索三域），浏览器逻辑进 `theme/composables`。编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
 
 ## 本地开发与构建
 
 ```bash
 npm install --global pnpm@11.24.0
-pnpm install --frozen-lockfile
+pnpm install
 pnpm dev         # 本地开发，http://localhost:5173/
-pnpm check       # TypeScript、ESLint（含 CSS）与内容索引测试
+pnpm check       # 页面历史生成、TypeScript、ESLint（含 CSS）与数据层测试
 pnpm build       # 生产构建，校验 Markdown 内部链接
 pnpm preview     # 预览生产产物，http://localhost:4173/
 ```
