@@ -15,7 +15,7 @@ interface CommitEntry {
 const { page, frontmatter } = useData()
 
 // history.json 由 scripts/gen-history.mjs 在 dev / build 前生成，键为相对 docs 的源文档路径。
-// 客户端路由里的 relativePath 是 rewrites 改写后的虚拟路径（如 pages/BasicContribution/index.md），
+// 客户端路由里的 relativePath 是 rewrites 改写后的虚拟路径（如 pages/Contributing/index.md），
 // 因此优先使用 transformPageData 写入 frontmatter 的真实源路径，未改写的页面回退到 relativePath。
 const commits = computed<CommitEntry[]>(() => {
 	const source = frontmatter.value.sourcePath

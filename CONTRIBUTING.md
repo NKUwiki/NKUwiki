@@ -12,8 +12,8 @@
 
 ## 写作与投稿
 
-- [基础贡献](https://freshnkuer.wiki/pages/BasicContribution/)：文章的 Frontmatter 字段、Markdown 语法与组件用法
-- [进阶贡献](https://freshnkuer.wiki/pages/AdvanceContribution/)：目录结构与 GitHub Fork / Pull Request 协作流程
+- [基础贡献](https://freshnkuer.wiki/pages/Contributing/)：文章的 Frontmatter 字段、Markdown 语法与组件用法
+- [进阶贡献](https://freshnkuer.wiki/pages/ContributionMethods/)：目录结构与 GitHub Fork / Pull Request 协作流程
 
 目录展示时会自动去掉数字前缀；新增文章放入对应编号目录即可，侧栏、分类与标签会自动生成，无需手工维护。
 

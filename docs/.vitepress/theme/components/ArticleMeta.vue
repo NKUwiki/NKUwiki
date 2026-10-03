@@ -67,7 +67,7 @@ const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().repl
 		</span>
 	</div>
 	<p v-if="fm.empty" class="empty-state">
-		这篇条目正在等待补充，欢迎<a :href="withBase('/pages/BasicContribution/')">参与共建</a>。
+		这篇条目正在等待补充，欢迎<a :href="withBase('/pages/Contributing/')">参与共建</a>。
 	</p>
 </div>
 </template>

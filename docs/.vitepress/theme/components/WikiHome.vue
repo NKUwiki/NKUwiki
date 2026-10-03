@@ -114,7 +114,7 @@ function isExternal(link?: string) {
 				</h2>
 				<!-- 次级 CTA：了解贡献流程 / 到 GitHub 反馈问题 -->
 				<div class="hero-actions">
-					<a class="primary" :href="withBase('/pages/BasicContribution/')">了解如何贡献</a><a :href="`${repoUrl}/issues`">反馈问题 →</a>
+					<a class="primary" :href="withBase('/pages/Contributing/')">了解如何贡献</a><a :href="`${repoUrl}/issues`">反馈问题 →</a>
 				</div>
 			</section>
 
