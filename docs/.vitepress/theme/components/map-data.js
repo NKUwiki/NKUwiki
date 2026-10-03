@@ -10,6 +10,20 @@
  * images 字段已转换为 photos；分类 key 与 QUT-WiKi 完全一致，图标与配色沿用其定义。
  * 坐标统一 GCJ02（高德坐标系），高德底图与高德导航直接使用；百度/腾讯/Apple 导航
  * 外链由 MapView 内部做坐标转换。
+ *
+ * ================= 新增分类（三处同步，key 保持一致） =================
+ * 1. CATEGORY_CONFIG      分类的显示名与标点颜色；
+ * 2. CATEGORY_ICON_PATHS  标点与列表上的图标（Lucide 风格 SVG path，viewBox 24×24）；
+ * 3. FILTER_LIST          左侧筛选下拉的选项（icon 为 FontAwesome 类名）。
+ * 不新增分类就无法在点位上使用新 category，构建不校验但标点会缺图标。
+ *
+ * ================= 校区配置（CAMPUS_CONFIG） =================
+ * 每个校区一条：id（n 八里台 / j 津南，点位的 campusId 与 POLYGONS 的键都引用它）、
+ * name（切换下拉显示名）、coord（初始中心坐标，GCJ02）、zoom（初始缩放级别）。
+ * 校区轮廓 POLYGONS（MapView.vue 内）按 id 引用，暂为空数组，不影响使用。
+ *
+ * 各字段的详细说明与「点位关联文章（article）」用法，
+ * 见站内《贡献指南》的「校园地图数据维护」一节。
  */
 
 export const CATEGORY_CONFIG = {
@@ -111,7 +125,8 @@ export const BUILDINGS = [
     "desc": "八里台校区标志性主楼，位于校园中轴线上，是南开大学的地标建筑。",
     "photos": [
       "/map/pic/nankai-main-building.png"
-    ]
+    ],
+    "article": "/pages/BalitaiCampus/#主楼"
   },
   {
     "id": "n_landmark_02",

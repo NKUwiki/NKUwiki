@@ -72,9 +72,9 @@ function isExternal(link?: string) {
 			<p class="hero-description">
 				南开大学学生共同维护的非官方校园知识库。
 			</p>
-			<!-- 主要行动按钮：跳转新生指南；第二个链接前往文章分类索引页 /categories/ -->
+			<!-- 主要行动按钮：跳转新生指南；第二个链接前往文章分类索引页 /categories/；第三个前往校园地图 /map/ -->
 			<div class="hero-actions">
-				<a class="primary" :href="withBase('/pages/Preparation')">阅读新生指南 <span aria-hidden="true">↗</span></a><a :href="withBase('/categories/')">浏览全部分类 →</a>
+				<a class="primary" :href="withBase('/pages/Preparation')">阅读新生指南 <span aria-hidden="true">↗</span></a><a :href="withBase('/categories/')">浏览全部分类 →</a><a :href="withBase('/map/')">校园地图 →</a>
 			</div>
 		</div>
 		<!-- Hero 右侧小卡片：校徽、校区范围、由 data loader 统计的条目总数、一句话定位 -->

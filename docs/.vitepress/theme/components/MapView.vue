@@ -883,6 +883,10 @@ onUnmounted(() => {
             <span v-if="routeSummary.duration">预计 {{ routeSummary.duration }}</span>
           </div>
           <p v-if="locationError" class="location-error">{{ locationError }}</p>
+          <!-- 点位关联文章入口（在 map-data.js 点位上声明 article 字段即可启用） -->
+          <a v-if="selected.article" class="detail-article-link" :href="selected.article">
+            查看相关文章 <span aria-hidden="true">→</span>
+          </a>
           <div class="nav-btns">
             <a
               v-for="link in navigationLinksFor(selected)"
@@ -1670,6 +1674,28 @@ html.dark .map-section {
 .nav-btn:hover {
   border-color: var(--c-primary);
   color: var(--c-primary);
+}
+
+/* 点位关联文章入口：品牌色描边按钮，悬停实底 */
+.detail-article-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  margin-top: 10px;
+  border: 1px solid var(--c-primary);
+  border-radius: 6px;
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.detail-article-link:hover {
+  background: var(--c-primary);
+  color: #fff;
 }
 
 /* 移动端遮罩：仅覆盖地图区域，不盖住顶部工具条（header z-30 以上可点） */
