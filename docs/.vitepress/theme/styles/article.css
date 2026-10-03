@@ -252,54 +252,47 @@
 	height: 14px;
 }
 
-/* 页尾作者列表：frontmatter 与 Git 提交历史合并去重后全部列出，可能十人以上 */
+/* 页尾作者胶囊：头像 + 名称，不带标题与边框卡片；悬停显示联系方式（tippy，主题 wiki）。
+   作者在 frontmatter 只写名字，GitHub/头像/联系方式按名字到 members.ts 查询，构建期合并好随页面数据下发 */
 .article-authors {
-	margin-top: 32px;
-	padding: 16px 20px;
-	border: 1px solid var(--vp-c-divider);
-	border-radius: var(--wiki-radius);
-	background: var(--vp-c-bg-soft);
-}
-
-.article-authors-title {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 6px;
-	margin: 0 0 14px;
-	padding: 0;
-	border: 0;
-	font-size: 14px;
-	font-weight: 600;
-	line-height: 20px;
-	color: var(--vp-c-text-1);
-}
-
-.article-authors-title svg {
-	width: 14px;
-	height: 14px;
-	color: var(--vp-c-brand-1);
-}
-
-.article-authors-list {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
-	gap: 10px 16px;
-	margin: 0;
-	padding: 0;
-	list-style: none;
+	gap: 8px;
+	margin-top: 24px;
 }
 
 .article-author-item {
 	display: flex;
-	align-items: center;
-	gap: 8px;
 	min-width: 0;
+}
+
+.article-author-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px 3px 4px;
+	border: 1px solid var(--vp-c-divider);
+	border-radius: 999px;
+	background: var(--vp-c-bg-soft);
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 20px;
+	text-decoration: none;
+	color: var(--vp-c-text-1);
+	transition: border-color ease-in-out, color ease-in-out;
+	transition-duration: 200ms;
+}
+
+a.article-author-pill:hover {
+	border-color: color-mix(in srgb, var(--vp-c-brand-1) 45%, var(--vp-c-divider));
+	color: var(--vp-c-brand-1);
 }
 
 .article-author-avatar {
 	flex: none;
-	width: 32px;
-	height: 32px;
+	width: 24px;
+	height: 24px;
 	border-radius: 50%;
 	background: var(--vp-c-bg-alt);
 	object-fit: cover;
@@ -309,40 +302,22 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 600;
 	color: var(--vp-c-text-1);
 }
 
-.article-author-body {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	line-height: 1.4;
-}
-
-.article-author-name,
-.article-author-email {
+.article-author-name {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
 
-.article-author-name {
-	font-size: 13px;
-	font-weight: 500;
-	text-decoration: none;
-	color: var(--vp-c-text-1);
-}
-
-a.article-author-name:hover {
-	text-decoration: underline;
-	color: var(--vp-c-brand-1);
-}
-
-.article-author-email {
-	font-size: 11px;
-	color: var(--vp-c-text-3);
+/* 页脚的「最后更新于」：VitePress 2 alpha 里是否渲染只看 page.lastUpdated 有没有值，
+   而这个值同时是 sitemap lastmod 的数据源，不能删；顶层 lastUpdated: false 也拦不住它，
+   所以在这里隐藏渲染节点。编辑链接（源代码）已在 config.mts 移除 */
+.VPDocFooter .last-updated {
+	display: none;
 }
 
 /* Keep heading decorations within article prose, away from cards and diagrams. */

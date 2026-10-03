@@ -1,15 +1,18 @@
-/** 文章作者：只来自 frontmatter 的 `author` 声明，按声明顺序展示。 */
+/**
+ * 文章作者：显示名来自 frontmatter 的 `author`，其余信息按名字到 members.ts 查询，
+ * 在构建期（config.transformPageData）合并成这里的完整字段，按声明顺序展示。
+ */
 export interface Author {
 	/** 显示名 */
 	name: string
-	/** 邮箱，仅用于展示 */
-	email?: string
-	/** 主页链接；frontmatter 不再提供，目前只有组织兜底账号使用 */
-	url?: string
-	/** 头像地址；没有显式填写时就是本地生成的首字图 */
-	avatar?: string
-	/** 显式头像加载失败时替换使用的本地首字图 */
-	fallback?: string
+	/** 点击作者胶囊时打开的链接：显式 link > GitHub 个人页；都没有时胶囊不可点击 */
+	link?: string
+	/** 悬停作者胶囊时展示的联系方式标签：显式 contact > GitHub 用户名 > 邮箱；全都没有时不弹 */
+	contact?: string
+	/** 头像地址：显式 avatar 链接 > GitHub 头像 > 本地首字图，构建期已按优先级解析好 */
+	avatar: string
+	/** 本地首字图：头像加载失败时替换使用 */
+	fallback: string
 }
 
 export interface Article {

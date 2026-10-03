@@ -1,30 +1,26 @@
 <script setup lang="ts">
 import type { Author } from '../../types.ts'
-import userIcon from '@iconify-icons/ri/user-line'
-import { Icon } from '@iconify/vue'
 import { useData } from 'vitepress'
 import { computed } from 'vue'
-import AuthorAvatar from './AuthorAvatar.vue'
+import { Tippy } from 'vue-tippy'
+import ArticleAuthorPill from './ArticleAuthorPill.vue'
+import 'tippy.js/dist/tippy.css'
 
 const { frontmatter } = useData()
-/** 由 config.transformPageData 写入：frontmatter 声明的作者列表。 */
+/** 由 config.transformPageData 写入：frontmatter 声明的作者，成员信息已在构建期按名字合并。 */
 const authors = computed<Author[]>(() => Array.isArray(frontmatter.value.authors) ? frontmatter.value.authors as Author[] : [])
+
+const appendTo = () => document.body
 </script>
 
 <template>
-<section v-if="authors.length" class="article-authors" aria-labelledby="article-authors-title">
-	<h2 id="article-authors-title" class="article-authors-title">
-		<Icon :icon="userIcon" aria-hidden="true" />本文作者
-	</h2>
-	<ul class="article-authors-list">
-		<li v-for="(author, index) in authors" :key="`${author.name}-${author.email || index}`" class="article-author-item">
-			<AuthorAvatar :name="author.name" :avatar="author.avatar" :fallback="author.fallback" />
-			<span class="article-author-body">
-				<a v-if="author.url" class="article-author-name" :href="author.url" target="_blank" rel="noopener noreferrer">{{ author.name }}</a>
-				<span v-else class="article-author-name">{{ author.name }}</span>
-				<span v-if="author.email" class="article-author-email">{{ author.email }}</span>
-			</span>
-		</li>
-	</ul>
-</section>
+<ul v-if="authors.length" class="article-authors" aria-label="本文作者">
+	<li v-for="(author, index) in authors" :key="`${author.name}-${author.link || index}`" class="article-author-item">
+		<!-- 悬停展示 contact 联系方式标签（tippy，主题 wiki）；没填 contact 就只是胶囊本身 -->
+		<Tippy v-if="author.contact" :content="author.contact" theme="wiki" :append-to="appendTo" :max-width="320" placement="top">
+			<ArticleAuthorPill :author="author" />
+		</Tippy>
+		<ArticleAuthorPill v-else :author="author" />
+	</li>
+</ul>
 </template>
