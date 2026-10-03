@@ -1,12 +1,34 @@
 import type { MarkdownRenderer } from 'vitepress'
 import { fileURLToPath } from 'node:url'
-import { GitChangelog } from '@nolebase/vitepress-plugin-git-changelog/vite'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { collectAuthors } from './authors.ts'
 import { cardlist } from './cardlist.ts'
 import { buildTree, outputPath, scanArticles } from './catalog.ts'
 import { repoUrl, siteUrl } from './site.ts'
+
+/**
+ * markmap 插件会往 VitePress 客户端入口（client/app/index）静态注入
+ * `import markmap from '@vitepress-plugin/markmap/markmap'`，把 markmap-lib/d3/KaTeX
+ * 全量同步打进每个页面都要下载的主包。这里在其后把注入的 import 删掉，
+ * 全局组件改由 theme/index.ts 的 defineAsyncComponent 按需注册（仅脑图页下载）。
+ */
+function stripMarkmapInjection() {
+	const injectedImport = `import markmap from '@vitepress-plugin/markmap/markmap';`
+	const injectedStyle = `import '@vitepress-plugin/markmap/style.css';`
+	return {
+		name: 'wiki-strip-markmap-injection',
+		enforce: 'post',
+		transform(code: string, id: string) {
+			if (!id.includes('/client/app/index') || !code.includes(injectedImport))
+				return null
+			return {
+				code: code.replace(`${injectedImport}\n`, '').replace(`${injectedStyle}\n`, ''),
+				map: null,
+			}
+		},
+	}
+}
 
 const articles = scanArticles()
 const base = ''
@@ -92,18 +114,19 @@ export default defineConfig({
 		base,
 		plugins: [
 			markmapPlugin({ containerHeight: 500 }),
-			// 文件历史：构建期收集每篇 Markdown 的 Git 提交记录，供页面底部的 NolebaseGitChangelog 组件展示
-			GitChangelog({
-				repoURL: repoUrl,
-				include: ['**/*.md', '!node_modules'],
-			}),
+			stripMarkmapInjection(),
 		],
+		build: {
+			// 剩余超 500KB 的 chunk 都已核实无害：chunks/metadata 是站点数据
+			// （侧栏树按文章序列化 149 份，gzip 后仅 ~21KB），chunks/markmap.es
+			// 是懒加载的脑图依赖（当前没有页面用到，不会被下载）。
+			chunkSizeWarningLimit: 1400,
+		},
 		resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
 		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
 		ssr: {
 			noExternal: [
 				'@nolebase/vitepress-plugin-enhanced-readabilities',
-				'@nolebase/vitepress-plugin-git-changelog',
 			],
 		},
 	},

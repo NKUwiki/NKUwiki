@@ -15,7 +15,6 @@ import WikiHome from './components/WikiHome.vue'
 import WikiLayout from './components/WikiLayout.vue'
 import { highlightHashTarget, installHeadingHighlight } from './headingHighlight'
 import { syncSidebarCollapsed } from './sidebar'
-import '@nolebase/vitepress-plugin-git-changelog/client/style.css'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
 

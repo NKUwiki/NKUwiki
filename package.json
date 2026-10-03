@@ -24,7 +24,6 @@
     "@iconify-icons/ri": "^2.0.0",
     "@iconify/vue": "^5.0.1",
     "@nolebase/vitepress-plugin-enhanced-readabilities": "^2.18.2",
-    "@nolebase/vitepress-plugin-git-changelog": "^2.18.2",
     "minisearch": "^7.2.0",
     "modern-screenshot": "^4.7.0",
     "tippy.js": "^6.3.7",
