@@ -91,7 +91,7 @@ export default defineConfig({
 			{ text: '计算机知识', link: '/categories/?category=计算机知识' },
 			{ text: '全部分类', link: '/categories/' },
 			{ text: '校园地图', link: '/map/' },
-			{ text: '参与共建', link: '/pages/BasicContribution/', activeMatch: categoryMatch('贡献与其他') },
+			{ text: '参与共建', link: '/categories/?category=贡献与其他', activeMatch: categoryMatch('贡献与其他') },
 		],
 		sidebar,
 		// 站内搜索由自建组件承担（theme/components/WikiSearch.vue + search.ts 构建期索引）：
