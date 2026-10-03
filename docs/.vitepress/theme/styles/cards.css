@@ -33,18 +33,6 @@
 	margin-bottom: 28px;
 }
 
-.wide-footer {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-between;
-	gap: 12px;
-	margin-top: 40px;
-	padding-top: 20px;
-	border-top: 1px solid var(--vp-c-divider);
-	font-size: 13px;
-	color: var(--vp-c-text-2);
-}
-
 /* xupt-wiki's BlurCard proportions: centered portrait, soft surface, quiet tags. */
 .campus-card-grid,
 .friend-list {

@@ -29,6 +29,8 @@ function formatDate(raw: unknown) {
 
 const date = computed(() => formatDate(fm.value.date))
 const lastUpdated = computed(() => formatDate(fm.value.lastUpdated))
+// 表格卡片页（群汇总、友情链接这类 layout: wide 页面）写 hideStats: true 隐藏字数与阅读时间，日期保留
+const hideStats = computed(() => fm.value.hideStats === true)
 // 标题锚点：标题改由本组件渲染，模仿 markdown-it 生成的 id（小写、空格转连字符）
 const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[/?#&]/g, ''))
 </script>
@@ -56,15 +58,15 @@ const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().repl
 		<span v-if="lastUpdated" class="article-info-item">
 			<Icon :icon="refreshIcon" aria-hidden="true" />最后更新：{{ lastUpdated }}
 		</span>
-		<span v-if="wordCount" class="article-info-item">
+		<span v-if="wordCount && !hideStats" class="article-info-item">
 			<Icon :icon="penIcon" aria-hidden="true" />字数：{{ wordCount }}
 		</span>
-		<span v-if="readingMinutes" class="article-info-item">
+		<span v-if="readingMinutes && !hideStats" class="article-info-item">
 			<Icon :icon="bookIcon" aria-hidden="true" />阅读时间：{{ readingMinutes }} 分钟
 		</span>
 	</div>
 	<p v-if="fm.empty" class="empty-state">
-		这篇条目正在等待补充，欢迎通过页末源代码链接参与共建。
+		这篇条目正在等待补充，欢迎<a :href="withBase('/pages/BasicContribution/')">参与共建</a>。
 	</p>
 </div>
 </template>
