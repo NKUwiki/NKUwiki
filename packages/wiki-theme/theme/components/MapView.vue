@@ -1,9 +1,10 @@
 <script setup>
 /**
  * 校园地图（NKU Maps）：组件与样式完全取自 QUT-WiKi 的 MapView（青岛理工大学 Wiki），
- * 相对上游的适配：高德 Key 换为 CQUMAPS 内置的一组；导航外链来源参数改为 NKUwiki；
- * 校区轮廓数据的键换为南开校区；移除步行路径规划（AMap.Walking，站点用不到，
- * 且插件会额外消耗高德路径规划服务配额），仅保留定位标记（AMap.Geolocation）。
+ * 相对上游的适配：导航外链来源参数改为 NKUwiki；校区轮廓数据的键换为南开校区；
+ * 移除步行路径规划（AMap.Walking，站点用不到，且插件会额外消耗路径规划服务配额）；
+ * 定位走浏览器原生 Geolocation，WGS84 → GCJ02 用本地公式转换（不再调高德
+ * 坐标转换接口 AMap.convertFrom，也不加载实际未使用的 AMap.Geolocation 插件）。
  *
  * 点位与密钥数据不随主题包分发：由站点侧通过 data prop 注入
  * （NKUwiki 的数据在 docs/.vitepress/data/map-data.js），
@@ -170,7 +171,7 @@ function loadAMap() {
 	})
 }
 
-/* ================= 坐标转换（仅外链导航用） ================= */
+/* ================= 坐标转换（本地计算：外链导航 + 浏览器定位上图） ================= */
 const X_PI = (Math.PI * 3000) / 180
 const AXIS = 6378245
 const ECCENTRICITY = 0.006693421622965943
@@ -208,6 +209,18 @@ function gcj02ToWgs84([lng, lat]) {
 	return [lng * 2 - (lng + aLng), lat * 2 - (lat + aLat)]
 }
 
+/** WGS84 → GCJ02：gcj02ToWgs84 的正向变换（浏览器定位上图用，本地公式转换省去高德坐标转换接口配额）。 */
+function wgs84ToGcj02([lng, lat]) {
+	const dLat = transformLat(lng - 105, lat - 35)
+	const dLng = transformLng(lng - 105, lat - 35)
+	const rad = (lat / 180) * Math.PI
+	const magic = 1 - ECCENTRICITY * Math.sin(rad) ** 2
+	const sqrtMagic = Math.sqrt(magic)
+	const aLat = (dLat * 180) / (((AXIS * (1 - ECCENTRICITY)) / (magic * sqrtMagic)) * Math.PI)
+	const aLng = (dLng * 180) / ((AXIS / sqrtMagic) * Math.cos(rad) * Math.PI)
+	return [lng + aLng, lat + aLat]
+}
+
 function escapeHtml(str) {
 	if (str == null)
 		return ''
@@ -239,13 +252,6 @@ function navigationLinksFor(b) {
 		{ id: 'tencent', label: '腾讯', href: `https://apis.map.qq.com/uri/v1/marker?marker=coord:${lat},${lng};title:${name};addr:${name}&referer=NKUwiki` },
 		{ id: 'apple', label: 'Apple', href: `https://maps.apple.com/?ll=${wgsLat},${wgsLng}&q=${name}` },
 	]
-}
-
-function loadAMapPlugins(names) {
-	return new Promise((resolve, reject) => {
-		AMap.plugin(names, () => resolve())
-		setTimeout(() => reject(new Error('高德地图定位插件加载超时')), 10000)
-	})
 }
 
 function updateLocation(position) {
@@ -286,17 +292,15 @@ function syncDetailPosition() {
 }
 
 function onBrowserLocation(position) {
-	const [lng, lat] = [position.coords.longitude, position.coords.latitude]
-	// 浏览器返回 WGS84，高德地图底图使用 GCJ02。
-	AMap.convertFrom([lng, lat], 'gps', (status, result) => {
-		if (destroyFlag || status !== 'complete' || !result?.locations?.[0])
-			return
-		const wasReady = locationReady.value
-		locationError.value = ''
-		updateLocation(result.locations[0])
-		if (!wasReady)
-			map.setCenter(result.locations[0])
-	})
+	if (destroyFlag)
+		return
+	// 浏览器返回 WGS84，高德地图底图使用 GCJ02；本地公式转换，不调高德坐标转换接口。
+	const gcj = wgs84ToGcj02([position.coords.longitude, position.coords.latitude])
+	const wasReady = locationReady.value
+	locationError.value = ''
+	updateLocation(gcj)
+	if (!wasReady)
+		map.setCenter(gcj)
 }
 
 function onBrowserLocationError() {
@@ -652,7 +656,6 @@ function startThemeObserver() {
 async function bootstrap() {
 	try {
 		AMap = await loadAMap()
-		await loadAMapPlugins(['AMap.Geolocation'])
 		await nextTick()
 		initMap()
 		renderMarkers()
