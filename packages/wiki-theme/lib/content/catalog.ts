@@ -1,6 +1,7 @@
 import type { Article, Catalog, DirectoryItem, TaxonomyCount } from '../types.ts'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, relative, resolve, sep } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
 import { categoryPaths, collectCategories } from './category.ts'

@@ -16,8 +16,8 @@ export default antfu({
 		'**/dist/**',
 		'**/cache/**',
 		'.npm-cache/**',
-		'docs/.vitepress/theme/components/MapView.vue',
-		'docs/.vitepress/theme/components/map-data.js',
+		'packages/wiki-theme/theme/components/MapView.vue',
+		'packages/wiki-theme/theme/components/map-data.js',
 	],
 	rules: {
 		'jsonc/indent': ['error', 2],
