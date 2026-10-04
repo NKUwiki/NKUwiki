@@ -459,7 +459,10 @@ a.article-author-pill:hover {
 	height: 1em;
 	margin-inline-end: 0.35em;
 	background: var(--vp-c-brand-1);
-	mask: url("../../../public/img/logo.svg") center / contain no-repeat;
+	/* 根绝对路径引 public 资源：构建期由 Vite 解析并自动加 base 前缀（相对路径在
+	   拆包后指向包外不存在的位置，且运行时也会 404，见 git 历史）；与 SiteIcon
+	   组件的 withBase('/img/logo.svg') 同为对站点 logo 路径的既有耦合 */
+	mask: url("/img/logo.svg") center / contain no-repeat;
 	vertical-align: -0.1em;
 }
 
