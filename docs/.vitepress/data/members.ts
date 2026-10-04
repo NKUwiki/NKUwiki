@@ -10,10 +10,13 @@
 import type { Member } from '@nkuwiki/theme/lib/types.ts'
 
 export const members: Record<string, Member> = {
-	// 组织账号：文章没写 author 时的兜底作者（fallbackAuthor 引用此名字）
 	Cure: { github: 'Cure2004', contact: '1352862815@qq.com' },
 	hht421: { github: 'hht421' },
 }
 
-/** frontmatter 未声明 author 时的兜底组织账号名，必须能在上面 members 里查到 */
+/**
+ * frontmatter 未声明 author 时的兜底显示名。有意不指向上面任何条目：
+ * 未署名文章只显示这个裸名字（无 GitHub、无头像、不可点击），
+ * 鼓励作者在 frontmatter 里署名。
+ */
 export const fallbackAuthor = 'NKUwiki-Group'
