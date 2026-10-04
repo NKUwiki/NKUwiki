@@ -8,3 +8,5 @@ docs/.vitepress/.temp/
 *.log
 .zcode/
 docs/.vitepress/history.json
+gen-history.cache.json
+.workbuddy/

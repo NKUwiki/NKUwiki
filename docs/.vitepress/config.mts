@@ -1,4 +1,5 @@
 import type { MarkdownRenderer } from 'vitepress'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
@@ -6,6 +7,18 @@ import { cardlist } from './lib/content/cardlist.ts'
 import { buildTree, outputPath, scanArticles } from './lib/content/catalog.ts'
 import { collectAuthors } from './lib/data/authors.ts'
 import { repoUrl, siteUrl } from './lib/data/site.ts'
+
+/** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
+interface CommitEntry {
+	hash: string
+	message: string
+	author: string
+	github: string | null
+	date: string
+}
+const gitHistory: Record<string, CommitEntry[]> = JSON.parse(
+	readFileSync(fileURLToPath(new URL('./history.json', import.meta.url)), 'utf8'),
+)
 
 /**
  * markmap 插件会往 VitePress 客户端入口（client/app/index）静态注入
@@ -65,13 +78,10 @@ export default defineConfig({
 	head: [
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-light.svg`, 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-dark.svg`, 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
+		['link', { rel: 'manifest', href: `${base}manifest.webmanifest` }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
 		['meta', { name: 'author', content: 'NKUwiki-Group' }],
 		['meta', { property: 'og:site_name', content: 'NKUwiki' }],
-		['meta', { property: 'og:type', content: 'website' }],
-		['meta', { property: 'og:title', content: 'NKUwiki · 南开大学校园知识库' }],
-		['meta', { property: 'og:description', content: description }],
-		['meta', { property: 'og:url', content: siteUrl }],
 		['script', { type: 'application/ld+json' }, JSON.stringify({
 			'@context': 'https://schema.org',
 			'@type': 'WebSite',
@@ -123,7 +133,6 @@ export default defineConfig({
 			// 是懒加载的脑图依赖（当前没有页面用到，不会被下载）。
 			chunkSizeWarningLimit: 1400,
 		},
-		resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
 		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
 		ssr: {
 			noExternal: [
@@ -161,14 +170,61 @@ export default defineConfig({
 		math: true,
 		container: { tipLabel: '提示', warningLabel: '注意', dangerLabel: '警告', infoLabel: '信息', detailsLabel: '详细信息' },
 	},
+	// 按页注入 SEO 元数据：canonical、og/twitter 卡片、文章页 Article 结构化数据。
+	// 站点级 head 只保留 og:site_name 与 WebSite JSON-LD，页级数据在这里生成，
+	// 否则分享出去的都是首页标题与首页地址。
 	transformPageData(page) {
 		const article = articles.find(item => item.source === page.relativePath || outputPath(item.url) === page.relativePath)
+		// 页面规范地址：文章用 permalink，直通页（map.md、categories/index.md 等）按
+		// 输出路径去掉 .md / index.md；404 页不参与（单独 noindex）
+		const is404 = page.relativePath === '404.md'
+		const pagePath = article ? article.url : page.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
+		const pageUrl = `${siteUrl.replace(/\/$/, '')}${pagePath}`
+
+		if (is404) {
+			page.frontmatter.head ??= []
+			page.frontmatter.head.push(['meta', { name: 'robots', content: 'noindex' }])
+			return
+		}
+
+		const pageTitle = article?.title ?? (page.frontmatter.title as string | undefined) ?? 'NKUwiki · 南开大学校园知识库'
+		const pageDescription = (page.frontmatter.description as string | undefined) ?? description
+		const head: [string, Record<string, string>, string?][] = [
+			['link', { rel: 'canonical', href: pageUrl }],
+			['meta', { property: 'og:title', content: pageTitle }],
+			['meta', { property: 'og:description', content: pageDescription }],
+			['meta', { property: 'og:url', content: pageUrl }],
+			['meta', { property: 'og:image', content: `${siteUrl.replace(/\/$/, '')}/og-default.png` }],
+			['meta', { property: 'og:type', content: article ? 'article' : 'website' }],
+			['meta', { name: 'twitter:card', content: 'summary' }],
+		]
+
 		if (article) {
 			page.title = article.title
 			page.lastUpdated = article.lastUpdatedTime || undefined
-			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, categories: article.categories, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes, sourcePath: article.source })
+			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes })
 			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发
 			page.frontmatter.authors = collectAuthors(page.frontmatter.author)
+			const articleAuthor = (page.frontmatter.authors as Array<{ name?: string }> | undefined)?.[0]?.name
+			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
+				'@context': 'https://schema.org',
+				'@type': 'Article',
+				'headline': article.title,
+				'description': pageDescription,
+				'datePublished': article.date || undefined,
+				'dateModified': article.lastUpdated || undefined,
+				'author': { '@type': 'Organization', 'name': articleAuthor || 'NKUwiki-Group' },
+				'mainEntityOfPage': { '@type': 'WebPage', '@id': pageUrl },
+				'inLanguage': 'zh-CN',
+			})])
 		}
+
+		page.frontmatter.head ??= []
+		page.frontmatter.head.push(...head)
+
+		// Git 提交历史按页注入：history.json 全量约 138KB，静态打进主题入口包的话
+		// 每个页面都要下载全站提交，按页注入后单页只有自己的几条。
+		// 文章页的键是源路径（sourcePath 同源），直通页（map.md 等）用 relativePath。
+		page.frontmatter.pageHistory = gitHistory[article?.source || page.relativePath] ?? []
 	},
 })

@@ -1,0 +1,24 @@
+{
+	"name": "NKUwiki · 南开大学校园知识库",
+	"short_name": "NKUwiki",
+	"description": "南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。",
+	"lang": "zh-CN",
+	"start_url": "/",
+	"display": "browser",
+	"background_color": "#ffffff",
+	"theme_color": "#572966",
+	"icons": [
+		{
+			"src": "/favicon-light.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		},
+		{
+			"src": "/favicon-dark.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		}
+	]
+}
