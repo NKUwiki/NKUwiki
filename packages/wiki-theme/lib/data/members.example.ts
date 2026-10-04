@@ -24,8 +24,8 @@ import type { Member } from '../types.ts'
 
 export const members: Record<string, Member> = {
 	// 组织账号：文章没写 author 时的兜底作者
-	'Org-Account': { github: 'your-org' },
-	'示例成员': { github: 'someone', contact: 'QQ：123456789' },
+	Org-Account: { github: 'your-org' },
+	示例成员: { github: 'someone', contact: 'QQ：123456789' },
 }
 
 /** frontmatter 未声明 author 时的兜底组织账号名，必须能在上面 members 里查到 */
