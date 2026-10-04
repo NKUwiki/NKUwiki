@@ -1,12 +1,34 @@
 import type { Article, Catalog, DirectoryItem, TaxonomyCount } from '../types.ts'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
 import { categoryPaths, collectCategories } from './category.ts'
 import { minOrder, NO_ORDER, orderOf } from './order.ts'
 
-export const docsRoot = fileURLToPath(new URL('../../../', import.meta.url))
+/**
+ * 定位站点 docs/ 根目录（内容不属于主题包，包里的构建期工具需要反查它）：
+ * 1. 环境变量 WIKI_DOCS_ROOT 显式指定（CI 或包被安装到 monorepo 之外时用）；
+ * 2. 从包位置向上找含 docs/.vitepress/config.mts 的仓库根（标准 monorepo 布局）；
+ * 3. 兜底按「构建从仓库根运行」取 cwd/docs。
+ * 末尾保留路径分隔符，与历史上 fileURLToPath(new URL('../../../', import.meta.url)) 的形态一致。
+ */
+function locateDocsRoot(): string {
+	if (process.env.WIKI_DOCS_ROOT)
+		return resolve(process.env.WIKI_DOCS_ROOT) + sep
+	let dir = fileURLToPath(new URL('../../', import.meta.url))
+	for (let i = 0; i < 6; i++) {
+		if (existsSync(join(dir, 'docs', '.vitepress', 'config.mts')))
+			return join(dir, 'docs') + sep
+		const parent = dirname(dir)
+		if (parent === dir)
+			break
+		dir = parent
+	}
+	return join(process.cwd(), 'docs') + sep
+}
+
+export const docsRoot = locateDocsRoot()
 const label = (name: string) => name.replace(/^\d+\./, '').replace(/\.md$/, '')
 function strings(value: unknown): string[] {
 	const values: unknown[] = Array.isArray(value) ? value : [value]

@@ -3,31 +3,31 @@
 
 import { withBase } from 'vitepress'
 
-import { repoUrl, siteUrl } from '../../lib/data/site'
+import { repoUrl, siteUrl } from '@nkuwiki/theme/lib/data/site.ts'
 
 // activity.data.ts 读取 docs/activity/ 下的 Markdown 活动公告，
 // 首页“活动”区只从这里取数，平时维护活动只需增删 Markdown 文件。
-import { data as activities } from '../activity.data'
+import { data as activities } from '../../data/activity.data.ts'
 
 // catalog.data.ts 是 VitePress 的 data loader（.data.ts）：
 // 在开发与构建时会扫描 docs/ 下各编号目录中的 Markdown 文章，
 // 汇总出 data.articles（文章列表）、data.tree（目录树）、
 // data.categories / data.tags（分类、标签及对应文章数）等结构化数据，
 // 首页的“条目总数”“最近更新”“热门标签”都直接或间接来自它。
-import { data } from '../catalog.data'
+import { data } from '../../data/catalog.data.ts'
 
 // tagChips() 把标签数据（字符串或 { name, count } 对象）转换为
 // WikiChips 组件需要的 ChipItem 数组，并自动生成标签筛选页的链接。
-import { tagChips } from '../composables/chips'
+import { tagChips } from '@nkuwiki/theme/theme/composables/chips.ts'
 
 // 下面是首页用到的内部展示组件：
 // ArticleByline —— 文章的日期 / 作者信息行；
 // QrCode —— 生成二维码；SiteIcon —— 站点徽标；
 // WikiChips —— 渲染一组可点击的标签胶囊。
-import ArticleByline from './ArticleByline.vue'
-import QrCode from './QrCode.vue'
-import SiteIcon from './SiteIcon.vue'
-import WikiChips from './WikiChips.vue'
+import ArticleByline from '@nkuwiki/theme/theme/components/ArticleByline.vue'
+import QrCode from '@nkuwiki/theme/theme/components/QrCode.vue'
+import SiteIcon from '@nkuwiki/theme/theme/components/SiteIcon.vue'
+import WikiChips from '@nkuwiki/theme/theme/components/WikiChips.vue'
 
 // ================= 首页静态内容配置 =================
 

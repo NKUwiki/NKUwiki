@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanEmail, cleanLink, collectAuthors, frontmatterAuthors, initialsAvatar } from '../docs/.vitepress/lib/data/authors.ts'
+import { cleanEmail, cleanLink, collectAuthors, frontmatterAuthors, initialsAvatar } from '../packages/wiki-theme/lib/data/authors.ts'
 
 test('frontmatter author 支持纯名字与对象写法，可混用', () => {
 	const authors = frontmatterAuthors([

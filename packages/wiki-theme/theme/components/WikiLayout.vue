@@ -5,15 +5,15 @@ import {
 } from '@nolebase/vitepress-plugin-enhanced-readabilities/client'
 import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
-import { computed, defineAsyncComponent, onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import GitHistory from './GitHistory.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
 import '@nolebase/vitepress-plugin-enhanced-readabilities/client/style.css'
 
-// 搜索组件按需加载：MiniSearch 与弹窗代码不进首屏主包
-const WikiSearch = defineAsyncComponent(() => import('./WikiSearch.vue'))
+// <WikiSearch/> 由站点侧薄壳注册为全局异步组件（searchDocs 依赖站点侧 data loader），
+// 这里不直接 import，避免主题包反向依赖站点数据层
 
 const { frontmatter, isDark } = useData()
 const route = useRoute()

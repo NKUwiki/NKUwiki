@@ -4,7 +4,7 @@ import process from 'node:process'
 import test from 'node:test'
 import matter from 'gray-matter'
 import { createMarkdownRenderer } from 'vitepress'
-import { cardlist } from '../docs/.vitepress/lib/content/cardlist.ts'
+import { cardlist } from '../packages/wiki-theme/lib/content/cardlist.ts'
 
 test('card lists preserve rich cells, omit empty fields, and leave ordinary tables intact', async () => {
 	const md = await createMarkdownRenderer(process.cwd(), { config: cardlist })

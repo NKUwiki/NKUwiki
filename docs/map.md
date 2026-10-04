@@ -11,7 +11,7 @@ title: 校园地图
 ---
 
 <script setup>
-import MapView from './.vitepress/theme/components/MapView.vue'
+import MapView from '@nkuwiki/theme/theme/components/MapView.vue'
 </script>
 
 <MapView />

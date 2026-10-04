@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
 import test from 'node:test'
-import { scanActivities } from '../docs/.vitepress/lib/data/activity.ts'
+import { scanActivities } from '../packages/wiki-theme/lib/data/activity.ts'
 
 test('activity loader sorts by date and ignores README/underscore files', () => {
 	const root = mkdtempSync(join(tmpdir(), 'ncepu-activity-'))

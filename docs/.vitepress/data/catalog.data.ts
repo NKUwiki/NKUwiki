@@ -1,5 +1,5 @@
-import type { Catalog } from '../lib/types.ts'
-import { docsRoot, loadCatalog } from '../lib/content/catalog.ts'
+import type { Catalog } from '@nkuwiki/theme/lib/types.ts'
+import { docsRoot, loadCatalog } from '@nkuwiki/theme/lib/content/catalog.ts'
 
 export declare const data: Catalog
 

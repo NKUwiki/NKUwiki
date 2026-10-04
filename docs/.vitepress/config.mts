@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
-import { cardlist } from './lib/content/cardlist.ts'
-import { buildTree, outputPath, scanArticles } from './lib/content/catalog.ts'
-import { collectAuthors } from './lib/data/authors.ts'
-import { repoUrl, siteUrl } from './lib/data/site.ts'
+import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
+import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
+import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
+import { repoUrl, siteUrl } from '@nkuwiki/theme/lib/data/site.ts'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {
@@ -133,10 +133,12 @@ export default defineConfig({
 			// 是懒加载的脑图依赖（当前没有页面用到，不会被下载）。
 			chunkSizeWarningLimit: 1400,
 		},
-		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包
+		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包；
+		// @nkuwiki/theme 是 workspace 源码包（.ts/.vue），同样不能被 SSR 外部化
 		ssr: {
 			noExternal: [
 				'@nolebase/vitepress-plugin-enhanced-readabilities',
+				'@nkuwiki/theme',
 			],
 		},
 	},
