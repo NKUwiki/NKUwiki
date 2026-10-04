@@ -8,8 +8,9 @@ export default antfu({
 	typescript: true,
 	test: false,
 	// Historical articles contain teaching examples, not executable project code.
-	// MapView.vue / map-data.js 自 QUT-WiKi 与 CQUMAPS-1.0 移植（保持上游原样便于同步），
-	// 代码风格遵循各自上游，不参与本项目的 lint。
+	// MapView.vue 自 QUT-WiKi 移植（保持上游原样便于同步），
+	// map-data.js 为站点地图数据（自上游转换生成，保持书写风格），
+	// 两者均不参与本项目的 lint。
 	ignores: [
 		'docs/public/**',
 		'docs/**/*.md',
@@ -17,7 +18,7 @@ export default antfu({
 		'**/cache/**',
 		'.npm-cache/**',
 		'packages/wiki-theme/theme/components/MapView.vue',
-		'packages/wiki-theme/theme/components/map-data.js',
+		'docs/.vitepress/data/map-data.js',
 	],
 	rules: {
 		'jsonc/indent': ['error', 2],

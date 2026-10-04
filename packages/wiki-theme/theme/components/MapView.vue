@@ -2,19 +2,29 @@
 /**
  * 校园地图（NKU Maps）：组件与样式完全取自 QUT-WiKi 的 MapView（青岛理工大学 Wiki），
  * 仅做三处适配：高德 Key 换为 CQUMAPS 内置的一组；导航外链来源参数改为 NKUwiki；
- * 校区轮廓数据的键换为南开校区。点位数据来自 CQUMAPS-1.0，见同目录 map-data.js。
+ * 校区轮廓数据的键换为南开校区。
+ *
+ * 点位与密钥数据不随主题包分发：由站点侧通过 data prop 注入
+ * （NKUwiki 的数据在 docs/.vitepress/data/map-data.js），
+ * 字段格式与必备导出见同目录 map-data.example.js。
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import {
+
+const props = defineProps({
+	/** 地图数据对象，导出字段与 map-data.example.js 一致 */
+	data: { type: Object, required: true },
+})
+
+/* 与数据文件的导出同名解构：正文代码与「数据内联在包里」的旧版完全一致 */
+const {
 	BUILDINGS,
 	CAMPUS_CONFIG,
 	CATEGORY_CONFIG,
 	CATEGORY_ICON_PATHS,
 	FILTER_LIST,
-} from './map-data.js'
-
-/* 高德地图 Web 端 JS API key（lbs.amap.com 控制台申请，应用类型：Web端(JS API)） */
-const AMAP_KEY = 'fe37a7d989ade35c41747b9165b565be'
+	AMAP_KEY,
+	AMAP_SECURITY_JS_CODE,
+} = props.data
 
 const PIN_SIZE = 28
 const PIN_SCALE = { idle: 1, hover: 1.3, selected: 1.4 }
@@ -145,7 +155,7 @@ function loadAMap() {
 			return resolve(window.AMap)
 		/* 2021 年后申请的 key 需要安全密钥，必须在 SDK 脚本加载前设置 */
 		window._AMapSecurityConfig = {
-			securityJsCode: 'acc16e636d7724ddb9da843854da04e4',
+			securityJsCode: AMAP_SECURITY_JS_CODE,
 		}
 		window.__NKUMapReady = () => {
 			if (window.AMap)

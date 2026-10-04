@@ -954,3 +954,9 @@ export const BUILDINGS = [
     "desc": "复建的南开历史建筑秀山堂，与思源堂、木斋馆毗邻。"
   }
 ]
+
+/* ================= 高德密钥（lbs.amap.com 控制台申请，应用类型：Web端(JS API)） =================
+ * 与点位数据同住本文件：密钥属于站点资产，不随主题包分发。
+ * 泄露处理：到控制台重置 key 与安全密钥后同步替换这里。 */
+export const AMAP_KEY = 'fe37a7d989ade35c41747b9165b565be'
+export const AMAP_SECURITY_JS_CODE = 'acc16e636d7724ddb9da843854da04e4'

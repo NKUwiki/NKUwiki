@@ -12,9 +12,11 @@ title: 校园地图
 
 <script setup>
 import MapView from '@nkuwiki/theme/theme/components/MapView.vue'
+// 点位与密钥属于站点数据，不随主题包分发，从本仓库 data/ 注入
+import * as mapData from './.vitepress/data/map-data.js'
 </script>
 
-<MapView />
+<MapView :data="mapData" />
 
 <style>
 /* 地图页全屏：VitePress 空页布局（layout: page）下铺满视口（参考 QUT-WiKi 地图页做法）。
