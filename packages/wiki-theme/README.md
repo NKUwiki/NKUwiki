@@ -111,10 +111,10 @@ packages/wiki-theme/
 ```ts
 // 主题入口（薄壳 extends 用）
 import WikiTheme from '@nkuwiki/theme'
-// theme 子路径
-import SearchState from '@nkuwiki/theme/theme/composables/searchState.ts'
 // lib 子路径（构建期）
 import { buildTree } from '@nkuwiki/theme/lib/content/catalog.ts'
+// theme 子路径
+import SearchState from '@nkuwiki/theme/theme/composables/searchState.ts'
 ```
 
 消费方需注意两点：
