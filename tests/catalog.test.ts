@@ -171,7 +171,7 @@ test('a folder can pin its own position with an index.md order', () => {
 	}
 })
 
-test('lastUpdated is explicit and never falls back to creation dates or legacy updated', () => {
+test('lastUpdated prefers the explicit field, falls back to date, and ignores legacy updated', () => {
 	const root = mkdtempSync(join(tmpdir(), 'ncepu-dates-'))
 	try {
 		mkdirSync(join(root, '01.专题'))
@@ -181,8 +181,10 @@ test('lastUpdated is explicit and never falls back to creation dates or legacy u
 		assert.equal(article.date, '2025-08-31')
 		assert.equal(article.lastUpdated, '2026-09-14')
 		assert.equal(article.lastUpdatedTime, Date.parse('2026-09-14'))
-		assert.equal(missing.lastUpdated, '')
-		assert.equal(missing.lastUpdatedTime, 0)
+		// 没写 lastUpdated 时以 date 兜底；旧字段 updated 不识别，不得覆盖兜底值
+		assert.equal(missing.date, '2025-08-31')
+		assert.equal(missing.lastUpdated, '2025-08-31')
+		assert.equal(missing.lastUpdatedTime, Date.parse('2025-08-31'))
 	}
 	finally {
 		const target = relative(tmpdir(), root)

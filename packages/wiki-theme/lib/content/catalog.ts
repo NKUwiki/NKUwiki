@@ -151,7 +151,10 @@ export function scanArticles(root = docsRoot) {
 			continue
 		contentCache.set(source, content)
 		const wordCount = countWords(content)
-		const lastUpdated = parseDateField(fm.lastUpdated, source, 'lastUpdated')
+		const date = parseDateField(fm.date, source, 'date')
+		// lastUpdated 没写时以 date 兜底（页面「最后更新」不缺栏）；
+		// 旧字段 `updated` 一律不识别，防止历史残留悄悄生效
+		const lastUpdated = parseDateField(fm.lastUpdated, source, 'lastUpdated') || date
 		const folders = source.split('/').slice(0, -1).map(label)
 		const url = fm.permalink || `/${source.replace(/\.md$/, '')}`
 		if (!url.startsWith('/') || /[?#]|\.\./.test(url) || typeof url !== 'string')
@@ -165,7 +168,7 @@ export function scanArticles(root = docsRoot) {
 			// frontmatter 的 categories 可再用缩进补充层级；两者都按完整路径去重
 			categories: [...new Set([folders.join('/'), ...categoryPaths(fm.categories)].filter(Boolean))],
 			tags: strings(fm.tags),
-			date: parseDateField(fm.date, source, 'date'),
+			date,
 			lastUpdated,
 			lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
 			hasHeading: hasTitleHeading(content),

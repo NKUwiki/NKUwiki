@@ -28,7 +28,8 @@ function formatDate(raw: unknown) {
 }
 
 const date = computed(() => formatDate(fm.value.date))
-const lastUpdated = computed(() => formatDate(fm.value.lastUpdated))
+// frontmatter 没写 lastUpdated 时以创建日期兜底（与 catalog.ts 的扫描规则一致）
+const lastUpdated = computed(() => formatDate(fm.value.lastUpdated) || formatDate(fm.value.date))
 // 宽版页面（群汇总、友情链接这类 layout: wide 表格卡片页）以卡片为主体，
 // 不展示字数与阅读时间；创建与更新日期保留
 const hideStats = computed(() => fm.value.layout === 'wide')
