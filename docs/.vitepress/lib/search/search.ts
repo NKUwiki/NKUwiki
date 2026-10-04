@@ -2,10 +2,7 @@
 // 客户端经 search.data.ts 懒加载这份数据，再用 MiniSearch + searchCore 的分词建索引。
 import type { Article } from '../types.ts'
 import type { SearchDoc, SearchSection } from './searchCore.ts'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import matter from 'gray-matter'
-import { docsRoot, scanArticles } from '../content/catalog.ts'
+import { docsRoot, getArticleContent, scanArticles } from '../content/catalog.ts'
 
 /** 单篇正文截断上限：足够覆盖最长条目，防止个别超大页面撑爆索引体积。 */
 const MAX_TEXT_LENGTH = 20000
@@ -89,7 +86,6 @@ function toDoc(article: Article, content: string): SearchDoc {
 		folders: article.folders,
 		categoriesList: article.categories,
 		tagsList: article.tags,
-		lastUpdated: article.lastUpdated || article.date,
 	}
 }
 
@@ -97,5 +93,6 @@ function toDoc(article: Article, content: string): SearchDoc {
 export function buildSearchDocs(root = docsRoot): SearchDoc[] {
 	return scanArticles(root)
 		.filter(article => !article.empty)
-		.map(article => toDoc(article, matter(readFileSync(join(root, article.source), 'utf8')).content))
+		// 正文直接取 scanArticles 的解析缓存，避免二次读盘与 frontmatter 解析
+		.map(article => toDoc(article, getArticleContent(article.source) ?? ''))
 }

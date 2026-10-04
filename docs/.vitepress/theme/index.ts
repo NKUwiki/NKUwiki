@@ -2,16 +2,12 @@ import type { Theme } from 'vitepress'
 import type { Component } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import { defineAsyncComponent } from 'vue'
-import ArticleIndex from './components/ArticleIndex.vue'
 import ArticleMeta from './components/ArticleMeta.vue'
 import CopyContact from './components/CopyContact.vue'
 import DownloadPageImage from './components/DownloadPageImage.vue'
-import FriendLinks from './components/FriendLinks.vue'
 import GroupAvatar from './components/GroupAvatar.vue'
-import HoverMedia from './components/HoverMedia.vue'
 import QrCode from './components/QrCode.vue'
 import WidePage from './components/WidePage.vue'
-import WikiHome from './components/WikiHome.vue'
 import WikiLayout from './components/WikiLayout.vue'
 import { highlightHashTarget, installHeadingHighlight } from './composables/headingHighlight'
 import { syncSidebarCollapsed } from './composables/sidebar'
@@ -42,7 +38,11 @@ function syncNavActive() {
 			continue
 		const active = target.pathname === path && target.search === search
 		link.classList.toggle('active', active)
-		link.toggleAttribute('aria-current', active)
+		// aria-current="" 按 ARIA 规范等价于“非当前”，必须用显式 'true' 或整个移除
+		if (active)
+			link.setAttribute('aria-current', 'true')
+		else
+			link.removeAttribute('aria-current')
 	}
 }
 
@@ -59,14 +59,17 @@ export default {
 		}
 		// VitePress 2 no longer exposes the plugin's automatic registration marker.
 		app.component('markmap', defineAsyncComponent(async () => (await import('@vitepress-plugin/markmap/markmap')).default as unknown as Component))
-		app.component('WikiHome', WikiHome)
+		// 仅个别页面使用的重组件走异步注册：WikiHome（首页，拖 catalog/activity 数据）、
+		// ArticleIndex（三个专题页，拖 catalog 数据）、HoverMedia（卡片页，拖 tippy 运行时），
+		// 避免它们被打进每个页面都下载的主题入口包
+		app.component('WikiHome', defineAsyncComponent(() => import('./components/WikiHome.vue')))
 		app.component('wide', WidePage)
 		app.component('GroupAvatar', GroupAvatar)
-		app.component('HoverMedia', HoverMedia)
-		app.component('FriendLinks', FriendLinks)
+		app.component('HoverMedia', defineAsyncComponent(() => import('./components/HoverMedia.vue')))
+		app.component('FriendLinks', defineAsyncComponent(() => import('./components/FriendLinks.vue')))
 		app.component('CopyContact', CopyContact)
 		app.component('QrCode', QrCode)
-		app.component('ArticleIndex', ArticleIndex)
+		app.component('ArticleIndex', defineAsyncComponent(() => import('./components/ArticleIndex.vue')))
 		// 文章元信息（面包屑/作者/标签）在构建期随标题一起注入 Markdown 正文流（见 config.mts 的 article-title 规则）
 		app.component('ArticleMeta', ArticleMeta)
 		app.component('DownloadPageImage', DownloadPageImage)

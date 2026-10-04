@@ -74,7 +74,6 @@ export interface Activity {
 
 export interface Catalog {
 	articles: Article[]
-	tree: DirectoryItem[]
 	categories: CategoryCount[]
 	tags: TaxonomyCount[]
 }

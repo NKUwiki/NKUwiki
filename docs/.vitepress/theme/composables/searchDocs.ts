@@ -16,7 +16,7 @@ export function loadSearchDocs(): Promise<SearchDoc[]> {
 export function createIndex(docs: SearchDoc[]): MiniSearch<SearchDoc> {
 	const index = new MiniSearch<SearchDoc>({
 		fields: ['title', 'headings', 'tags', 'text'],
-		storeFields: ['title', 'text', 'sections', 'folders', 'categoriesList', 'tagsList', 'lastUpdated'],
+		storeFields: ['title', 'text', 'sections', 'folders', 'categoriesList', 'tagsList'],
 		// 索引侧追加分词变体（吉他↔吉它），查询侧保持原词，双方共用同一分词器
 		tokenize: tokenizeForIndex,
 		searchOptions: {
@@ -32,9 +32,18 @@ export function createIndex(docs: SearchDoc[]): MiniSearch<SearchDoc> {
 
 let indexPromise: Promise<MiniSearch<SearchDoc>> | undefined
 
-/** 全站共享的 MiniSearch 索引单例：首次调用才加载数据并建索引。 */
+/**
+ * 全站共享的 MiniSearch 索引单例：首次调用才加载数据并建索引。
+ *  加载/建索引失败时复位单例，允许下次调用重试，避免一次瞬时网络错误
+ *  把被拒绝的 promise 永久缓存住（之后整个会话搜索都起不来）。
+ */
 export function ensureSearchIndex(): Promise<MiniSearch<SearchDoc>> {
-	indexPromise ??= loadSearchDocs().then(docs => createIndex(docs))
+	indexPromise ??= loadSearchDocs()
+		.then(docs => createIndex(docs))
+		.catch((error) => {
+			indexPromise = undefined
+			throw error
+		})
 	return indexPromise
 }
 
@@ -51,7 +60,6 @@ export interface SearchResult {
 	folders?: string[]
 	categoriesList?: string[]
 	tagsList?: string[]
-	lastUpdated?: string
 }
 
 export interface SearchOutcome {

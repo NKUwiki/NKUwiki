@@ -164,7 +164,7 @@ onUnmounted(() => {
 	/>
 	<div class="index-controls">
 		<input v-model="query" type="search" aria-label="搜索本页文章的标题与正文" :placeholder="placeholder" @input="updateQuery(selected, true)">
-		<div class="layout-switch" aria-label="文章展示形式">
+		<div class="layout-switch" role="group" aria-label="文章展示形式">
 			<button :aria-pressed="view === 'cards'" aria-label="卡片视图" @click="view = 'cards'">
 				<Icon :icon="gridIcon" />
 			</button>
@@ -192,7 +192,9 @@ onUnmounted(() => {
 			</li>
 			<li v-for="article in list" :key="article.url">
 				<div class="index-item-content">
-					<a class="article-title" :href="withBase(article.url)" v-html="hits.get(article.url)?.titleHtml ?? article.title" />
+					<!-- 搜索命中时 v-html 渲染高亮（searchCore 已转义）；未命中走插值，避免标题里的 <、& 被当 HTML 解析 -->
+					<a v-if="hits.get(article.url)" class="article-title" :href="withBase(article.url)" v-html="hits.get(article.url)!.titleHtml" />
+					<a v-else class="article-title" :href="withBase(article.url)">{{ article.title }}</a>
 					<WikiChips :items="tagChips(article.tags)" class="tags" label="文章标签" />
 					<span v-if="hits.get(article.url)" class="index-item-excerpt">
 						<span v-if="hits.get(article.url)!.section" class="index-item-section">§ {{ hits.get(article.url)!.section }}</span>

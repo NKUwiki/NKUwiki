@@ -182,11 +182,6 @@
 	color: var(--vp-c-brand-1);
 }
 
-.card-join {
-	margin-top: 6px;
-	font-size: 12px;
-	color: var(--vp-c-text-2);
-}
 
 .card-join summary {
 	padding: 4px;
@@ -298,9 +293,6 @@
 	color: var(--vp-c-brand-1);
 }
 
-.friend-link-card .card-join {
-	margin: 0 0 1rem;
-}
 
 @media (max-width: 600px) {
 	.wiki-wide {

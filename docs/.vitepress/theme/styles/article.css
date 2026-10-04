@@ -252,7 +252,7 @@
 	height: 14px;
 }
 
-/* 页尾作者胶囊：头像 + 名称，不带标题与边框卡片；悬停显示联系方式（tippy，主题 wiki）。
+/* 页尾作者胶囊：头像 + 名称，不带标题与边框卡片；填了 contact 的悬停显示纯 CSS tooltip。
    作者在 frontmatter 只写名字，GitHub/头像/联系方式按名字到 members.ts 查询，构建期合并好随页面数据下发 */
 .article-authors {
 	display: flex;
@@ -274,6 +274,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
+	position: relative;
 	padding: 3px 10px 3px 4px;
 	border: 1px solid var(--vp-c-divider);
 	border-radius: 999px;
@@ -290,6 +291,32 @@
 a.article-author-pill:hover {
 	border-color: color-mix(in srgb, var(--vp-c-brand-1) 45%, var(--vp-c-divider));
 	color: var(--vp-c-brand-1);
+}
+
+/* 联系方式 tooltip（替代原 tippy）：悬停 / 键盘聚焦时显示，纯 CSS 无运行时 */
+.article-author-pill[data-tip]::after {
+	content: attr(data-tip);
+	position: absolute;
+	opacity: 0;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	padding: 5px 9px;
+	border-radius: 8px;
+	box-shadow: 0 2px 10px rgba(87, 41, 102, 0.25);
+	background: rgba(87, 41, 102, 0.92);
+	font-size: 11px;
+	line-height: 1.5;
+	white-space: nowrap;
+	color: #FFFFFF;
+	transform: translateX(-50%);
+	transition: opacity 150ms ease;
+	pointer-events: none;
+	z-index: 30;
+}
+
+.article-author-pill[data-tip]:hover::after,
+.article-author-pill[data-tip]:focus-visible::after {
+	opacity: 1;
 }
 
 .article-author-avatar {

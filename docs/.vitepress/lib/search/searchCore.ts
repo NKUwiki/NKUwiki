@@ -22,7 +22,6 @@ export interface SearchDoc {
 	folders: string[]
 	categoriesList: string[]
 	tagsList: string[]
-	lastUpdated: string
 }
 
 export type SearchScope = 'all' | 'title' | 'body'

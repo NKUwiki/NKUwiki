@@ -3,7 +3,7 @@ import { withBase } from 'vitepress'
 import { computed, ref } from 'vue'
 import SiteIcon from './SiteIcon.vue'
 
-const props = defineProps<{ qq?: string, avatar?: string }>()
+const props = defineProps<{ qq?: string, avatar?: string, name?: string }>()
 const index = ref(0)
 const broken = ref(false)
 
@@ -26,8 +26,9 @@ function onError() {
 
 <template>
 <div class="group-avatar" aria-hidden="true">
-	<img v-if="src" class="card-blur" :src="src" alt="" loading="lazy" @error="onError">
-	<img v-if="src" class="card-avatar" :src="src" alt="" loading="lazy" @error="onError">
+	<!-- 模糊背景层不绑 error：两层共用同一候选 src，都绑会让回退链一跳两级 -->
+	<img v-if="src" class="card-blur" :src="src" alt="" loading="lazy">
+	<img v-if="src" class="card-avatar" :src="src" :alt="name || ''" loading="lazy" @error="onError">
 	<span v-else class="card-avatar card-avatar-fallback"><SiteIcon /></span>
 </div>
 </template>

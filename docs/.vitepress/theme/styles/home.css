@@ -39,7 +39,7 @@
 	font-size: 14px;
 	font-weight: 600;
 }
-.hero-actions a, .hero-actions .directory-trigger {
+.hero-actions a {
 	padding: 10px 18px;
 	border: 1px solid var(--vp-c-divider);
 	border-radius: 8px;
@@ -174,14 +174,6 @@
 .community-panel > p, .home-activity p {
 	font-size: 14px;
 	line-height: 1.9;
-	color: var(--vp-c-text-2);
-}
-.community-links {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 16px;
-	margin-top: 24px;
-	font-size: 12px;
 	color: var(--vp-c-text-2);
 }
 .home-activity {

@@ -110,9 +110,11 @@ export function cardlist(md: MarkdownRenderer) {
 					if (isGroup) {
 						const qq = cells[1]?.replace(/<[^>]*>/g, '').match(/\b\d{5,12}\b/)?.[0] || ''
 						const avatar = avatarIndex > -1 ? pickImageSrc(cells[avatarIndex]) : ''
+						// 群名传给 GroupAvatar 作头像 alt（群头像是内容图，不是装饰）
+						const nameAttr = escapeAttr(cells[0].replace(/<[^>]*>/g, '').trim())
 						html.push(avatar
-							? `<GroupAvatar qq="${qq}" avatar="${avatar}" />`
-							: `<GroupAvatar qq="${qq}" />`)
+							? `<GroupAvatar qq="${qq}" avatar="${avatar}" name="${nameAttr}" />`
+							: `<GroupAvatar qq="${qq}" name="${nameAttr}" />`)
 					}
 					else {
 						html.push(`<span class="food-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${kitchen.body}</svg></span>`)

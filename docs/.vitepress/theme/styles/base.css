@@ -64,9 +64,6 @@ pre {
 }
 
 /* The search dialog already highlights the complete search bar on focus. */
-#localsearch-input:focus-visible {
-	outline: none;
-}
 
 /* 顶栏菜单项：悬停与选中时在文字下方渐变出品牌色下划线 */
 .VPNavBarMenuLink > span {

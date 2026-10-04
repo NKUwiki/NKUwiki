@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
 import { computed, ref } from 'vue'
-import historyData from '../../history.json'
 import { repoUrl } from '../../lib/data/site'
 
 interface CommitEntry {
@@ -12,18 +11,14 @@ interface CommitEntry {
 	date: string
 }
 
-const { page, frontmatter } = useData()
+const { frontmatter } = useData()
 
-// history.json 由 scripts/gen-history.mjs 在 dev / build 前生成，键为相对 docs 的源文档路径。
-// 客户端路由里的 relativePath 是 rewrites 改写后的虚拟路径（如 pages/Contributing/index.md），
-// 因此优先使用 transformPageData 写入 frontmatter 的真实源路径，未改写的页面回退到 relativePath。
-const commits = computed<CommitEntry[]>(() => {
-	const source = frontmatter.value.sourcePath
-	const path = typeof source === 'string' && source ? source : page.value.relativePath
-	if (!path)
-		return []
-	return (historyData as Record<string, CommitEntry[]>)[path] ?? []
-})
+// 提交历史由 config.transformPageData 在构建期按页注入（frontmatter.pageHistory，
+// 数据源为 gen-history.mjs 生成的 history.json）。history.json 全量约 138KB，
+// 若静态打进主题入口包则每个页面都要下载全站提交，按页注入后单页只有自己的几条。
+const commits = computed<CommitEntry[]>(() =>
+	Array.isArray(frontmatter.value.pageHistory) ? frontmatter.value.pageHistory as CommitEntry[] : [],
+)
 
 const lastCommit = computed(() => commits.value[0] ?? null)
 const lastEdited = computed(() => lastCommit.value ? formatRelative(lastCommit.value.date) : '')
@@ -47,25 +42,27 @@ function formatDate(iso: string): string {
 	return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/** 相对时间格式化器：每次 new 的开销不小，该组件每页都渲染，提为模块常量 */
+const relativeTimeFormat = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' })
+
 /** 折叠栏用相对时间（「4 个月前」），展开列表仍用精确时间 */
 function formatRelative(iso: string): string {
 	const date = new Date(iso)
 	if (Number.isNaN(date.getTime()))
 		return iso
 	const diffMinutes = Math.round((date.getTime() - Date.now()) / 60000)
-	const rtf = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' })
 	if (Math.abs(diffMinutes) < 60)
-		return rtf.format(diffMinutes, 'minute')
+		return relativeTimeFormat.format(diffMinutes, 'minute')
 	const diffHours = Math.round(diffMinutes / 60)
 	if (Math.abs(diffHours) < 24)
-		return rtf.format(diffHours, 'hour')
+		return relativeTimeFormat.format(diffHours, 'hour')
 	const diffDays = Math.round(diffHours / 24)
 	if (Math.abs(diffDays) < 30)
-		return rtf.format(diffDays, 'day')
+		return relativeTimeFormat.format(diffDays, 'day')
 	const diffMonths = Math.round(diffDays / 30)
 	if (Math.abs(diffMonths) < 12)
-		return rtf.format(diffMonths, 'month')
-	return rtf.format(Math.round(diffDays / 365), 'year')
+		return relativeTimeFormat.format(diffMonths, 'month')
+	return relativeTimeFormat.format(Math.round(diffDays / 365), 'year')
 }
 </script>
 

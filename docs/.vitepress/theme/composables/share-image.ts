@@ -32,7 +32,7 @@ export async function createShareImage(source: HTMLElement, title: string, url: 
 	else {
 		const body = source.cloneNode(true) as HTMLElement
 		body.className = 'share-body'
-		body.querySelectorAll('h1, .article-meta, [data-share-exclude], .share-dialog, .header-anchor, .wide-footer, .VPDocFooter, script, button').forEach(node => node.remove())
+		body.querySelectorAll('h1, .article-meta, [data-share-exclude], .share-dialog, .header-anchor, .VPDocFooter, script, button').forEach(node => node.remove())
 		for (const media of body.querySelectorAll<HTMLElement>('.hover-media')) {
 			const target = document.createElement('div')
 			const qr = media.dataset.shareQr

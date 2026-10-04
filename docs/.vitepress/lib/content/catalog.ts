@@ -1,5 +1,5 @@
 import type { Article, Catalog, DirectoryItem, TaxonomyCount } from '../types.ts'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
@@ -27,7 +27,8 @@ function readOrder(value: unknown): number | undefined {
 function hasTitleHeading(content: string): boolean {
 	let fence = ''
 	for (const line of content.replace(/^:::markmap[^\S\n]*\n[\s\S]*?^:::[^\S\n]*$/gm, '').split('\n')) {
-		const marker = line.match(/^\s*(`{3,}|~{3,})/)?.[1]
+		// 围栏标记最多允许 3 个空格缩进（CommonMark），\s* 会把代码块内的 ``` 也当围栏开关
+		const marker = line.match(/^ {0,3}(`{3,}|~{3,})/)?.[1]
 		if (marker) {
 			if (!fence)
 				fence = marker
@@ -43,6 +44,15 @@ function hasTitleHeading(content: string): boolean {
 
 /** 预计阅读速度：每分钟字数（中文阅读通行取值，与参考主题一致） */
 const WORDS_PER_MINUTE = 500
+
+/** scanArticles 的结果缓存：同一 root 且 md 签名（mtime/size）不变时直接复用 */
+let scanCache: {
+	key: string
+	signature: string
+	articles: Article[]
+	passThrough: string[]
+	content: Map<string, string>
+} | undefined
 
 /**
  * 统计 Markdown 正文字数。
@@ -71,7 +81,15 @@ export function countWords(content: string): number {
 }
 
 export function scanArticles(root = docsRoot) {
-	const articles: Article[] = []
+	// 非文章 md（index.md、map.md 等直通页，不经 rewrites 改写）也要参与 permalink
+	// 查重：文章 permalink 撞上这些路径时 VitePress 会静默丢页面。activity/ 被
+	// config 的 srcExclude 排除、不构建，同样排除（与 config.mts 保持一致）。
+	const passThrough: string[] = []
+	// 扫描结果缓存：config 顶层、catalog.data、search.data 会对同一 root 各扫一遍
+	// （每遍都是全量 readdir + frontmatter 解析 + 字数统计）。签名取全部 md 的
+	// mtime+size，文件没变就直接复用上次结果；dev 下改动 md 会命中新签名重新解析。
+	const mdFiles: { source: string, full: string, isArticle: boolean }[] = []
+	let signature = ''
 	function visit(dir: string) {
 		for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN', { numeric: true }))) {
 			if (entry.name.startsWith('.') || entry.name.startsWith('@') || entry.name === 'public')
@@ -84,46 +102,86 @@ export function scanArticles(root = docsRoot) {
 			if (!entry.name.endsWith('.md'))
 				continue
 			const source = relative(root, file).replaceAll('\\', '/')
-			if (!/^\d+\./.test(source))
+			const isArticle = /^\d+\./.test(source)
+			const stat = statSync(file)
+			signature += `${source}:${stat.mtimeMs}:${stat.size};`
+			if (!isArticle) {
+				if (!source.startsWith('activity/'))
+					passThrough.push(`/${source}`)
 				continue
-			const { data: fm, content } = matter(readFileSync(file, 'utf8'))
-			if (fm.article === false)
-				continue
-			const wordCount = countWords(content)
-			const lastUpdated = fm.lastUpdated ? new Date(fm.lastUpdated).toISOString().slice(0, 10) : ''
-			const folders = source.split('/').slice(0, -1).map(label)
-			const url = fm.permalink || `/${source.replace(/\.md$/, '')}`
-			if (!url.startsWith('/') || /[?#]|\.\./.test(url))
-				throw new Error(`无效 permalink: ${source}`)
-			articles.push({
-				source,
-				url,
-				title: fm.title || label(entry.name),
-				folders,
-				// 目录层级本身就是分类层级（03.群汇总/05.组织详情/x.md → 群汇总/组织详情），
-				// frontmatter 的 categories 可再用缩进补充层级；两者都按完整路径去重
-				categories: [...new Set([folders.join('/'), ...categoryPaths(fm.categories)].filter(Boolean))],
-				tags: strings(fm.tags),
-				date: fm.date ? new Date(fm.date).toISOString().slice(0, 10) : '',
-				lastUpdated,
-				lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
-				hasHeading: hasTitleHeading(content),
-				empty: !content.trim(),
-				wordCount,
-				readingMinutes: wordCount ? Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)) : 0,
-				order: readOrder(fm.order),
-			})
+			}
+			mdFiles.push({ source, full: file, isArticle })
 		}
 	}
 	visit(root)
-	const urls = new Set<string>()
+
+	// 缓存命中：md 文件的 mtime/size 签名没变就复用上次扫描结果
+	const cacheKey = `${root}`
+	if (scanCache && scanCache.key === cacheKey && scanCache.signature === signature)
+		return scanCache.articles
+
+	const articles: Article[] = []
+	const contentCache = new Map<string, string>()
+	for (const { source, full } of mdFiles) {
+		const { data: fm, content } = matter(readFileSync(full, 'utf8'))
+		if (fm.article === false)
+			continue
+		contentCache.set(source, content)
+		const wordCount = countWords(content)
+		const lastUpdated = parseDateField(fm.lastUpdated, source, 'lastUpdated')
+		const folders = source.split('/').slice(0, -1).map(label)
+		const url = fm.permalink || `/${source.replace(/\.md$/, '')}`
+		if (!url.startsWith('/') || /[?#]|\.\./.test(url) || typeof url !== 'string')
+			throw new Error(`无效 permalink: ${source}`)
+		articles.push({
+			source,
+			url,
+			title: fm.title || label(source.split('/').pop() || source),
+			folders,
+			// 目录层级本身就是分类层级（03.群汇总/05.组织详情/x.md → 群汇总/组织详情），
+			// frontmatter 的 categories 可再用缩进补充层级；两者都按完整路径去重
+			categories: [...new Set([folders.join('/'), ...categoryPaths(fm.categories)].filter(Boolean))],
+			tags: strings(fm.tags),
+			date: parseDateField(fm.date, source, 'date'),
+			lastUpdated,
+			lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
+			hasHeading: hasTitleHeading(content),
+			empty: !content.trim(),
+			wordCount,
+			readingMinutes: wordCount ? Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)) : 0,
+			order: readOrder(fm.order),
+		})
+	}
+
+	// 归一到目录形式再做查重：/foo/ 与 /foo/index 的 outputPath 都是 foo/index.md，
+	// 只按原始 url 去重会漏掉这两种写法的互撞；直通页一并纳入同一集合
+	const normalizeKey = (url: string) =>
+		outputPath(url).replace(/\.md$/, '').replace(/(^|\/)index$/, '$1').replace(/\/$/, '').toLowerCase()
+	const urls = new Set<string>(passThrough.map(normalizeKey))
 	for (const article of articles) {
-		const key = article.url.replace(/\/$/, '').toLowerCase()
+		const key = normalizeKey(article.url)
 		if (urls.has(key))
 			throw new Error(`重复 permalink: ${article.url}`)
 		urls.add(key)
 	}
+
+	scanCache = { key: cacheKey, signature, articles, passThrough, content: contentCache }
 	return articles
+}
+
+/** 解析 frontmatter 日期为 YYYY-MM-DD；非法值直接报错并指明文件，避免晦涩的 Invalid Date 崩溃 */
+function parseDateField(value: unknown, source: string, field: string): string {
+	if (!value)
+		return ''
+	const date = new Date(String(value))
+	if (Number.isNaN(date.getTime()))
+		throw new Error(`${source} 的 frontmatter ${field} 不是合法日期：${String(value)}`)
+	return date.toISOString().slice(0, 10)
+}
+
+/** 取 scanArticles 扫描时缓存的正文（search 建索引复用，避免二次读盘与 frontmatter 解析） */
+export function getArticleContent(source: string): string | undefined {
+	return scanCache?.content.get(source)
 }
 
 export function outputPath(url: string) {
@@ -185,7 +243,8 @@ export function buildTree(articles: Article[], depth = 0, openPath: string[] = [
 
 export function loadCatalog(root = docsRoot): Catalog {
 	const articles = scanArticles(root)
-	return { articles, tree: buildTree(articles), categories: collectCategories(articles), tags: countTags(articles) }
+	// tree（目录树）只由 config.mts 的 buildTree 消费（侧栏），不随 catalog.data 进客户端
+	return { articles, categories: collectCategories(articles), tags: countTags(articles) }
 }
 
 function countTags(articles: Article[]): TaxonomyCount[] {
