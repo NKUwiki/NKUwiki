@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
+import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
@@ -156,6 +157,8 @@ export default defineConfig({
 				return
 			instance.configured = true
 			cardlist(md)
+			// <flink> 数据块 → FriendLinks 卡片（友链数据在 md 中直接编辑）
+			flink(md)
 			// 文章元信息（分类/标题/字数/标签）整体由 ArticleMeta 组件渲染，构建期注入正文最前。
 			// 标题不再以 Markdown 一级标题插入：组件内的标题与字数同行排版，全站标题统一来自
 			// frontmatter（正文不应再自带一级标题，历史遗留的 18 处已清理）。
