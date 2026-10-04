@@ -43,7 +43,7 @@ NKUwiki/
 └── package.json                     # 依赖与脚本
 ```
 
-内容目录以「编号.名称」组织，展示时自动去掉数字前缀。代码分三层，依赖只允许自上而下：**内容**（`docs/` 的 Markdown 与 data loader）→ **站点装配**（`docs/.vitepress` 的薄壳主题入口与依赖站点数据的组件）→ **主题包**（`packages/wiki-theme`，详见[主题包 README](packages/wiki-theme/README.md)；`lib` 按内容、数据、搜索三域分类，不反向引用站点侧）。编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
+内容目录以「编号.名称」组织，展示时自动去掉数字前缀。代码分三层，依赖只允许自上而下：**内容**（`docs/` 的 Markdown 与 data loader）→ **站点装配**（`docs/.vitepress` 的薄壳主题入口与依赖站点数据的组件，详见[装配层 README](docs/.vitepress/README.md)）→ **主题包**（`packages/wiki-theme`，详见[主题包 README](packages/wiki-theme/README.md)；`lib` 按内容、数据、搜索三域分类，不反向引用站点侧）。编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
 
 ## 本地开发与构建
 
