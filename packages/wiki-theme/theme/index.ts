@@ -2,6 +2,7 @@ import type { Theme } from 'vitepress'
 import type { Component } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import { defineAsyncComponent } from 'vue'
+import AppCards from './components/AppCards.vue'
 import ArticleMeta from './components/ArticleMeta.vue'
 import CopyContact from './components/CopyContact.vue'
 import DownloadPageImage from './components/DownloadPageImage.vue'
@@ -65,6 +66,7 @@ export default {
 		// docs/.vitepress/theme/index.ts 注册为全局组件，这里不感知。
 		app.component('wide', WidePage)
 		app.component('GroupAvatar', GroupAvatar)
+		app.component('AppCards', AppCards)
 		app.component('HoverMedia', defineAsyncComponent(() => import('./components/HoverMedia.vue')))
 		app.component('FriendLinks', defineAsyncComponent(() => import('./components/FriendLinks.vue')))
 		app.component('CopyContact', CopyContact)
