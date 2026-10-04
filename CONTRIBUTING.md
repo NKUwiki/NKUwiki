@@ -59,7 +59,7 @@ pnpm preview     # 预览生产产物，http://localhost:4173/
 
 - 本地 `pnpm check` 与 `pnpm build` 均通过
 - 新增图片放入 `docs/public/img/` 对应的「目录编号/文章编号」目录
-- 涉及站点配置、主题或构建脚本的改动，请在 PR 中说明动机与影响范围
+- 涉及站点配置、主题或构建脚本的改动，请在 PR 中说明动机与影响范围（主题代码位于 `packages/wiki-theme`，结构与约定见[主题包 README](packages/wiki-theme/README.md)；装配层见 [docs/.vitepress/README.md](docs/.vitepress/README.md)）
 
 ## 行为准则
 

@@ -35,7 +35,9 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 | `gen-history.mjs` | 从 Git 提交历史计算每篇页面的最近更新时间，写 `history.json`（dev/build 前自动执行，带缓存） |
 | `contributors-mapping.json` | 贡献者邮箱/姓名 → GitHub 用户名映射（gen-history 专用数据） |
 
-## packages/wiki-theme — 主题包（另见包内结构）
+## packages/wiki-theme — 主题包
+
+主题主体（通用组件、布局、composables、styles、构建期业务库 `lib/`）全部在 **`@nkuwiki/theme`** 包内，组件清单、注册方式、包边界约定与复用方法详见 **[packages/wiki-theme/README.md](../../packages/wiki-theme/README.md)**。要点：
 
 - `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、MapView 等 19 个）、composables（sidebar、chips、searchState 等）、styles 分层样式
 - `lib/`：构建期业务库——`content/`（catalog、category、order、cardlist）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
