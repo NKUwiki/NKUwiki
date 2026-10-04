@@ -1,8 +1,9 @@
 <script setup>
 /**
  * 校园地图（NKU Maps）：组件与样式完全取自 QUT-WiKi 的 MapView（青岛理工大学 Wiki），
- * 仅做三处适配：高德 Key 换为 CQUMAPS 内置的一组；导航外链来源参数改为 NKUwiki；
- * 校区轮廓数据的键换为南开校区。
+ * 相对上游的适配：高德 Key 换为 CQUMAPS 内置的一组；导航外链来源参数改为 NKUwiki；
+ * 校区轮廓数据的键换为南开校区；移除步行路径规划（AMap.Walking，站点用不到，
+ * 且插件会额外消耗高德路径规划服务配额），仅保留定位标记（AMap.Geolocation）。
  *
  * 点位与密钥数据不随主题包分发：由站点侧通过 data prop 注入
  * （NKUwiki 的数据在 docs/.vitepress/data/map-data.js），
@@ -49,7 +50,6 @@ const locationDialogOpen = ref(false)
 const locationDialogBackdrop = ref(null)
 const locating = ref(false)
 const locationError = ref('')
-const routeSummary = ref(null)
 const locationReady = ref(false)
 const detailPosition = ref(null)
 const detailCardEl = ref(null)
@@ -60,7 +60,6 @@ const photoViewerIndex = ref(0)
 const markerCache = new Map()
 let polygonsRef = null
 let locationMarker = null
-let routeLine = null
 let locationWatchId = null
 let searchTimer = null
 let hoverCloseTimer = null
@@ -245,62 +244,7 @@ function navigationLinksFor(b) {
 function loadAMapPlugins(names) {
 	return new Promise((resolve, reject) => {
 		AMap.plugin(names, () => resolve())
-		setTimeout(() => reject(new Error('高德地图定位或路线插件加载超时')), 10000)
-	})
-}
-
-function formatDistance(meters) {
-	if (meters < 1000)
-		return `${Math.round(meters)} 米`
-	return `${(meters / 1000).toFixed(1)} 公里`
-}
-
-function clearRoute() {
-	if (routeLine && map) {
-		try { map.remove(routeLine) }
-		catch (e) { /* noop */ }
-	}
-	routeLine = null
-	routeSummary.value = null
-}
-
-function drawRoute(result) {
-	const route = result?.routes?.[0]
-	const path = route?.steps?.flatMap(step => step.path || []) || []
-	if (!route || !path.length || !map) {
-		routeSummary.value = null
-		locationError.value = '没有找到可用的步行路线，请稍后重试。'
-		return
-	}
-	clearRoute()
-	routeLine = new AMap.Polyline({
-		path,
-		strokeColor: '#1677ff',
-		strokeWeight: 6,
-		strokeOpacity: 0.85,
-		lineJoin: 'round',
-		lineCap: 'round',
-		zIndex: 40,
-	})
-	map.add(routeLine)
-	routeSummary.value = {
-		distance: formatDistance(route.distance),
-		duration: route.time ? `${Math.max(1, Math.round(route.time / 60))} 分钟` : '',
-	}
-	map.setFitView([routeLine, locationMarker].filter(Boolean), false, [60, 110, 170, 60])
-}
-
-function routeToSelected() {
-	if (!locationReady.value || !selected.value || !map)
-		return
-	locationError.value = ''
-	const walking = new AMap.Walking({ map: null, autoFitView: false })
-	walking.search(locationMarker.getPosition(), selected.value.coord, (status, result) => {
-		if (destroyFlag)
-			return
-		if (status === 'complete')
-			drawRoute(result)
-		else locationError.value = '路线规划失败，请检查网络后重试。'
+		setTimeout(() => reject(new Error('高德地图定位插件加载超时')), 10000)
 	})
 }
 
@@ -320,8 +264,6 @@ function updateLocation(position) {
 		})
 		map.add(locationMarker)
 	}
-	if (selected.value)
-		routeToSelected()
 }
 
 function recenterLocation() {
@@ -630,8 +572,6 @@ function onSelect(b) {
 		syncDetailPosition()
 		window.setTimeout(syncDetailPosition, 250)
 	}
-	if (locationReady.value)
-		routeToSelected()
 	if (window.matchMedia('(max-width: 1024px)').matches)
 		sidebarOpen.value = false
 }
@@ -640,7 +580,6 @@ function clearSelection() {
 	closePhotoViewer()
 	selected.value = null
 	detailPosition.value = null
-	clearRoute()
 	for (const [, entry] of markerCache) {
 		applyPinState(entry.root, false)
 		entry.marker.setzIndex(10)
@@ -661,7 +600,6 @@ function selectCampus(e) {
 		clearMarkerCache()
 		renderPolygons(next)
 		renderMarkers()
-		clearRoute()
 	}
 }
 
@@ -714,7 +652,7 @@ function startThemeObserver() {
 async function bootstrap() {
 	try {
 		AMap = await loadAMap()
-		await loadAMapPlugins(['AMap.Geolocation', 'AMap.Walking'])
+		await loadAMapPlugins(['AMap.Geolocation'])
 		await nextTick()
 		initMap()
 		renderMarkers()
@@ -750,7 +688,6 @@ onUnmounted(() => {
 		clearTimeout(searchTimer)
 	detailResizeObserver?.disconnect()
 	stopVisualViewportObserver()
-	clearRoute()
 	if (locationMarker && map) {
 		try { map.remove(locationMarker) }
 		catch (e) { /* noop */ }
@@ -973,10 +910,6 @@ onUnmounted(() => {
 						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
 					</button>
 				</div>
-				<div v-if="routeSummary" class="route-summary" role="status">
-					<strong>步行约 {{ routeSummary.distance }}</strong>
-					<span v-if="routeSummary.duration">预计 {{ routeSummary.duration }}</span>
-				</div>
 				<p v-if="locationError" class="location-error">
 					{{ locationError }}
 				</p>
@@ -1007,7 +940,7 @@ onUnmounted(() => {
 			<h2 id="location-dialog-title">
 				允许获取你的当前位置
 			</h2>
-			<p>定位信息仅用于在地图上标记你的位置，并规划到所选地点的步行路线，不会被保存。</p>
+			<p>定位信息仅用于在地图上标记你的位置，不会被保存。</p>
 			<div class="location-legend" aria-label="地图图标说明">
 				<span><i class="legend-pin legend-pin-user" />红色图标：用户定位</span>
 				<span><i class="legend-pin legend-pin-place" />蓝色图标：可点击标点</span>
@@ -1689,19 +1622,6 @@ html.dark .map-section {
 	animation: detail-in 0.2s ease-out;
 	z-index: 10;
 }
-.route-summary {
-	display: flex;
-	align-items: baseline;
-	gap: 8px;
-	margin-top: 10px;
-	padding: 8px 10px;
-	border-radius: 6px;
-	background: var(--c-primary-soft);
-	font-size: 12px;
-	color: var(--c-primary);
-}
-.route-summary strong { font-size: 13px; }
-.route-summary span { color: var(--c-muted); }
 .location-error {
 	margin: 8px 0 0;
 	font-size: 12px;
