@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import type MiniSearch from 'minisearch'
 import type { SearchDoc, SearchScope } from '@nkuwiki/theme/lib/search/searchCore.ts'
+import type MiniSearch from 'minisearch'
 import type { SearchResult } from '../searchDocs'
 import chevronIcon from '@iconify-icons/ri/arrow-right-s-line'
 import closeIcon from '@iconify-icons/ri/close-line'
 import searchIcon from '@iconify-icons/ri/search-line'
 import historyIcon from '@iconify-icons/ri/time-line'
 import { Icon } from '@iconify/vue'
+import { buildExcerpt, expandQuery, highlightText, tokenize } from '@nkuwiki/theme/lib/search/searchCore.ts'
+import { searchIndexLoading, searchModalOpen } from '@nkuwiki/theme/theme/composables/searchState.ts'
 import { useRouter, withBase } from 'vitepress'
 import { onUnmounted, ref, watch } from 'vue'
-import { buildExcerpt, expandQuery, highlightText, tokenize } from '@nkuwiki/theme/lib/search/searchCore.ts'
 import { ensureSearchIndex, searchDocs } from '../searchDocs'
-import { searchIndexLoading, searchModalOpen } from '@nkuwiki/theme/theme/composables/searchState.ts'
 
 const props = defineProps<{ screen?: boolean }>()
 // 弹窗开关是 searchState.ts 里的模块级单例：导航栏与移动端菜单两个实例

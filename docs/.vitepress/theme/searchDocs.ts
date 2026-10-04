@@ -1,8 +1,8 @@
 // 搜索数据的客户端入口：首次使用时才动态加载构建期生成的索引文档，
 // 并提供 MiniSearch 索引的构建与统一检索（分词、容错、筛选范围）。
 import type { SearchDoc, SearchScope, SearchSection } from '@nkuwiki/theme/lib/search/searchCore.ts'
-import MiniSearch from 'minisearch'
 import { fuzzyTolerance, scopeFields, tokenize, tokenizeForIndex } from '@nkuwiki/theme/lib/search/searchCore.ts'
+import MiniSearch from 'minisearch'
 
 let docsPromise: Promise<SearchDoc[]> | undefined
 

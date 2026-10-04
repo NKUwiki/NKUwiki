@@ -1,6 +1,6 @@
 import type { Theme } from 'vitepress'
-import { defineAsyncComponent } from 'vue'
 import WikiTheme from '@nkuwiki/theme'
+import { defineAsyncComponent } from 'vue'
 
 /**
  * 站点装配薄壳：通用主题在 @nkuwiki/theme（packages/wiki-theme），

@@ -1,12 +1,12 @@
 import type { MarkdownRenderer } from 'vitepress'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import markmapPlugin from '@vitepress-plugin/markmap'
-import { defineConfig } from 'vitepress'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import { repoUrl, siteUrl } from '@nkuwiki/theme/lib/data/site.ts'
+import markmapPlugin from '@vitepress-plugin/markmap'
+import { defineConfig } from 'vitepress'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {

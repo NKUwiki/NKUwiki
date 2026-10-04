@@ -1,8 +1,8 @@
 import type { Activity } from '@nkuwiki/theme/lib/types.ts'
-import { createMarkdownRenderer } from 'vitepress'
-import config from '../config.mts'
 import { docsRoot } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { activityRoot, loadActivities } from '@nkuwiki/theme/lib/data/activity.ts'
+import { createMarkdownRenderer } from 'vitepress'
+import config from '../config.mts'
 
 export declare const data: Activity[]
 
