@@ -97,10 +97,10 @@ packages/wiki-theme/
 | `content/category.ts` | 分类层级路径的解析、统计与排序（分类页与筛选栏共用） |
 | `content/order.ts` | frontmatter `order` 排序纯函数（侧栏与专题页共用） |
 | `content/cardlist.ts` | `::: cardlist` 短码：把 Markdown 表格渲染成卡片网格 |
-| `data/members.ts` | 站点成员信息，文章 `author` 只写名字、其余在这里查 |
-| `data/authors.ts` | 作者解析：frontmatter → 完整作者对象，头像首字兜底 |
+| `data/members.example.ts` | 成员表**格式示例**（虚拟数据）。站点真实成员表在站点侧 `docs/.vitepress/data/members.ts`，经 `AuthorLookup` 注入 `collectAuthors` |
+| `data/authors.ts` | 作者解析纯函数：frontmatter + 注入的成员表 → 完整作者对象，头像首字兜底；不感知站点数据 |
 | `data/activity.ts` | 活动页数据：扫描 `docs/activity/` 生成活动列表 |
-| `data/site.ts` | 站点常量：正式网址、仓库地址 |
+| `data/site.ts` | 站点常量**注入点**：真实值由站点侧 `docs/.vitepress/data/site.ts` 经 `vite.define` 编译期注入（`__SITE_URL__` / `__REPO_URL__`），导出名不变 |
 | `search/search.ts` | 构建期索引：扫描全部条目生成 SearchDoc（标题/章节/正文纯文本） |
 | `search/searchCore.ts` | 搜索纯函数：中文分词、变体展开、正文摘要与高亮（构建端与客户端共用） |
 

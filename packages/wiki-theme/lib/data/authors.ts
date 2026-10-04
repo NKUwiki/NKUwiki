@@ -1,5 +1,4 @@
-import type { Author } from '../types.ts'
-import { members } from './members.ts'
+import type { Author, AuthorLookup, Member } from '../types.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/
 
@@ -59,7 +58,7 @@ export interface RawAuthor {
  * 支持两种写法，可以混用：
  *
  * ```yaml
- * # 只写名字：GitHub、头像、联系方式按名字到 members.ts 里查
+ * # 只写名字：GitHub、头像、联系方式按名字到注入的成员表里查
  * author: [Cure, NKUwiki-Group]
  *
  * # 对象写法：不进成员文件的客串作者就地补字段，写了的会覆盖成员文件里的同名信息
@@ -105,15 +104,15 @@ export function frontmatterAuthors(value: unknown): RawAuthor[] {
 }
 
 /**
- * 合并成员文件信息，补全展示字段。
+ * 合并成员表信息，补全展示字段。
  *
- * - 跳转链接 `link`：frontmatter > members.ts > GitHub 个人页；
- * - 悬停标签 `contact`：显式 contact（frontmatter > members.ts）> GitHub 用户名 > 邮箱，
+ * - 跳转链接 `link`：frontmatter > members > GitHub 个人页；
+ * - 悬停标签 `contact`：显式 contact（frontmatter > members）> GitHub 用户名 > 邮箱，
  *   全都没有时悬停不弹；
- * - 头像 `avatar`：显式链接（frontmatter > members.ts）> GitHub 头像（`github.com/<用户名>.png`）> 首字母兜底图。
+ * - 头像 `avatar`：显式链接（frontmatter > members）> GitHub 头像（`github.com/<用户名>.png`）> 首字母兜底图。
  */
-function resolveAuthor(raw: RawAuthor): Author {
-	const member = members[raw.name]
+function resolveAuthor(raw: RawAuthor, lookup: AuthorLookup): Author {
+	const member: Member | undefined = lookup.members[raw.name]
 	const github = raw.github || member?.github || ''
 	const email = cleanEmail(raw.email || member?.email)
 	const link = raw.link || member?.link || (github ? `https://github.com/${github}` : undefined)
@@ -128,8 +127,13 @@ function resolveAuthor(raw: RawAuthor): Author {
 	}
 }
 
-/** 汇总一篇文章的作者：只取 frontmatter 声明的 `author`（纯名字或对象），没有声明时回退到组织账号。 */
-export function collectAuthors(author: unknown): Author[] {
-	const authors = frontmatterAuthors(author).map(resolveAuthor)
-	return authors.length ? authors : [resolveAuthor({ name: 'NKUwiki-Group' })]
+/**
+ * 汇总一篇文章的作者：只取 frontmatter 声明的 `author`（纯名字或对象），
+ * 没有声明时回退到 lookup.fallbackName 指定的组织账号。
+ *
+ * 成员表由站点侧注入（AuthorLookup），本模块不感知任何站点数据。
+ */
+export function collectAuthors(author: unknown, lookup: AuthorLookup): Author[] {
+	const authors = frontmatterAuthors(author).map(raw => resolveAuthor(raw, lookup))
+	return authors.length ? authors : [resolveAuthor({ name: lookup.fallbackName }, lookup)]
 }

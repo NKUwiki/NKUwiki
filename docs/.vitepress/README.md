@@ -16,6 +16,8 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 | `activity.data.ts` | 活动页数据（构建期 Markdown 渲染） |
 | `search.data.ts` | 懒加载搜索索引数据 |
 | `map-data.js` | 校园地图的点位、分类、校区配置与高德密钥（站点资产，不随主题包分发；MapView 组件通过 `data` prop 注入，格式示例见包内 `map-data.example.js`；不参与 ESLint） |
+| `members.ts` | 站点成员表（含联系方式）：`config.mts` 经 `AuthorLookup` 注入主题包的 `collectAuthors`；`fallbackAuthor` 为无 author 页面的兜底账号。格式示例见包内 `members.example.ts` |
+| `site.ts` | 站点常量（正式网址、仓库地址）：`config.mts` 直接 import，并经 `vite.define` 以 `__SITE_URL__` / `__REPO_URL__` 注入主题包组件 |
 
 ## theme/ — 站点装配
 

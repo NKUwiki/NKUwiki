@@ -1,5 +1,5 @@
 /**
- * 文章作者：显示名来自 frontmatter 的 `author`，其余信息按名字到 members.ts 查询，
+ * 文章作者：显示名来自 frontmatter 的 `author`，其余信息按名字到成员表查询，
  * 在构建期（config.transformPageData）合并成这里的完整字段，按声明顺序展示。
  */
 export interface Author {
@@ -13,6 +13,31 @@ export interface Author {
 	avatar: string
 	/** 本地首字图：头像加载失败时替换使用 */
 	fallback: string
+}
+
+/**
+ * 成员表条目：站点侧数据文件（如 docs/.vitepress/data/members.ts）按名字提供，
+ * `collectAuthors` 用它补全只写名字的 author。所有字段都可以省略。
+ * 数据文件示例见同目录 members.example.ts。
+ */
+export interface Member {
+	/** GitHub 用户名：头像兜底用 `github.com/<用户名>.png`，也是胶囊默认的跳转目标 */
+	github?: string
+	/** 显式头像图片链接，优先级高于 GitHub 头像 */
+	avatar?: string
+	/** 点击作者胶囊时打开的链接；不填默认 GitHub 个人页 */
+	link?: string
+	/** 联系方式标签：悬停作者胶囊时展示的纯文本，如 QQ、微信；不填时回退显示 GitHub 用户名、邮箱 */
+	contact?: string
+	/** 联系邮箱：contact 的兜底之一；写 `a@b.com` 或 `mailto:a@b.com` 都行 */
+	email?: string
+}
+
+/** 站点注入的作者解析依据：成员表 + frontmatter 未声明 author 时的兜底账号名。 */
+export interface AuthorLookup {
+	members: Record<string, Member>
+	/** 兜底组织账号名，必须能在 members 里查到才有补全效果 */
+	fallbackName: string
 }
 
 export interface Article {

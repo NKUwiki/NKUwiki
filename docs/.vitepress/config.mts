@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
-import { repoUrl, siteUrl } from '@nkuwiki/theme/lib/data/site.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
+import { fallbackAuthor, members } from './data/members.ts'
+import { repoUrl, siteUrl } from './data/site.ts'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {
@@ -122,6 +123,11 @@ export default defineConfig({
 		},
 	},
 	vite: {
+		// 站点常量编译期注入主题包（包内 lib/data/site.ts 消费；config 自身走 Node 侧直接 import）
+		define: {
+			__SITE_URL__: JSON.stringify(siteUrl),
+			__REPO_URL__: JSON.stringify(repoUrl),
+		},
 		base,
 		plugins: [
 			markmapPlugin({ containerHeight: 500 }),
@@ -205,8 +211,9 @@ export default defineConfig({
 			page.title = article.title
 			page.lastUpdated = article.lastUpdatedTime || undefined
 			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes })
-			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发
-			page.frontmatter.authors = collectAuthors(page.frontmatter.author)
+			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发；
+			// 成员表是站点数据，显式注入给主题包的纯函数
+			page.frontmatter.authors = collectAuthors(page.frontmatter.author, { members, fallbackName: fallbackAuthor })
 			const articleAuthor = (page.frontmatter.authors as Array<{ name?: string }> | undefined)?.[0]?.name
 			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
 				'@context': 'https://schema.org',

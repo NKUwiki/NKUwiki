@@ -2,6 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { cleanEmail, cleanLink, collectAuthors, frontmatterAuthors, initialsAvatar } from '../packages/wiki-theme/lib/data/authors.ts'
 
+/** 与站点侧 members.ts 等价的测试注入数据（成员表外移后 collectAuthors 需显式传入） */
+const lookup = {
+	members: {
+		'NKUwiki-Group': { github: 'NKUwiki' },
+		'Cure': { github: 'Cure2004', contact: '1352862815@qq.com' },
+	},
+	fallbackName: 'NKUwiki-Group',
+}
+
 test('frontmatter author 支持纯名字与对象写法，可混用', () => {
 	const authors = frontmatterAuthors([
 		'Cure',
@@ -63,38 +72,38 @@ test('initialsAvatar 由姓名决定且稳定', () => {
 
 test('collectAuthors 按名字查成员表并遵守头像优先级', () => {
 	// 成员表里的 Cure：头像走 GitHub，link 默认个人页，contact 显式给出
-	const cure = collectAuthors(['Cure'])[0]
+	const cure = collectAuthors(['Cure'], lookup)[0]
 	assert.equal(cure.avatar, 'https://github.com/Cure2004.png')
 	assert.equal(cure.link, 'https://github.com/Cure2004')
 	assert.equal(cure.contact, '1352862815@qq.com')
 	assert.equal(cure.fallback.startsWith('data:image/svg+xml'), true)
 
 	// frontmatter 显式字段覆盖成员表，contact 未写时沿用成员表
-	const custom = collectAuthors([{ name: 'Cure', avatar: 'https://img.example.com/me.png', link: 'https://example.com' }])[0]
+	const custom = collectAuthors([{ name: 'Cure', avatar: 'https://img.example.com/me.png', link: 'https://example.com' }], lookup)[0]
 	assert.equal(custom.avatar, 'https://img.example.com/me.png')
 	assert.equal(custom.link, 'https://example.com')
 	assert.equal(custom.contact, '1352862815@qq.com')
 
 	// 悬停标签回退链：contact > GitHub 用户名 > 邮箱
-	assert.equal(collectAuthors([{ name: '甲', contact: 'QQ：123', github: 'someone', email: 'a@b.com' }])[0].contact, 'QQ：123')
-	assert.equal(collectAuthors([{ name: '甲', github: 'someone', email: 'a@b.com' }])[0].contact, 'someone')
-	assert.equal(collectAuthors([{ name: '甲', email: 'a@b.com' }])[0].contact, 'a@b.com')
-	assert.equal(collectAuthors([{ name: '甲', email: 'mailto:a@b.com' }])[0].contact, 'a@b.com')
+	assert.equal(collectAuthors([{ name: '甲', contact: 'QQ：123', github: 'someone', email: 'a@b.com' }], lookup)[0].contact, 'QQ：123')
+	assert.equal(collectAuthors([{ name: '甲', github: 'someone', email: 'a@b.com' }], lookup)[0].contact, 'someone')
+	assert.equal(collectAuthors([{ name: '甲', email: 'a@b.com' }], lookup)[0].contact, 'a@b.com')
+	assert.equal(collectAuthors([{ name: '甲', email: 'mailto:a@b.com' }], lookup)[0].contact, 'a@b.com')
 
 	// 成员表里只有 github 的成员：头像用 GitHub，link 默认个人页，悬停标签回退成 GitHub 用户名
-	const org = collectAuthors(['NKUwiki-Group'])[0]
+	const org = collectAuthors(['NKUwiki-Group'], lookup)[0]
 	assert.equal(org.avatar, 'https://github.com/NKUwiki.png')
 	assert.equal(org.link, 'https://github.com/NKUwiki')
 	assert.equal(org.contact, 'NKUwiki')
 
 	// 不在成员表又没补字段的作者：首字母兜底头像，不可点击、不弹标签
-	const guest = collectAuthors([{ name: '客串作者' }])[0]
+	const guest = collectAuthors([{ name: '客串作者' }], lookup)[0]
 	assert.equal(guest.avatar, guest.fallback)
 	assert.equal(guest.link, undefined)
 	assert.equal(guest.contact, undefined)
 
 	// 完全没写 author 时回退组织账号
-	const fallback = collectAuthors(undefined)[0]
+	const fallback = collectAuthors(undefined, lookup)[0]
 	assert.equal(fallback.name, 'NKUwiki-Group')
 	assert.equal(fallback.avatar, 'https://github.com/NKUwiki.png')
 })
