@@ -28,6 +28,7 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 | `site-components/WikiHome.vue` | 首页：站点介绍、分类导航与最近更新（消费 catalog/activity 数据） |
 | `site-components/ArticleIndex.vue` | 专题页：按分类/标签浏览全部文章（消费 catalog 数据） |
 | `site-components/WikiSearch.vue` | 站内搜索弹窗（MiniSearch + 自建分词） |
+| `site-components/MemberGrid.vue` | 成员网格卡片（「关于我们」页使用）：读 `data/members.ts`，头像优先级与作者胶囊一致 |
 
 这三个组件留在站点侧的原因：它们直接消费 data loader，而 data loader 只能被 `srcDir` 扫描——组件与数据绑定，一起留在装配层。
 
