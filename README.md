@@ -17,25 +17,28 @@ NKUwiki 是由南开大学学生共同维护的**非官方校园知识库**。�
 ```text
 NKUwiki/
 ├── .github/workflows/static.yml     # GitHub Actions：构建并发布到 GitHub Pages
-├── docs/                            # VitePress 文档根目录
+├── docs/                            # VitePress 文档根目录（站点装配层）
 │   ├── index.md                     # 首页
 │   ├── map.md                       # 校园地图页
-│   ├── .vitepress/                  # 站点配置、业务模块与主题（详见其内 README）
-│   │   ├── config.mts               # 站点配置：导航、markdown 扩展、主题
-│   │   ├── lib/                     # 业务模块：content 文章目录 / data 站点数据 / search 站内搜索
-│   │   ├── scripts/                 # 构建辅助：从 Git 历史生成页面更新时间
-│   │   └── theme/                   # 自定义主题：components 组件 / composables 逻辑 / styles 样式
+│   ├── .vitepress/                  # 站点配置与装配（详见其内 README）
+│   │   ├── config.mts               # 站点配置：导航、markdown 扩展、SEO 注入
+│   │   ├── data/                    # data loader：目录/活动/搜索索引（VitePress 约定位置）
+│   │   ├── theme/                   # 薄壳主题入口 + 依赖站点数据的组件
+│   │   └── scripts/                 # 构建辅助：从 Git 历史生成页面更新时间
 │   ├── public/                      # 静态资源：文章图片（img/）、站点图标、CNAME
 │   ├── 01.新生入学/ 02.浅谈学习/ 03.群汇总/ 04.校园生活/ 05.计算机知识/
 │   ├── 10.贡献与其他/               # 协作说明、关于我们、友情链接
 │   └── categories/ tags/ archives/ activity/    # 专题页与归档
+├── packages/wiki-theme/             # @nkuwiki/theme 主题包（pnpm workspace）
+│   ├── theme/                       # 布局、通用组件、composables、styles
+│   └── lib/                         # 构建期业务库：content 文章目录 / data 站点数据 / search 站内搜索
 ├── tests/                           # 数据层单元测试
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
 ├── tsconfig.json                    # TypeScript 配置
 └── package.json                     # 依赖与脚本
 ```
 
-内容目录以「编号.名称」组织，展示时自动去掉数字前缀；`.vitepress/lib` 按「跑在哪 + 管什么」分类：构建期模块进 `lib`（内容、数据、搜索三域），浏览器逻辑进 `theme/composables`。编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
+内容目录以「编号.名称」组织，展示时自动去掉数字前缀。主题与业务库抽离在 `packages/wiki-theme`（`lib` 按内容、数据、搜索三域分类），`docs/.vitepress` 只保留站点配置、data loader 与依赖站点数据的组件。编写约定与协作流程详见[贡献指南](CONTRIBUTING.md)。
 
 ## 本地开发与构建
 
