@@ -56,8 +56,6 @@ export interface Article {
 	wordCount: number
 	/** 由 wordCount 换算的预计阅读分钟数；没有正文时为 0 */
 	readingMinutes: number
-	/** frontmatter 的 order：同级排序用，数字越小越靠前；没有写时为空 */
-	order?: number
 }
 
 export interface DirectoryItem {
@@ -80,8 +78,6 @@ export interface CategoryCount {
 	path: string
 	/** 直接属于该分类的文章数，子分类的文章不计入 */
 	count: number
-	/** 分类的排序值 = 该分类下文章 order 的最小值；没有文章写 order 时为空 */
-	order?: number
 }
 
 export interface Activity {

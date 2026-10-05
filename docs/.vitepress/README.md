@@ -44,7 +44,7 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 主题主体（通用组件、布局、composables、styles、构建期业务库 `lib/`）全部在 **`@nkuwiki/theme`** 包内，组件清单、注册方式、包边界约定与复用方法详见 **[packages/wiki-theme/README.md](../../packages/wiki-theme/README.md)**。要点：
 
 - `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、MapView 等 19 个）、composables（sidebar、chips、searchState 等）、styles 分层样式
-- `lib/`：构建期业务库——`content/`（catalog、category、order、cardlist）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
+- `lib/`：构建期业务库——`content/`（catalog、category、cardlist）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
 
 ## 分类标准
 

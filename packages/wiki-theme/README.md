@@ -20,7 +20,7 @@ packages/wiki-theme/
 │   └── styles/         # 10 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
     ├── types.ts        # 全局共享类型
-    ├── content/        # 文章目录：catalog / category / order / cardlist
+    ├── content/        # 文章目录：catalog / category / cardlist
     ├── data/           # 站点数据：members / authors / activity / site
     └── search/         # 站内搜索：search 索引 / searchCore 纯函数
 ```
@@ -95,7 +95,6 @@ packages/wiki-theme/
 | `types.ts` | 全局共享类型：Article、Catalog、CategoryCount、Author 等 |
 | `content/catalog.ts` | 核心：扫描 `docs/` 编号目录，生成侧栏树、分类、标签、归档与字数统计；校验 permalink 重复；内含 `docsRoot` 站点目录定位 |
 | `content/category.ts` | 分类层级路径的解析、统计与排序（分类页与筛选栏共用） |
-| `content/order.ts` | frontmatter `order` 排序纯函数（侧栏与专题页共用） |
 | `content/cardlist.ts` | `::: cardlist` 短码：把 Markdown 表格渲染成卡片网格 |
 | `data/members.example.ts` | 成员表**格式示例**（虚拟数据）。站点真实成员表在站点侧 `docs/.vitepress/data/members.ts`，经 `AuthorLookup` 注入 `collectAuthors` |
 | `data/authors.ts` | 作者解析纯函数：frontmatter + 注入的成员表 → 完整作者对象，头像首字兜底；不感知站点数据 |

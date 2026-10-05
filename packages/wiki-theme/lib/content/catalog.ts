@@ -5,7 +5,6 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
 import { categoryPaths, collectCategories } from './category.ts'
-import { minOrder, NO_ORDER, orderOf } from './order.ts'
 
 /**
  * 定位站点 docs/ 根目录（内容不属于主题包，包里的构建期工具需要反查它）：
@@ -34,17 +33,6 @@ const label = (name: string) => name.replace(/^\d+\./, '').replace(/\.md$/, '')
 function strings(value: unknown): string[] {
 	const values: unknown[] = Array.isArray(value) ? value : [value]
 	return [...new Set(values.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean))]
-}
-
-/**
- * 读取 frontmatter 的 order。
- *
- * 只接受有限数字（YAML 的 `order: 3` 和写错成字符串的 `order: "3"` 都算），
- * 其余写法（空值、非数字、NaN、Infinity）一律当作没写，避免一个手滑把整站顺序打乱。
- */
-function readOrder(value: unknown): number | undefined {
-	const order = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN
-	return Number.isFinite(order) ? order : undefined
 }
 
 function hasTitleHeading(content: string): boolean {
@@ -175,7 +163,6 @@ export function scanArticles(root = docsRoot) {
 			empty: !content.trim(),
 			wordCount,
 			readingMinutes: wordCount ? Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)) : 0,
-			order: readOrder(fm.order),
 		})
 	}
 
@@ -215,56 +202,38 @@ export function outputPath(url: string) {
 }
 
 /**
- * 目录在同级里的排序值。
- *
- * 两个来源，按顺序取第一个有值的：
- *
- * 1. 目录自己的 overview 页（`…/<目录>/index.md`）的 order —— 想直接指定某个目录的位置就写在这里；
- * 2. 目录内所有文章（含更深层子目录里的文章）order 的最小值 —— 只给文章写 order 时也能带动目录。
- *
- * 都没有就是 NO_ORDER，目录保持原来按目录名数字前缀排的顺序。
- */
-function folderOrder(list: Article[], depth: number): number {
-	const own = list
-		.filter(article => article.folders.length === depth + 1 && article.source.endsWith('/index.md'))
-		.map(article => orderOf(article.order))
-	const explicit = minOrder(own)
-	return explicit !== NO_ORDER ? explicit : minOrder(list.map(article => orderOf(article.order)))
-}
-
-/**
  * 把文章按目录层级聚成目录树。
  *
  * `openPath` 是「进入页面时默认展开的那一条分类路径」（就是当前文章的 folders，
  * 例如 [`群汇总`, `组织详情`]）：逐层比对，命中的分类展开、其余折叠。
  * 这样侧栏默认只展开当前分类，其它分类保持折叠；不传则全部折叠。
  *
- * 同级排序：文章取自己的 order，目录取 folderOrder，数字小的在前；
- * 排序值相同（尤其是都没写 order）时靠稳定排序保持扫描顺序，也就是文件名 / 目录名的顺序。
+ * 同级顺序：子目录整体排在散文章前面，两者内部各自沿用扫描顺序（文件名 / 目录名的
+ * 编号顺序）。排序只按「是不是目录」这一个键做，剩下的交给稳定排序保持扫描顺序。
  */
 export function buildTree(articles: Article[], depth = 0, openPath: string[] = []): DirectoryItem[] {
-	const entries: { item: DirectoryItem, order: number, folder?: string }[] = []
+	const entries: { item: DirectoryItem, folder?: string }[] = []
 	const groups = new Map<string, Article[]>()
 	for (const article of articles) {
 		const folder = article.folders[depth]
 		if (!folder) {
-			entries.push({ item: { text: article.title, link: article.url }, order: orderOf(article.order) })
+			entries.push({ item: { text: article.title, link: article.url } })
 			continue
 		}
 		if (!groups.has(folder)) {
 			groups.set(folder, [])
-			entries.push({ item: { text: folder, collapsed: openPath[depth] !== folder, items: [] }, order: NO_ORDER, folder })
+			entries.push({ item: { text: folder, collapsed: openPath[depth] !== folder, items: [] }, folder })
 		}
 		groups.get(folder)!.push(article)
 	}
 	for (const entry of entries) {
 		if (!entry.folder)
 			continue
-		const list = groups.get(entry.folder)!
-		entry.item.items = buildTree(list, depth + 1, openPath)
-		entry.order = folderOrder(list, depth)
+		entry.item.items = buildTree(groups.get(entry.folder)!, depth + 1, openPath)
 	}
-	return entries.sort((a, b) => a.order - b.order).map(entry => entry.item)
+	return entries
+		.sort((a, b) => (a.folder ? 0 : 1) - (b.folder ? 0 : 1))
+		.map(entry => entry.item)
 }
 
 export function loadCatalog(root = docsRoot): Catalog {

@@ -5,7 +5,6 @@ import gridIcon from '@iconify-icons/ri/grid-line'
 import listIcon from '@iconify-icons/ri/list-check'
 import { Icon } from '@iconify/vue'
 import { categoryChildren, resolveCategory } from '@nkuwiki/theme/lib/content/category.ts'
-import { orderOf } from '@nkuwiki/theme/lib/content/order.ts'
 import { buildExcerpt, expandQuery, highlightText, tokenize } from '@nkuwiki/theme/lib/search/searchCore.ts'
 import ArticleByline from '@nkuwiki/theme/theme/components/ArticleByline.vue'
 import WikiChips from '@nkuwiki/theme/theme/components/WikiChips.vue'
@@ -119,8 +118,14 @@ const articles = computed(() => data.articles.filter((article) => {
 			? !activeCategory.value || article.categories.includes(activeCategory.value)
 			: !selected.value || article.tags.includes(selected.value)
 	return matches && (!query.value.trim() || hits.value.has(article.url))
-	// 写了 order 的按数字升序排在前面，没写的保持原规则（更新日期倒序、再按标题）
-}).sort((a, b) => orderOf(a.order) - orderOf(b.order) || (b.lastUpdated || b.date).localeCompare(a.lastUpdated || a.date) || a.title.localeCompare(b.title, 'zh-CN')))
+	// 最近更新页（archives）依然按更新时间倒序；分类页 / 标签页统一按文件名编号顺序，
+	// 与侧栏目录、目录结构保持一致
+}).sort(compareArticles))
+function compareArticles(a: Article, b: Article): number {
+	if (props.mode === 'archives')
+		return (b.lastUpdated || b.date).localeCompare(a.lastUpdated || a.date) || a.title.localeCompare(b.title, 'zh-CN')
+	return a.source.localeCompare(b.source, 'zh-CN', { numeric: true })
+}
 const groups = computed(() => {
 	const result = new Map<string, Article[]>()
 	// 选中分类后先建好这一组：即使它还没有直属文章，子分类条目也要有地方显示
