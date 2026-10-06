@@ -15,7 +15,7 @@ packages/wiki-theme/
 ├── package.json        # exports 指向源码；peerDependencies: vue
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
-│   ├── components/     # 18 个 Vue 组件 + 地图数据
+│   ├── components/     # 20 个 Vue 组件 + 地图数据
 │   ├── composables/    # 5 个无 UI 的客户端逻辑
 │   └── styles/         # 10 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
@@ -33,17 +33,18 @@ packages/wiki-theme/
 
 | 方式 | 组件 | 说明 |
 | --- | --- | --- |
-| 同步注册 | `ArticleMeta`、`CopyContact`、`DownloadPageImage`、`GroupAvatar`、`QrCode`、`wide`（WidePage） | 体积小或多数页面使用，进主题入口包 |
+| 同步注册 | `ArticleMeta`、`CopyContact`、`DownloadPageImage`、`Gallery`、`GroupAvatar`、`QrCode`、`wide`（WidePage） | 体积小或多数页面使用，进主题入口包 |
 | 异步注册 | `HoverMedia`（拖 tippy 运行时）、`FriendLinks`、`markmap` | 仅个别页面使用，拆成独立懒加载 chunk |
 | **不由本包注册** | `WikiHome`、`ArticleIndex`、`WikiSearch` | 依赖站点数据（`*.data.ts`），由站点侧薄壳 `docs/.vitepress/theme/index.ts` 注册，本包不感知 |
 
 入口还负责：侧栏收放状态尽早同步（避免闪烁）、导航高亮、`wiki:route-change` 事件派发、标题锚点跳转高亮、Nolebase 聚光灯默认值写入。
 
-### components/ — 18 个组件
+### components/ — 20 个组件
 
 | 组件 | 职责 | 注册方式 |
 | --- | --- | --- |
-| `WikiLayout.vue` | 全站布局：包住默认布局，挂载作者区等全局区块 | `Layout` 挂载 |
+| `WikiLayout.vue` | 全站布局：包住默认布局，挂载公告横条、作者区等全局区块 | `Layout` 挂载 |
+| `AnnouncementBar.vue` | 全站公告横条：固定视口顶部，经 `--vp-layout-top-height` 约定让下方区域让位；配置编译期注入 | 内部引用 |
 | `ArticleMeta.vue` | 文章页顶部元信息条：日期、分类 chips、字数与阅读时间 | 同步全局 |
 | `ArticleByline.vue` | 文章与卡片上的日期·分类信息行 | 内部引用 |
 | `ArticleAuthors.vue` | 页尾「本文作者」列表 | 内部引用 |
@@ -60,6 +61,7 @@ packages/wiki-theme/
 | `DownloadPageImage.vue` | 生成并下载页面分享图 | 同步全局 |
 | `HoverMedia.vue` | 悬停显示媒体（二维码/图片预览） | 异步全局 |
 | `FriendLinks.vue` | 友情链接页 | 异步全局 |
+| `Gallery.vue` | 图片画廊：容器内写 Markdown 图片，客户端测宽高比后排成等高行（布局纯函数在 `lib/content/gallery.ts`） | 同步全局 |
 | `MapView.vue` | 校园地图（NKU Maps）：上游移植，高德 JS API。**不内置数据**——点位、分类、校区与高德密钥通过 `data` prop 注入 | 页面 import + 传参 |
 | `map-data.example.js` | `data` prop 的**格式示例**（虚拟点位 + 完整字段注释）。站点真实数据不放这里，见站点侧 `docs/.vitepress/data/map-data.js` | — |
 
@@ -96,10 +98,12 @@ packages/wiki-theme/
 | `content/catalog.ts` | 核心：扫描 `docs/` 编号目录，生成侧栏树、分类、标签、归档与字数统计；校验 permalink 重复；内含 `docsRoot` 站点目录定位 |
 | `content/category.ts` | 分类层级路径的解析、统计与排序（分类页与筛选栏共用） |
 | `content/cardlist.ts` | `::: cardlist` 短码：把 Markdown 表格渲染成卡片网格 |
+| `content/gallery.ts` | 图片画廊的布局纯函数：按宽高比贪心分行、等高铺满（单元测试在 `tests/gallery.test.ts`） |
 | `data/members.example.ts` | 成员表**格式示例**（虚拟数据）。站点真实成员表在站点侧 `docs/.vitepress/data/members.ts`，经 `AuthorLookup` 注入 `collectAuthors` |
 | `data/authors.ts` | 作者解析纯函数：frontmatter + 注入的成员表 → 完整作者对象，头像首字兜底；不感知站点数据 |
 | `data/activity.ts` | 活动页数据：扫描 `docs/activity/` 生成活动列表 |
 | `data/site.ts` | 站点常量**注入点**：真实值由站点侧 `docs/.vitepress/data/site.ts` 经 `vite.define` 编译期注入（`__SITE_URL__` / `__REPO_URL__`），导出名不变 |
+| `data/announcement.ts` | 公告横条配置**注入点**：真实值由站点侧 `announcement.ts` 经 `vite.define` 注入（`__ANNOUNCEMENT__`）；未注入或解析失败返回 null，横条不渲染 |
 | `search/search.ts` | 构建期索引：扫描全部条目生成 SearchDoc（标题/章节/正文纯文本） |
 | `search/searchCore.ts` | 搜索纯函数：中文分词、变体展开、正文摘要与高亮（构建端与客户端共用） |
 

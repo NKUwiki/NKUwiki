@@ -18,6 +18,7 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 | `map-data.js` | 校园地图的点位、分类、校区配置与高德密钥（站点资产，不随主题包分发；MapView 组件通过 `data` prop 注入，格式示例见包内 `map-data.example.js`；不参与 ESLint） |
 | `members.ts` | 站点成员表（含联系方式）：`config.mts` 经 `AuthorLookup` 注入主题包的 `collectAuthors`；`fallbackAuthor` 为无 author 页面的兜底账号。格式示例见包内 `members.example.ts` |
 | `site.ts` | 站点常量（正式网址、仓库地址）：`config.mts` 直接 import，并经 `vite.define` 以 `__SITE_URL__` / `__REPO_URL__` 注入主题包组件 |
+| `announcement.ts` | 全站公告横条配置（`message` 置空即隐藏）：`config.mts` 经 `vite.define` 以 `__ANNOUNCEMENT__` 注入主题包 |
 
 ## theme/ — 站点装配
 
@@ -43,8 +44,8 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 
 主题主体（通用组件、布局、composables、styles、构建期业务库 `lib/`）全部在 **`@nkuwiki/theme`** 包内，组件清单、注册方式、包边界约定与复用方法详见 **[packages/wiki-theme/README.md](../../packages/wiki-theme/README.md)**。要点：
 
-- `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、MapView 等 19 个）、composables（sidebar、chips、searchState 等）、styles 分层样式
-- `lib/`：构建期业务库——`content/`（catalog、category、cardlist）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
+- `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、MapView 等 20 个）、composables（sidebar、chips、searchState 等）、styles 分层样式
+- `lib/`：构建期业务库——`content/`（catalog、category、cardlist、gallery）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
 
 ## 分类标准
 
