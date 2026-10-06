@@ -34,3 +34,24 @@
 :root {
 	font-variant-alternates: styleset(open-digits, disambiguation, round-quotes-and-commas);
 }
+
+/* 自定义容器 tip：绿色配色取自 VuePress Theme Hope 的容器预设
+   （参考 docs.lizili.online 的容器文档），与品牌紫的信息/警告容器区分。
+   不加描边（边框保持透明，与其余容器一致）；链接与行内代码色
+   （c-tip-1/2）按明暗底各配一档保证对比度 */
+:root {
+	--vp-custom-block-tip-border: transparent;
+	--vp-custom-block-tip-text: #003100;
+	--vp-custom-block-tip-bg: #E6F6E6;
+	--vp-custom-block-tip-code-bg: rgb(0 148 0 / 15%);
+	--vp-c-tip-1: #009400;
+	--vp-c-tip-2: #00A600;
+}
+
+.dark {
+	--vp-custom-block-tip-bg: #003100;
+	--vp-custom-block-tip-text: #E6F6E6;
+	--vp-custom-block-tip-code-bg: rgb(0 148 0 / 15%);
+	--vp-c-tip-1: #46BD87;
+	--vp-c-tip-2: #67D59F;
+}
