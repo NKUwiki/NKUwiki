@@ -6,6 +6,7 @@ import AppCards from './components/AppCards.vue'
 import ArticleMeta from './components/ArticleMeta.vue'
 import CopyContact from './components/CopyContact.vue'
 import DownloadPageImage from './components/DownloadPageImage.vue'
+import Gallery from './components/Gallery.vue'
 import GroupAvatar from './components/GroupAvatar.vue'
 import QrCode from './components/QrCode.vue'
 import WidePage from './components/WidePage.vue'
@@ -71,6 +72,8 @@ export default {
 		app.component('FriendLinks', defineAsyncComponent(() => import('./components/FriendLinks.vue')))
 		app.component('CopyContact', CopyContact)
 		app.component('QrCode', QrCode)
+		// 图片画廊：容器内写 Markdown 图片，客户端测宽高比后排成等高行
+		app.component('Gallery', Gallery)
 		// 文章元信息（面包屑/作者/标签）在构建期随标题一起注入 Markdown 正文流（见 config.mts 的 article-title 规则）
 		app.component('ArticleMeta', ArticleMeta)
 		app.component('DownloadPageImage', DownloadPageImage)
