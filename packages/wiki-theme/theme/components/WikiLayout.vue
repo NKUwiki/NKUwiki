@@ -8,6 +8,7 @@ import DefaultTheme from 'vitepress/theme-without-fonts'
 import { computed, onMounted, watch } from 'vue'
 import AnnouncementBar from './AnnouncementBar.vue'
 import ArticleAuthors from './ArticleAuthors.vue'
+import BackTop from './BackTop.vue'
 import GitHistory from './GitHistory.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
@@ -33,6 +34,7 @@ onMounted(() => {
 	<template #layout-top>
 		<AnnouncementBar />
 		<SidebarToggle class="wiki-sidebar-toggle-floating" />
+		<BackTop />
 	</template>
 	<template #nav-bar-title-before>
 		<SiteIcon class="site-icon" />

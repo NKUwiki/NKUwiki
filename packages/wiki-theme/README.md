@@ -15,7 +15,7 @@ packages/wiki-theme/
 ├── package.json        # exports 指向源码；peerDependencies: vue
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
-│   ├── components/     # 20 个 Vue 组件 + 地图数据
+│   ├── components/     # 21 个 Vue 组件 + 地图数据
 │   ├── composables/    # 5 个无 UI 的客户端逻辑
 │   └── styles/         # 10 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
@@ -39,12 +39,13 @@ packages/wiki-theme/
 
 入口还负责：侧栏收放状态尽早同步（避免闪烁）、导航高亮、`wiki:route-change` 事件派发、标题锚点跳转高亮、Nolebase 聚光灯默认值写入。
 
-### components/ — 20 个组件
+### components/ — 21 个组件
 
 | 组件 | 职责 | 注册方式 |
 | --- | --- | --- |
 | `WikiLayout.vue` | 全站布局：包住默认布局，挂载公告横条、作者区等全局区块 | `Layout` 挂载 |
 | `AnnouncementBar.vue` | 全站公告横条：固定视口顶部，经 `--vp-layout-top-height` 约定让下方区域让位；配置编译期注入 | 内部引用 |
+| `BackTop.vue` | 右下角悬浮球：SVG 环形阅读进度，点击平滑回顶（滚动超过 100px 出现） | 内部引用 |
 | `ArticleMeta.vue` | 文章页顶部元信息条：日期、分类 chips、字数与阅读时间 | 同步全局 |
 | `ArticleByline.vue` | 文章与卡片上的日期·分类信息行 | 内部引用 |
 | `ArticleAuthors.vue` | 页尾「本文作者」列表 | 内部引用 |

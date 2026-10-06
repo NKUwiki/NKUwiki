@@ -118,3 +118,66 @@ html:has(.wiki-announcement) {
 .wiki-announcement p {
 	margin: 0;
 }
+
+/* 右下角悬浮球：环形阅读进度 + 点击回顶。形态对齐 VitePress 新版内建的
+   back-to-top（进度环 52px 外扩 2px 套在 48px 圆球上，hidden 时朝右下角缩小） */
+.wiki-backtop {
+	position: fixed;
+	inset-inline-end: 1rem;
+	bottom: 4rem;
+	width: 48px;
+	height: 48px;
+	padding: 12px;
+	border: 0;
+	border-radius: 50%;
+	box-shadow: var(--vp-shadow-2);
+	background: var(--vp-c-bg);
+	color: var(--vp-c-brand-1);
+	transform-origin: 100% 100%;
+	transition: opacity var(--wiki-duration), transform var(--wiki-duration), box-shadow var(--wiki-duration);
+	cursor: pointer;
+	z-index: 90;
+}
+
+.wiki-backtop--hidden {
+	opacity: 0;
+	transform: scale(0.8);
+	pointer-events: none;
+}
+
+.wiki-backtop:hover {
+	box-shadow: var(--vp-shadow-3);
+}
+
+.wiki-backtop-ring {
+	position: absolute;
+	inset-block-start: -2px;
+	inset-inline-end: -2px;
+	width: 52px;
+	height: 52px;
+	pointer-events: none;
+}
+
+.wiki-backtop-ring svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	transform: rotate(-90deg);
+}
+
+.wiki-backtop-icon {
+	width: 24px;
+	height: 24px;
+	color: var(--vp-c-text-2);
+	transition: color var(--wiki-duration);
+}
+
+.wiki-backtop:hover .wiki-backtop-icon {
+	color: var(--vp-c-brand-1);
+}
+
+@media print {
+	.wiki-backtop {
+		display: none;
+	}
+}
