@@ -7,6 +7,7 @@ import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
+import { announcement } from './data/announcement.ts'
 import { fallbackAuthor, members } from './data/members.ts'
 import { repoUrl, siteUrl } from './data/site.ts'
 
@@ -124,10 +125,13 @@ export default defineConfig({
 		},
 	},
 	vite: {
-		// 站点常量编译期注入主题包（包内 lib/data/site.ts 消费；config 自身走 Node 侧直接 import）
+		// 站点常量编译期注入主题包（包内 lib/data/site.ts、announcement.ts 消费；
+		// config 自身走 Node 侧直接 import）。公告是对象，需双重序列化成
+		// JSON 字符串字面量，包内再 JSON.parse（site.ts 的字符串值只需一层）
 		define: {
 			__SITE_URL__: JSON.stringify(siteUrl),
 			__REPO_URL__: JSON.stringify(repoUrl),
+			__ANNOUNCEMENT__: JSON.stringify(JSON.stringify(announcement)),
 		},
 		base,
 		plugins: [

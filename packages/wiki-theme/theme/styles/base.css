@@ -92,3 +92,29 @@ pre {
 .VPNavBarMenuLink.active > span::after {
 	transform: scaleX(1);
 }
+
+/* 全站公告横条：固定在视口最顶部，下方区域按 --vp-layout-top-height 让位
+   （VitePress 内置约定，VPNav / VPSidebar / VPLocalNav / 首页 Hero 均消费该变量）。
+   组件挂载后会用实测高度覆盖这里的 40px 兜底值 */
+html:has(.wiki-announcement) {
+	--vp-layout-top-height: 40px;
+}
+
+.wiki-announcement {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: fixed;
+	inset-inline: 0;
+	top: 0;
+	min-height: 40px;
+	padding: 6px 24px;
+	font-size: 13px;
+	line-height: 1.6;
+	text-align: center;
+	z-index: var(--vp-z-index-layout-top);
+}
+
+.wiki-announcement p {
+	margin: 0;
+}

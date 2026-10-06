@@ -6,6 +6,7 @@ import {
 import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { computed, onMounted, watch } from 'vue'
+import AnnouncementBar from './AnnouncementBar.vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import GitHistory from './GitHistory.vue'
 import SidebarToggle from './SidebarToggle.vue'
@@ -28,8 +29,9 @@ onMounted(() => {
 
 <template>
 <DefaultTheme.Layout>
-	<!-- 目录收起后，左边缘浮一个按钮把它放回来 -->
+	<!-- 公告横条固定在视口顶部，下方区域按 --vp-layout-top-height 让位 -->
 	<template #layout-top>
+		<AnnouncementBar />
 		<SidebarToggle class="wiki-sidebar-toggle-floating" />
 	</template>
 	<template #nav-bar-title-before>
