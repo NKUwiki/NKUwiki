@@ -11,5 +11,8 @@
   },
   "peerDependencies": {
     "vue": "^3.5.42"
+  },
+  "dependencies": {
+    "image-size": "^2.0.2"
   }
 }
