@@ -16,8 +16,8 @@
     "preview": "vitepress preview docs",
     "images:optimize": "node docs/.vitepress/scripts/optimize-images.mjs",
     "typecheck": "vue-tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix --max-warnings=0",
     "test": "tsx --test tests/*.test.ts",
     "check": "pnpm gen:history && pnpm typecheck && pnpm lint && pnpm test"
   },
