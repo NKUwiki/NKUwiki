@@ -421,10 +421,13 @@ mark.wiki-marker.important {
 }
 
 .wiki-timeline-item:not(.horizontal):last-of-type > .wiki-timeline-line::before {
+	/* 末条目连线截止到圆点（移植 plume）：需压过上面 bottom: -48px 的通则 */
+	/* eslint-disable-next-line css/no-important */
 	bottom: 0 !important;
 }
 
 .wiki-timeline-item.horizontal:last-of-type > .wiki-timeline-line::before {
+	/* eslint-disable-next-line css/no-important */
 	right: 0 !important;
 }
 
@@ -505,10 +508,13 @@ mark.wiki-marker.important {
 }
 
 .wiki-timeline-item .wiki-timeline-content > .wiki-timeline-title + * {
+	/* 压过 VitePress 正文 p 的统一外边距（移植 plume） */
+	/* eslint-disable-next-line css/no-important */
 	margin-top: 0 !important;
 }
 
 .wiki-timeline-item .wiki-timeline-content > :last-child {
+	/* eslint-disable-next-line css/no-important */
 	margin-bottom: 0 !important;
 }
 
