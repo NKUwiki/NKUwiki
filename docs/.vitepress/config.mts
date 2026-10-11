@@ -9,6 +9,8 @@ import { annotation } from '@nkuwiki/theme/lib/markdown/annotation.ts'
 import { codeTitle } from '@nkuwiki/theme/lib/markdown/code-title.ts'
 import { imageSizePlugin } from '@nkuwiki/theme/lib/markdown/image-size.ts'
 import { plot } from '@nkuwiki/theme/lib/markdown/plot.ts'
+import { steps } from '@nkuwiki/theme/lib/markdown/steps.ts'
+import { timeline } from '@nkuwiki/theme/lib/markdown/timeline.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
@@ -172,6 +174,8 @@ export default defineConfig({
 			annotation(md)
 			plot(md)
 			codeTitle(md)
+			steps(md)
+			timeline(md)
 			imageSizePlugin(md, fileURLToPath(new URL('../', import.meta.url)))
 			// 文章元信息（分类/标题/字数/标签）整体由 ArticleMeta 组件渲染，构建期注入正文最前。
 			// 标题不再以 Markdown 一级标题插入：组件内的标题与字数同行排版，全站标题统一来自

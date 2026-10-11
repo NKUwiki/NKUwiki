@@ -1,0 +1,435 @@
+/* 内容增强：行内注释、隐秘文本、马克笔、代码块标题、步骤条、时间线（构建期规则在 lib/markdown/，
+   这里只负责对应 DOM 的呈现样式） */
+
+/* ================= 行内注释 {^...} ================= */
+
+.wiki-annotation {
+	position: relative;
+	margin: 0 1px;
+	cursor: help;
+}
+
+.wiki-annotation-dot {
+	font-size: 0.72em;
+	color: var(--vp-c-brand-1);
+}
+
+.wiki-annotation-bubble {
+	display: none;
+	position: absolute;
+	bottom: calc(100% + 6px);
+	left: 50%;
+	width: max-content;
+	max-width: 16rem;
+	padding: 0.375rem 0.625rem;
+	border: 1px solid var(--vp-c-divider);
+	border-radius: 8px;
+	box-shadow: var(--vp-shadow-2);
+	background: var(--vp-c-bg-elv);
+	font-size: 0.8rem;
+	font-weight: 400;
+	line-height: 1.5;
+	white-space: normal;
+	text-align: left;
+	color: var(--vp-c-text-1);
+	transform: translateX(-50%);
+	z-index: 30;
+}
+
+/* 悬停/键盘聚焦时显示；小气泡箭头用旋转方块画 */
+.wiki-annotation:hover .wiki-annotation-bubble,
+.wiki-annotation:focus .wiki-annotation-bubble,
+.wiki-annotation:focus-visible .wiki-annotation-bubble {
+	display: block;
+}
+
+.wiki-annotation-bubble::after {
+	content: "";
+	position: absolute;
+	bottom: -5px;
+	left: 50%;
+	width: 8px;
+	height: 8px;
+	border-right: 1px solid var(--vp-c-divider);
+	border-bottom: 1px solid var(--vp-c-divider);
+	background: var(--vp-c-bg-elv);
+	transform: translateX(-50%) rotate(45deg);
+}
+
+/* 触屏没有 hover：点击（focus）可开合，点其他处失焦自动收起 */
+
+/* ================= 隐秘文本 !!...!! ================= */
+
+.wiki-plot {
+	padding-right: 2px;
+	padding-left: 2px;
+	border-radius: 2px;
+}
+
+.wiki-plot.click {
+	cursor: pointer;
+}
+
+/* 模糊效果：blur 到 0 显形 */
+.wiki-plot:where(.blur) {
+	transition: filter 0.25s;
+	filter: blur(0.2rem);
+}
+
+/* 黑幕效果：文字与底同色 */
+.wiki-plot:where(.mask) {
+	background-color: var(--vp-c-text-1);
+	color: transparent;
+	transition: color 0.25s, background-color 0.25s;
+}
+
+.wiki-plot:where(.blur.hover):hover,
+.wiki-plot:where(.blur).active {
+	filter: blur(0);
+}
+
+.wiki-plot:where(.mask.hover):hover,
+.wiki-plot:where(.mask).active {
+	color: var(--vp-c-neutral-inverse);
+}
+
+/* 打印时黑幕内容无意义，直接显示原文 */
+@media print {
+	.wiki-plot:where(.mask) {
+		background-color: transparent;
+		color: inherit;
+	}
+
+	.wiki-plot:where(.blur) {
+		filter: none;
+	}
+}
+
+/* ================= 代码块标题 ================= */
+
+.wiki-code-title > div[class*="language-"] {
+	margin-top: 0;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+.wiki-code-title::before {
+	content: attr(data-title);
+	display: block;
+	padding: 0.5rem 1rem;
+	border: 1px solid var(--vp-c-divider);
+	border-bottom: none;
+	border-radius: 8px 8px 0 0;
+	background: var(--vp-c-bg-alt) content-box;
+	font-family: var(--vp-font-family-mono);
+	font-size: 0.75rem;
+	line-height: 1.4;
+	color: var(--vp-c-text-2);
+}
+
+.dark .wiki-code-title::before {
+	border-color: var(--vp-c-divider);
+}
+
+/* ================= 步骤条 ::: steps ================= */
+/* 移植 plume 主题的 steps 样式：容器内的 ol/ul 变成带圆点编号与竖向连线的步骤条 */
+
+.wiki-steps {
+	margin: 16px 0;
+}
+
+.wiki-steps > :where(ol, ul) {
+	padding-inline-start: 0;
+	list-style: none;
+}
+
+.wiki-steps > :where(ol, ul) > li {
+	position: relative;
+	min-height: 28px;
+	padding-left: 44px;
+	margin-bottom: 16px;
+	line-height: 28px;
+}
+
+.wiki-steps > :where(ol, ul) > li::before {
+	position: absolute;
+	inset-inline-start: 0;
+	top: 0;
+	width: 28px;
+	height: 28px;
+	font-size: 16px;
+	font-weight: 400;
+	line-height: 28px;
+	color: var(--vp-c-text-1);
+	text-align: center;
+	content: counter(list-item);
+	background-color: var(--vp-c-bg-soft);
+	border: solid 1px var(--vp-c-divider);
+	border-radius: 100%;
+	transition: color, background-color, border-color;
+	transition-duration: var(--vp-t-color);
+}
+
+.wiki-steps > :where(ol, ul) > li:not(:last-of-type)::after {
+	position: absolute;
+	inset-inline-start: 14px;
+	top: 34px;
+	bottom: -10px;
+	width: 1px;
+	content: "";
+	background-color: var(--vp-c-divider);
+}
+
+.wiki-steps > :where(ol, ul) > li > :first-child {
+	margin-top: 0;
+}
+
+.wiki-steps > :where(ol, ul) > li > :first-child:where(h1, h2, h3, h4, h5, h6) {
+	padding-top: 0;
+	border-top: none;
+}
+
+.wiki-steps > :where(ol, ul) > li > :first-child:where(p) {
+	line-height: 28px;
+}
+
+.wiki-steps > :where(ol, ul) > li + li {
+	margin-top: 1px;
+}
+
+/* ================= 时间线 ::: timeline ================= */
+/* 移植 plume 主题 VPTimeline/VPTimelineItem 的样式，渲染为纯 HTML 结构 */
+
+.wiki-timeline {
+	position: relative;
+	margin: 32px 0;
+}
+
+.wiki-timeline.horizontal {
+	padding-bottom: 7px;
+	overflow-x: auto;
+}
+
+.wiki-timeline-box {
+	display: flex;
+	flex-direction: column;
+	gap: 24px 36px;
+}
+
+.wiki-timeline.horizontal .wiki-timeline-box {
+	flex-direction: row;
+	width: max-content;
+}
+
+.wiki-timeline-item,
+.wiki-timeline-item.info {
+	--wiki-timeline-c-line: var(--vp-c-border);
+	--wiki-timeline-c-point: var(--vp-c-border);
+	--wiki-timeline-c-title: var(--vp-c-text-1);
+	--wiki-timeline-c-text: var(--vp-c-text-1);
+	--wiki-timeline-c-time: var(--vp-c-text-3);
+	--wiki-timeline-bg-card: var(--vp-c-bg-soft);
+}
+
+.wiki-timeline-item.tip {
+	--wiki-timeline-c-line: var(--vp-c-tip-1);
+	--wiki-timeline-c-point: var(--vp-c-tip-1);
+	--wiki-timeline-bg-card: var(--vp-c-tip-soft);
+}
+
+.wiki-timeline-item.success {
+	--wiki-timeline-c-line: var(--vp-c-success-3);
+	--wiki-timeline-c-point: var(--vp-c-success-3);
+	--wiki-timeline-bg-card: var(--vp-c-success-soft);
+}
+
+.wiki-timeline-item.warning {
+	--wiki-timeline-c-line: var(--vp-c-warning-3);
+	--wiki-timeline-c-point: var(--vp-c-warning-3);
+	--wiki-timeline-bg-card: var(--vp-c-warning-soft);
+}
+
+.wiki-timeline-item.danger {
+	--wiki-timeline-c-line: var(--vp-c-danger-3);
+	--wiki-timeline-c-point: var(--vp-c-danger-3);
+	--wiki-timeline-bg-card: var(--vp-c-danger-soft);
+}
+
+.wiki-timeline-item.caution {
+	--wiki-timeline-c-line: var(--vp-c-caution-3);
+	--wiki-timeline-c-point: var(--vp-c-caution-3);
+	--wiki-timeline-bg-card: var(--vp-c-caution-soft);
+}
+
+.wiki-timeline-item.important {
+	--wiki-timeline-c-line: var(--vp-c-important-3);
+	--wiki-timeline-c-point: var(--vp-c-important-3);
+	--wiki-timeline-bg-card: var(--vp-c-important-soft);
+}
+
+.wiki-timeline-item {
+	position: relative;
+	display: flex;
+}
+
+.wiki-timeline-item.placement-right {
+	justify-content: flex-end;
+	padding-right: 36px;
+	text-align: right;
+}
+
+.wiki-timeline-item.placement-left {
+	justify-content: flex-start;
+	padding-left: 36px;
+}
+
+.wiki-timeline-item > .wiki-timeline-line {
+	position: absolute;
+}
+
+.wiki-timeline-item:not(.horizontal) > .wiki-timeline-line {
+	top: 0;
+	bottom: 0;
+	width: 0;
+}
+
+.wiki-timeline-item.horizontal {
+	padding-top: 36px;
+}
+
+.wiki-timeline-item.horizontal > .wiki-timeline-line {
+	top: 12px;
+	right: 0;
+	left: 0;
+	height: 0;
+}
+
+.wiki-timeline-item:not(.horizontal).card > .wiki-timeline-line {
+	top: 14px;
+}
+
+.wiki-timeline-item:not(.horizontal).placement-left > .wiki-timeline-line {
+	left: 12px;
+}
+
+.wiki-timeline-item:not(.horizontal).placement-right > .wiki-timeline-line {
+	right: 12px;
+}
+
+.wiki-timeline-item > .wiki-timeline-line::before {
+	position: absolute;
+	display: block;
+	content: "";
+	border: none;
+}
+
+.wiki-timeline-item:not(.horizontal) > .wiki-timeline-line::before {
+	top: 10px;
+	bottom: -48px;
+	border-left: 2px solid var(--wiki-timeline-c-line);
+}
+
+.wiki-timeline-item.horizontal > .wiki-timeline-line::before {
+	right: -46px;
+	left: 8px;
+	border-top: 2px solid var(--wiki-timeline-c-line);
+}
+
+.wiki-timeline-item:not(.horizontal):last-of-type > .wiki-timeline-line::before {
+	bottom: 0 !important;
+}
+
+.wiki-timeline-item.horizontal:last-of-type > .wiki-timeline-line::before {
+	right: 0 !important;
+}
+
+.wiki-timeline-item.line-dashed > .wiki-timeline-line::before {
+	border-style: dashed;
+	border-width: 0 0 0 2px;
+}
+
+.wiki-timeline-item.horizontal.line-dashed > .wiki-timeline-line::before {
+	border-width: 2px 0 0;
+}
+
+.wiki-timeline-item.line-dotted > .wiki-timeline-line::before {
+	border-style: dotted;
+	border-width: 0 0 0 2px;
+}
+
+.wiki-timeline-item.horizontal.line-dotted > .wiki-timeline-line::before {
+	border-width: 2px 0 0;
+}
+
+.wiki-timeline-item > .wiki-timeline-line .wiki-timeline-point {
+	position: absolute;
+	width: 16px;
+	height: 16px;
+	background-color: var(--wiki-timeline-c-point);
+	border-radius: 50%;
+	transition: background-color;
+	transition-duration: var(--vp-t-color);
+}
+
+.wiki-timeline-item:not(.horizontal) > .wiki-timeline-line .wiki-timeline-point {
+	top: 4px;
+	left: -7px;
+}
+
+.wiki-timeline-item.horizontal > .wiki-timeline-line .wiki-timeline-point {
+	top: -7px;
+	left: 0;
+}
+
+.wiki-timeline-item .wiki-timeline-container {
+	width: max-content;
+	max-width: 100%;
+	font-size: 16px;
+	line-height: 1.5;
+	color: var(--wiki-timeline-c-text);
+}
+
+.wiki-timeline-item.horizontal .wiki-timeline-container {
+	max-width: 240px;
+}
+
+.wiki-timeline-item.card .wiki-timeline-content {
+	padding: 16px;
+	background-color: var(--wiki-timeline-bg-card);
+	border-radius: 6px;
+}
+
+.wiki-timeline-item .wiki-timeline-content :where(p, ul, ol) {
+	margin: 8px 0;
+	line-height: 22px;
+}
+
+.wiki-timeline-item .wiki-timeline-content div[class*="language-"] {
+	margin: 16px 0;
+}
+
+.wiki-timeline-item .wiki-timeline-content li + li {
+	margin-top: 4px;
+}
+
+.wiki-timeline-item .wiki-timeline-content .wiki-timeline-title {
+	margin: 0 0 8px;
+	font-size: 16px;
+	font-weight: 900;
+	color: var(--wiki-timeline-c-title);
+}
+
+.wiki-timeline-item .wiki-timeline-content > .wiki-timeline-title + * {
+	margin-top: 0 !important;
+}
+
+.wiki-timeline-item .wiki-timeline-content > :last-child {
+	margin-bottom: 0 !important;
+}
+
+.wiki-timeline-item .wiki-timeline-time {
+	margin: 4px 0 0;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--wiki-timeline-c-time);
+}
