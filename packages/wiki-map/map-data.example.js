@@ -13,6 +13,7 @@
  * 数据结构遵循 QUT-WiKi MapView 的约定：
  *   点位 { id, name, category, campusId, coord: [经度, 纬度], desc, photos: ['图片地址'] }
  *   photos 可放多张图片（旧的单图 photo 字段也已兼容）。
+ *   点位可选 aliases: ['别称', '拼音', '拼音首字母']，参与地图搜索（见包内 search.js）。
  * 坐标统一 GCJ02（高德坐标系），高德底图与高德导航直接使用；百度/腾讯/Apple 导航
  * 外链由 MapView 内部做坐标转换。
  *

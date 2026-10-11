@@ -11,6 +11,7 @@
  * 字段格式与必备导出见同目录 map-data.example.js。
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { createBuildingSearch } from './search.js'
 
 const props = defineProps({
 	/** 地图数据对象，导出字段与 map-data.example.js 一致 */
@@ -69,20 +70,21 @@ let visualViewport = null
 let detailResizeObserver = null
 
 /* ================= 派生数据 ================= */
+/* 点位搜索引擎：覆盖全部 BUILDINGS，一次构建；校区/分类过滤在其结果上继续 */
+const buildingSearch = createBuildingSearch(BUILDINGS)
+
 const campusBuildings = computed(() =>
 	BUILDINGS.filter(b => b.campusId === currentCampus.value),
 )
 
 const filteredBuildings = computed(() => {
 	const kw = searchKeyword.value.trim().toLowerCase()
+	const matched = kw ? buildingSearch(kw) : null
 	return campusBuildings.value.filter((b) => {
 		if (currentCategory.value !== 'all' && b.category !== currentCategory.value)
 			return false
-		if (kw) {
-			const hay = (`${b.name} ${b.desc || ''}`).toLowerCase()
-			if (!hay.includes(kw))
-				return false
-		}
+		if (matched && !matched.has(b.id))
+			return false
 		return true
 	})
 })

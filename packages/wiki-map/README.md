@@ -13,14 +13,14 @@
 
 ## 使用
 
-```vue
+```html
 <script setup>
 import MapView from '@nkuwiki/wiki-map'
 import * as mapData from './.vitepress/data/map-data.js'
 </script>
 
 <template>
-  <MapView :data="mapData" />
+	<MapView :data="mapData" />
 </template>
 ```
 
@@ -31,6 +31,15 @@ import * as mapData from './.vitepress/data/map-data.js'
 - `AMAP_KEY` / `AMAP_SECURITY_JS_CODE`：高德 Web 端 (JS API) 密钥（[lbs.amap.com](https://lbs.amap.com) 控制台申请，需按站点域名做白名单）
 
 站点真实数据不放本包（如 NKUwiki 的在 `docs/.vitepress/data/map-data.js`）。
+
+## 搜索
+
+内置独立搜索（`search.js`，MiniSearch 引擎，随包分发、不依赖站点全站搜索）：
+
+- 中文按「单字 + 相邻二元组」分词，支持子串命中（搜「图书」中「图书馆报告厅」）与容错（错别字、少字）；
+- 拉丁/数字词原样索引，支持英文关键词；
+- 点位可选 `aliases: ['别称', '拼音', '拼音首字母']` 字段扩展召回（如 `['tushuguan', 'tsg']`），名称权重 > 别称 > 描述；
+- 搜索结果与校区切换、分类筛选叠加过滤，列表保持数据文件原有排序。
 
 ## 维护约定
 
