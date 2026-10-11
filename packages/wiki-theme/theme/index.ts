@@ -12,6 +12,7 @@ import QrCode from './components/QrCode.vue'
 import WidePage from './components/WidePage.vue'
 import WikiLayout from './components/WikiLayout.vue'
 import { highlightHashTarget, installHeadingHighlight } from './composables/headingHighlight'
+import { installPlotToggle } from './composables/plot'
 import { syncSidebarCollapsed } from './composables/sidebar'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
@@ -19,6 +20,8 @@ import './styles/index.css'
 // 必须在模块顶层注册：要比 VitePress createRouter 的 window 捕获监听更早，
 // 才能在 preventDefault 后拦下 VitePress 默认的瞬时锚点跳转（详见 headingHighlight.ts 文件头）
 installHeadingHighlight()
+// 隐秘文本 !!...!!{.click} 的点击开合（hover 是纯 CSS，无需这里）
+installPlotToggle()
 
 /**
  * 分类页的「新生入学」等导航入口都用 /categories/?category=xxx 表示，

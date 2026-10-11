@@ -5,6 +5,10 @@ import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
+import { annotation } from '@nkuwiki/theme/lib/markdown/annotation.ts'
+import { codeTitle } from '@nkuwiki/theme/lib/markdown/code-title.ts'
+import { imageSizePlugin } from '@nkuwiki/theme/lib/markdown/image-size.ts'
+import { plot } from '@nkuwiki/theme/lib/markdown/plot.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
@@ -163,6 +167,12 @@ export default defineConfig({
 			cardlist(md)
 			// <flink> 数据块 → FriendLinks 卡片（友链数据在 md 中直接编辑）
 			flink(md)
+			// 行内注释 {^...}、隐秘文本 !!...!!、代码块标题 title="..."、
+			// 本地图片构建期注入宽高防 CLS（组件在主题包全局注册，见 theme/index.ts）
+			annotation(md)
+			plot(md)
+			codeTitle(md)
+			imageSizePlugin(md, fileURLToPath(new URL('../', import.meta.url)))
 			// 文章元信息（分类/标题/字数/标签）整体由 ArticleMeta 组件渲染，构建期注入正文最前。
 			// 标题不再以 Markdown 一级标题插入：组件内的标题与字数同行排版，全站标题统一来自
 			// frontmatter（正文不应再自带一级标题，历史遗留的 18 处已清理）。
