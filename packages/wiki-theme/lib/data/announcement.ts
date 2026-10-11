@@ -15,6 +15,18 @@ export interface AnnouncementConfig {
 	background?: string
 	/** 文字颜色，缺省白色 */
 	color?: string
+	/**
+	 * 公告指纹：用户关闭后记录到存储，同 id 不再弹出；发布新公告换一个 id 即可重新展示。
+	 * 缺省取 message 内容（message 变化即视为新公告）。
+	 */
+	id?: string
+	/**
+	 * 关闭记忆粒度：
+	 * - 'session'（默认）本次会话内不再显示（关掉标签页后重新出现）
+	 * - 'once' 永久不再显示
+	 * - 其他值/留空：不记忆，每次进入页面都显示（用户可手动关闭当次）
+	 */
+	lifetime?: 'session' | 'once'
 }
 
 declare const __ANNOUNCEMENT__: string | undefined
