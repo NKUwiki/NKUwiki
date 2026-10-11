@@ -91,6 +91,49 @@ export function countWords(content: string): number {
 	return cjk.length + words.length
 }
 
+/**
+ * 从正文提取一段纯文本，作文章页描述（og:description / JSON-LD）的兜底。
+ * 跳过标题、容器围栏、列表、引用等结构性首行，取第一段正文；
+ * 剥掉链接/强调/行内代码/马克笔/注释等行内标记并压平空白，超长截断加省略号。
+ */
+export function excerptFromContent(content: string, maxLength = 80): string {
+	const text = content
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/~~~[\s\S]*?~~~/g, ' ')
+		.replace(/<!--[\s\S]*?-->/g, ' ')
+		.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+		.replace(/<[^>]*>/g, ' ')
+	let depth = 0
+	for (const raw of text.split('\n')) {
+		const line = raw.trim()
+		// 容器围栏（::: tip … :::）整体跳过，内部提示文本不作为文章首段描述
+		if (/^:{3,}/.test(line)) {
+			depth += line.startsWith(':::') && !/^:{3,}\s*$/.test(line) ? 1 : -1
+			if (depth < 0)
+				depth = 0
+			continue
+		}
+		if (depth > 0)
+			continue
+		// 结构性行不作为描述：标题、列表、引用、表格
+		if (!line || /^#{1,6}\s/.test(line) || /^[-*+]\s/.test(line) || /^\d+[.)]\s/.test(line) || line.startsWith('>') || /^\|/.test(line))
+			continue
+		const plain = line
+			.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+			.replace(/`([^`]*)`/g, '$1')
+			.replace(/(\*\*|__)(.*?)\1/g, '$2')
+			.replace(/(\*|_)([^*_]*)\1/g, '$2')
+			.replace(/==([^=]*)==/g, '$1')
+			.replace(/\{[^{}]*\}/g, '')
+			.replace(/\s+/g, ' ')
+			.trim()
+		if (!plain)
+			continue
+		return plain.length <= maxLength ? plain : `${plain.slice(0, maxLength - 1).trimEnd()}…`
+	}
+	return ''
+}
+
 export function scanArticles(root = docsRoot) {
 	// 非文章 md（index.md、map.md 等直通页，不经 rewrites 改写）也要参与 permalink
 	// 查重：文章 permalink 撞上这些路径时 VitePress 会静默丢页面。activity/ 被

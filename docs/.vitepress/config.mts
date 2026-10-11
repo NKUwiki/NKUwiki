@@ -2,7 +2,7 @@ import type { MarkdownRenderer } from 'vitepress'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
-import { buildTree, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
+import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import { annotation } from '@nkuwiki/theme/lib/markdown/annotation.ts'
@@ -219,7 +219,10 @@ export default defineConfig({
 		}
 
 		const pageTitle = article?.title ?? (page.frontmatter.title as string | undefined) ?? 'NKUwiki · 南开大学校园知识库'
-		const pageDescription = (page.frontmatter.description as string | undefined) ?? description
+		// 页面描述三级兜底：frontmatter description → 正文首段（构建期从扫描缓存提取）→ 全站文案。
+		// scanArticles 在 config 顶层已执行，正文缓存可直接复用（避免二次读盘）。
+		const bodyDescription = article ? excerptFromContent(getArticleContent(article.source) ?? '') : ''
+		const pageDescription = (page.frontmatter.description as string | undefined) || bodyDescription || description
 		const head: [string, Record<string, string>, string?][] = [
 			['link', { rel: 'canonical', href: pageUrl }],
 			['meta', { property: 'og:title', content: pageTitle }],

@@ -166,3 +166,20 @@ test('lastUpdated prefers the explicit field, falls back to date, and ignores le
 		rmSync(root, { recursive: true, force: true })
 	}
 })
+
+test('excerptFromContent 提取正文首段做描述兜底，剥离行内标记并截断', async () => {
+	const { excerptFromContent } = await import('../packages/wiki-theme/lib/content/catalog.ts')
+	// 跳过标题，取第一段正文
+	assert.equal(excerptFromContent('# 标题\n\n这是首段正文。'), '这是首段正文。')
+	// 剥离强调、代码、链接、马克笔、行内注释
+	assert.equal(excerptFromContent('**加粗**、`代码`、[链接文本](/a) 与 ==马克笔=={^注释}混排'), '加粗、代码、链接文本 与 马克笔混排')
+	// 列表/引用/容器围栏开头不作为描述
+	assert.equal(excerptFromContent('::: tip\n提示内容\n:::\n\n正文段落'), '正文段落')
+	assert.equal(excerptFromContent('- 列表项\n\n真正的首段'), '真正的首段')
+	// 超长截断加省略号
+	const long = '长'.repeat(100)
+	assert.equal(excerptFromContent(long).length, 80)
+	assert.ok(excerptFromContent(long).endsWith('…'))
+	// 空正文返回空串（调用方继续兜底全站文案）
+	assert.equal(excerptFromContent(''), '')
+})
