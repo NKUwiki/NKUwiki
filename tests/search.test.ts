@@ -81,7 +81,7 @@ test('buildExcerpt centers on the first match and names the section', () => {
 	assert.ok(excerpt.html.includes('宿舍'))
 	// 无命中时返回开头纯文本
 	const plain = buildExcerpt('开头一段正文', [])
-	assert.equal(plain.html, '开头一段正文')
+	assert.equal(plain.html, '<p>开头一段正文</p>')
 	assert.equal(plain.section, '')
 })
 

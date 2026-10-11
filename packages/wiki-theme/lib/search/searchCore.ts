@@ -186,32 +186,93 @@ export interface ExcerptResult {
 	section: string
 }
 
-const EXCERPT_RADIUS = 70
-const EXCERPT_MAX = 180
+const EXCERPT_RADIUS = 120
+const EXCERPT_MAX = 360
 
-/** 以第一处命中为中心截取摘要窗口，命中区间包上 <mark>。terms 为空时返回开头一段纯文本。 */
+/** 单行摘要 HTML：行内命中区间包 <mark>，其余转义。 */
+function excerptLineHtml(text: string, lineStart: number, lineEnd: number, ranges: Range[]): string {
+	const parts: string[] = []
+	let cursor = lineStart
+	for (const range of ranges) {
+		if (range.end <= lineStart || range.start >= lineEnd)
+			continue
+		const from = Math.max(range.start, lineStart)
+		const to = Math.min(range.end, lineEnd)
+		if (from > cursor)
+			parts.push(escapeHtml(text.slice(cursor, from)))
+		parts.push(`<mark>${escapeHtml(text.slice(from, to))}</mark>`)
+		cursor = to
+	}
+	parts.push(escapeHtml(text.slice(cursor, lineEnd)))
+	return parts.join('')
+}
+
+interface ExcerptBlock { type: 'p' | 'li' | 'quote', html: string }
+
+/** 把窗口内的行还原为原始排版块：列表行 → li、引用行 → quote、其余 → 段落。 */
+function renderExcerptBlocks(text: string, start: number, end: number, ranges: Range[]): string {
+	const blocks: ExcerptBlock[] = []
+	let pos = start
+	for (const raw of text.slice(start, end).split('\n')) {
+		const lineEnd = pos + raw.length
+		if (raw.trim()) {
+			// 去掉行首缩进与列表/引用标记后才是要展示的内容
+			const trimmed = raw.trimStart()
+			const marker = trimmed.match(/^([-*+]\s+|>\s?)/)
+			const type: ExcerptBlock['type'] = !marker ? 'p' : marker[0].startsWith('>') ? 'quote' : 'li'
+			const contentStart = pos + (raw.length - trimmed.length) + (marker ? marker[0].length : 0)
+			blocks.push({ type, html: excerptLineHtml(text, contentStart, lineEnd, ranges) })
+		}
+		pos = lineEnd + 1
+	}
+	const out: string[] = []
+	let i = 0
+	while (i < blocks.length) {
+		if (blocks[i].type === 'li') {
+			const items: string[] = []
+			while (i < blocks.length && blocks[i].type === 'li') {
+				items.push(`<li>${blocks[i].html}</li>`)
+				i++
+			}
+			out.push(`<ul>${items.join('')}</ul>`)
+		}
+		else {
+			const block = blocks[i]
+			out.push(block.type === 'quote' ? `<blockquote>${block.html}</blockquote>` : `<p>${block.html}</p>`)
+			i++
+		}
+	}
+	return out.join('')
+}
+
+/**
+ * 以第一处命中为中心截取摘要窗口（按整行对齐），命中区间包上 <mark>，
+ * 并按原文排版渲染：列表还原为 <ul>/<li>、引用还原为 <blockquote>。
+ * terms 为空时返回开头一段（同样保留排版）。
+ */
 export function buildExcerpt(text: string, terms: string[], sections: SearchSection[] = [], queryTokens: string[] = []): ExcerptResult {
 	const ranges = terms.length ? findRanges(text, terms, queryTokens) : []
-	if (!ranges.length) {
-		const head = text.length > EXCERPT_MAX ? `${text.slice(0, EXCERPT_MAX).trimEnd()}…` : text
-		return { html: escapeHtml(head), section: '' }
+	let start = 0
+	let end = Math.min(text.length, EXCERPT_MAX)
+	if (ranges.length) {
+		const first = ranges[0]
+		start = Math.max(0, first.start - EXCERPT_RADIUS)
+		end = Math.min(text.length, Math.max(first.end + EXCERPT_RADIUS, start + EXCERPT_MAX))
 	}
-	const first = ranges[0]
-	const start = Math.max(0, first.start - EXCERPT_RADIUS)
-	const end = Math.min(text.length, Math.max(first.end + EXCERPT_RADIUS, start + EXCERPT_MAX))
-	const clipped = ranges.filter(range => range.end > start && range.start < end).map(range => ({ start: Math.max(range.start, start), end: Math.min(range.end, end) }))
-	const parts: string[] = []
-	let cursor = start
-	for (const range of clipped) {
-		parts.push(escapeHtml(text.slice(cursor, range.start)))
-		parts.push(`<mark>${escapeHtml(text.slice(range.start, range.end))}</mark>`)
-		cursor = range.end
+	// 窗口对齐整行：起点收到所在行行首，终点扩到所在行行尾，保证分块渲染不出现半行
+	if (start > 0)
+		start = text.lastIndexOf('\n', start - 1) + 1
+	if (end < text.length) {
+		const nl = text.indexOf('\n', end)
+		end = nl === -1 ? text.length : nl
 	}
-	parts.push(escapeHtml(text.slice(cursor, end)))
-	const html = (start > 0 ? '…' : '') + parts.join('') + (end < text.length ? '…' : '')
+	const prefix = start > 0 ? '…' : ''
+	const suffix = end < text.length ? '…' : ''
+	const html = `${prefix}${renderExcerptBlocks(text, start, end, ranges)}${suffix}`
+	const anchor = ranges.length ? ranges[0].start : start
 	let section = sections.length ? sections[0].t : ''
 	for (const item of sections) {
-		if (item.o <= first.start)
+		if (item.o <= anchor)
 			section = item.t
 		else break
 	}

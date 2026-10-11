@@ -54,17 +54,19 @@ function onRouteChange() {
 	scrollToMatch(jump.original ?? '', jump.terms ?? [], jump.section ?? '')
 }
 
-// 在渲染后的正文里找第一处包含查询词的文本，包上临时 <mark> 原地闪烁
-function flashTextMatch(original: string, terms: string[]): boolean {
-	// 完整查询串优先（如“向阳计划”整体），其次长词元，最后才放行单字词元
-	const words = [original, ...terms.filter(term => term.length >= 2), ...terms].filter(Boolean)
-	if (!words.length)
-		return false
-	// 页首的 ArticleMeta 容器也带 vp-doc class，用 main 下的主正文容器
-	const root = document.querySelector('main .vp-doc') ?? document.querySelector('.vp-doc')
-	if (!root)
-		return false
-	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+// 在渲染后的正文里找命中文本，包上临时 <mark> 原地闪烁。
+// 优先在摘要所属章节的范围内找（对应搜索结果里展示的那一行），
+// 找不到再退回全文，并跳过页首的文章元信息（面包屑/标签也常含查询词，会高亮错位置）。
+function flashInRange(root: Element, startEl: Element | null, endEl: Element | null, words: string[]): boolean {
+	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+		acceptNode(node) {
+			if (startEl && !(startEl.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING))
+				return NodeFilter.FILTER_REJECT
+			if (endEl && !(node.compareDocumentPosition(endEl) & Node.DOCUMENT_POSITION_FOLLOWING))
+				return NodeFilter.FILTER_REJECT
+			return NodeFilter.FILTER_ACCEPT
+		},
+	})
 	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
 		const text = (node.textContent ?? '').toLocaleLowerCase()
 		if (!text.trim())
@@ -86,6 +88,14 @@ function flashTextMatch(original: string, terms: string[]): boolean {
 			continue
 		}
 		mark.scrollIntoView({ block: 'center' })
+		// 路由切换后 VitePress 还会把页面滚回顶部、懒加载内容也会引起回流，
+		// 与这里的定位存在竞态：等布局稳定后再校正一次居中。
+		// 若用户已经自己滚动了（滚动位置离开了刚定位的位置），就不再打扰。
+		const lastFlashScrollY = window.scrollY
+		setTimeout(() => {
+			if (Math.abs(window.scrollY - lastFlashScrollY) < 40)
+				mark.scrollIntoView({ block: 'center' })
+		}, 350)
 		setTimeout(() => {
 			const parent = mark.parentNode
 			if (parent) {
@@ -99,12 +109,37 @@ function flashTextMatch(original: string, terms: string[]): boolean {
 	return false
 }
 
+function flashTextMatch(original: string, terms: string[], section: string): boolean {
+	// 完整查询串优先（如“向阳计划”整体），其次长词元，最后才放行单字词元
+	const words = [original, ...terms.filter(term => term.length >= 2), ...terms].filter(Boolean)
+	if (!words.length)
+		return false
+	// 页首的 ArticleMeta 容器也带 vp-doc class，用 main 下的主正文容器
+	const root = document.querySelector('main .vp-doc:not(.article-meta)') ?? document.querySelector('.vp-doc')
+	if (!root)
+		return false
+	// 1. 优先定位摘要所属章节：找到对应标题，在它与下一个标题之间找命中文本
+	if (section) {
+		const wanted = normalize(section)
+		if (wanted) {
+			const headings = [...document.querySelectorAll('.vp-doc h1, .vp-doc h2, .vp-doc h3')]
+			let idx = headings.findIndex(el => normalize(el.textContent ?? '') === wanted)
+			if (idx === -1)
+				idx = headings.findIndex(el => normalize(el.textContent ?? '').includes(wanted))
+			if (idx !== -1 && flashInRange(root, headings[idx], headings[idx + 1] ?? null, words))
+				return true
+		}
+	}
+	// 2. 全文兜底（root 已排除 .article-meta，标题 h1 仍参与：标题命中时高亮标题也算合理落点）
+	return flashInRange(root, null, null, words)
+}
+
 function scrollToMatch(original: string, terms: string[], section: string) {
 	// 新页面内容（尤其 dev 下按需编译的页面 chunk）在路由完成后仍需片刻才渲染，
 	// 轮询等待正文出现，最多约 3 秒；优先定位正文里的命中文本，找不到再退回章节标题
 	let attempts = 0
 	const tryFind = () => {
-		if (flashTextMatch(original, terms))
+		if (flashTextMatch(original, terms, section))
 			return
 		const wanted = normalize(section)
 		if (wanted) {

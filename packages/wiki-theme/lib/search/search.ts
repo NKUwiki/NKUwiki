@@ -56,13 +56,14 @@ export function extractBody(content: string): { text: string, sections: SearchSe
 			text += `${title}\n`
 			continue
 		}
-		// 列表标记只去符号（标题的编号要保留，跳转定位依赖它与渲染后的标题文本一致）
+		// 列表与引用标记保留（归一为 "- "/" >" 前缀）：分词时它们会被丢弃、不影响检索，
+		// 却能让搜索摘要按原文排版还原列表与引用块（标题的编号要保留，跳转定位依赖它与渲染后的标题文本一致）
 		const cleaned = stripInline(
 			/^\s*>/.test(line)
-				? line.replace(/^\s*>\s?/, '')
+				? line.replace(/^(\s*)>\s?/, '$1> ')
 				: /^\s*\|/.test(line)
 					? stripTableRow(line)
-					: line.replace(/^(\s*)([-*+]|\d+[.)])(\s+)/, '$1$3'),
+					: line.replace(/^(\s*)([-*+]|\d+[.)])(\s+)/, '$1$2 '),
 		)
 		if (!cleaned)
 			continue

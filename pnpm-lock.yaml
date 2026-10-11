@@ -81,6 +81,9 @@ importers:
 
   packages/wiki-map:
     dependencies:
+      minisearch:
+        specifier: ^7.2.0
+        version: 7.2.0
       vue:
         specifier: ^3.5.42
         version: 3.5.42(typescript@6.0.3)
