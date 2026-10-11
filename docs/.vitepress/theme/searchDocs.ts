@@ -13,8 +13,11 @@ export function loadSearchDocs(): Promise<SearchDoc[]> {
 	return docsPromise
 }
 
-export function createIndex(docs: SearchDoc[]): MiniSearch<SearchDoc> {
-	const index = new MiniSearch<SearchDoc>({
+/** 建索引用的文档：在 SearchDoc 基础上补两个可推导的检索拼接串（不随数据下发）。 */
+export type IndexedSearchDoc = SearchDoc & { headings: string, tags: string }
+
+export function createIndex(docs: SearchDoc[]): MiniSearch<IndexedSearchDoc> {
+	const index = new MiniSearch<IndexedSearchDoc>({
 		fields: ['title', 'headings', 'tags', 'text'],
 		storeFields: ['title', 'text', 'sections', 'folders', 'categoriesList', 'tagsList'],
 		// 索引侧追加分词变体（吉他↔吉它），查询侧保持原词，双方共用同一分词器
@@ -26,18 +29,24 @@ export function createIndex(docs: SearchDoc[]): MiniSearch<SearchDoc> {
 			boost: { title: 4, tags: 2, headings: 2, text: 1 },
 		},
 	})
-	index.addAll(docs)
+	// headings / tags 由展示字段推导：sections 偏移表、分类与标签数组本就要下发供筛选使用
+	const prepared = docs.map(doc => ({
+		...doc,
+		headings: doc.sections.map(section => section.t).join(' '),
+		tags: [...doc.categoriesList, ...doc.tagsList].join(' '),
+	}))
+	index.addAll(prepared)
 	return index
 }
 
-let indexPromise: Promise<MiniSearch<SearchDoc>> | undefined
+let indexPromise: Promise<MiniSearch<IndexedSearchDoc>> | undefined
 
 /**
  * 全站共享的 MiniSearch 索引单例：首次调用才加载数据并建索引。
  *  加载/建索引失败时复位单例，允许下次调用重试，避免一次瞬时网络错误
  *  把被拒绝的 promise 永久缓存住（之后整个会话搜索都起不来）。
  */
-export function ensureSearchIndex(): Promise<MiniSearch<SearchDoc>> {
+export function ensureSearchIndex(): Promise<MiniSearch<IndexedSearchDoc>> {
 	indexPromise ??= loadSearchDocs()
 		.then(docs => createIndex(docs))
 		.catch((error) => {
@@ -69,7 +78,7 @@ export interface SearchOutcome {
 }
 
 /** 按筛选范围检索：all=标题+正文，title=标题/章节/分类标签，body=仅正文。 */
-export function searchDocs(index: MiniSearch<SearchDoc>, query: string, scope: SearchScope = 'all', limit = 20): SearchOutcome {
+export function searchDocs(index: MiniSearch<IndexedSearchDoc>, query: string, scope: SearchScope = 'all', limit = 20): SearchOutcome {
 	const options = { fields: scopeFields[scope] }
 	let results = index.search(query, options)
 	if (!results.length && query.trim().split(/\s+/).length > 1) {

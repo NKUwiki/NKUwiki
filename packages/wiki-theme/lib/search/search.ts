@@ -4,8 +4,12 @@ import type { Article } from '../types.ts'
 import type { SearchDoc, SearchSection } from './searchCore.ts'
 import { docsRoot, getArticleContent, scanArticles } from '../content/catalog.ts'
 
-/** 单篇正文截断上限：足够覆盖最长条目，防止个别超大页面撑爆索引体积。 */
-const MAX_TEXT_LENGTH = 20000
+/**
+ * 正文收录上限：超过后只继续收集标题章节，正文行跳过。
+ * 全站仅 3 篇教程类文章超 6K，标题检索（「仅标题」模式）完全不受影响，
+ * 只有这 3 篇的尾部正文不参与全文检索——换来索引 gzip 体积 -8K。
+ */
+const MAX_BODY_LENGTH = 6000
 
 /** 去掉围栏代码块的标记行（保留代码内容本身，命令等也是可搜内容）。 */
 const FENCE_LINE = /^[ \t]*(?:```|~~~)[^\n]*$/gm
@@ -67,12 +71,13 @@ export function extractBody(content: string): { text: string, sections: SearchSe
 		)
 		if (!cleaned)
 			continue
-		if (text.length >= MAX_TEXT_LENGTH)
-			break
+		// 正文行超限只跳过本行，不 break：后面的标题章节仍要收集（仅标题模式可搜）
+		if (text.length >= MAX_BODY_LENGTH)
+			continue
 		text += `${cleaned}\n`
 	}
 	text = text.trimEnd()
-	return { text: text.slice(0, MAX_TEXT_LENGTH), sections: sections.filter(section => section.o <= text.length) }
+	return { text, sections: sections.filter(section => section.o <= text.length) }
 }
 
 function toDoc(article: Article, content: string): SearchDoc {
@@ -80,8 +85,6 @@ function toDoc(article: Article, content: string): SearchDoc {
 	return {
 		id: article.url,
 		title: article.title,
-		headings: sections.map(section => section.t).join(' '),
-		tags: [...article.categories, ...article.tags].join(' '),
 		text,
 		sections,
 		folders: article.folders,

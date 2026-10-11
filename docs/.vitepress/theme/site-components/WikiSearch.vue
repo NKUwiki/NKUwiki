@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { SearchDoc, SearchScope } from '@nkuwiki/theme/lib/search/searchCore.ts'
+import type { SearchScope } from '@nkuwiki/theme/lib/search/searchCore.ts'
 import type MiniSearch from 'minisearch'
-import type { SearchResult } from '../searchDocs'
+import type { IndexedSearchDoc, SearchResult } from '../searchDocs'
 import chevronIcon from '@iconify-icons/ri/arrow-right-s-line'
 import closeIcon from '@iconify-icons/ri/close-line'
 import searchIcon from '@iconify-icons/ri/search-line'
@@ -18,7 +18,7 @@ const props = defineProps<{ screen?: boolean }>()
 // 点任意入口按钮，打开的都是导航栏实例渲染的同一个弹窗。
 const modalOpen = searchModalOpen
 const indexLoading = searchIndexLoading
-let searchIndex: MiniSearch<SearchDoc> | undefined
+let searchIndex: MiniSearch<IndexedSearchDoc> | undefined
 
 const HISTORY_KEY = 'wiki:search-history'
 const HISTORY_MAX = 8

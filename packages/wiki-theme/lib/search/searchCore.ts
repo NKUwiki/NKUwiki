@@ -9,14 +9,14 @@ export interface SearchSection {
 	o: number
 }
 
-/** 一篇文章的搜索文档：检索字段（title/headings/tags/text）+ 展示用的存储字段。 */
+/**
+ * 一篇文章的搜索文档：检索字段 + 展示用的存储字段。
+ * headings / tags 两个检索拼接串不入库（可由 sections / categoriesList+tagsList
+ * 推导），由客户端 searchDocs.ts 在建索引前现场生成。
+ */
 export interface SearchDoc {
 	id: string
 	title: string
-	/** 全部章节标题，空格拼接（仅标题/全部模式下参与检索） */
-	headings: string
-	/** 分类 + 标签，空格拼接 */
-	tags: string
 	text: string
 	sections: SearchSection[]
 	folders: string[]

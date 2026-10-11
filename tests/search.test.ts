@@ -104,9 +104,22 @@ test('buildSearchDocs indexes every non-empty article with plain-text body', () 
 	assert.ok(preparation)
 	assert.equal(preparation.title, '入学准备')
 	assert.ok(preparation.text.includes('身份证'))
-	assert.ok(preparation.headings.length > 0)
+	assert.ok(preparation.sections.length > 0)
 	assert.ok(preparation.categoriesList.includes('新生入学'))
 	// 全部章节偏移可自洽回取
 	for (const section of preparation.sections)
 		assert.equal(preparation.text.slice(section.o, section.o + section.t.length), section.t)
+})
+
+test('正文超过收录上限后仅跳过正文行，标题章节仍然完整收集', () => {
+	const body = Array.from({ length: 600 }, (_, i) => `正文第${i}行填充内容`).join('\n')
+	const { text, sections } = extractBody(`## 开头章节\n\n${body}\n\n## 结尾章节\n\n结尾处的正文内容`)
+	// 正文被截断（上限 6K），超限后的正文行不再收录
+	assert.ok(text.length < 8000)
+	assert.ok(!text.includes('结尾处的正文内容'))
+	// 标题不受正文截断影响：结尾章节仍被收集，且偏移可自洽回取
+	assert.ok(sections.some(section => section.t === '结尾章节'))
+	assert.ok(text.includes('结尾章节'))
+	for (const section of sections)
+		assert.equal(text.slice(section.o, section.o + section.t.length), section.t)
 })
