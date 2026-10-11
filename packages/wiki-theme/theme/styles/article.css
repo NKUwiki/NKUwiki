@@ -123,6 +123,13 @@
 	height: auto;
 }
 
+/* 懒生成阶段的占位：保持 1:1 占住尺寸，SVG 生成后无布局跳动 */
+.wiki-qr-placeholder {
+	display: block;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+}
+
 @media (max-width: 600px) {
 	.vp-doc .article-cards {
 		grid-template-columns: 1fr;
