@@ -77,6 +77,10 @@ export default {
 		app.component('QrCode', QrCode)
 		// 图片画廊：容器内写 Markdown 图片，客户端测宽高比后排成等高行
 		app.component('Gallery', Gallery)
+		// 内容增强（构建期 markdown-it 规则在 lib/markdown/，见 config.mts）：
+		// 行内注释 {^...}、GitHub 仓库卡片、轻量轮播
+		app.component('RepoCard', defineAsyncComponent(() => import('./components/RepoCard.vue')))
+		app.component('WikiSwiper', defineAsyncComponent(() => import('./components/WikiSwiper.vue')))
 		// 文章元信息（面包屑/作者/标签）在构建期随标题一起注入 Markdown 正文流（见 config.mts 的 article-title 规则）
 		app.component('ArticleMeta', ArticleMeta)
 		app.component('DownloadPageImage', DownloadPageImage)
