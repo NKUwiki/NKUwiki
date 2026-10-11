@@ -15,7 +15,7 @@ packages/wiki-theme/
 ├── package.json        # exports 指向源码；peerDependencies: vue
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
-│   ├── components/     # 21 个 Vue 组件 + 地图数据
+│   ├── components/     # 20 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
 │   ├── composables/    # 5 个无 UI 的客户端逻辑
 │   └── styles/         # 10 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
@@ -63,8 +63,6 @@ packages/wiki-theme/
 | `HoverMedia.vue` | 悬停显示媒体（二维码/图片预览） | 异步全局 |
 | `FriendLinks.vue` | 友情链接页 | 异步全局 |
 | `Gallery.vue` | 图片画廊：容器内写 Markdown 图片，客户端测宽高比后排成等高行（布局纯函数在 `lib/content/gallery.ts`） | 同步全局 |
-| `MapView.vue` | 校园地图（NKU Maps）：上游移植，高德 JS API。**不内置数据**——点位、分类、校区与高德密钥通过 `data` prop 注入 | 页面 import + 传参 |
-| `map-data.example.js` | `data` prop 的**格式示例**（虚拟点位 + 完整字段注释）。站点真实数据不放这里，见站点侧 `docs/.vitepress/data/map-data.js` | — |
 
 ### composables/ — 无 UI 的客户端逻辑
 
@@ -130,8 +128,8 @@ import SearchState from '@nkuwiki/theme/theme/composables/searchState.ts'
 
 - **不反向引用站点侧**：包内不得 import 站点的 config、data loader、site-components——这是抽包时切断的三条耦合（theme→lib、theme→config、theme→history.json）的制度化；
 - **`docsRoot` 三级定位**：`lib/content/catalog.ts` 反查站点 `docs/` 目录，顺序为 `WIKI_DOCS_ROOT` 环境变量 → 从包位置向上探测 `.vitepress` → cwd 兜底；包被安装到 monorepo 之外时设环境变量指定；
-- **组件不内置站点数据**：MapView 等依赖站点数据的组件通过 props 接收注入（格式示例见 `map-data.example.js`），点位、成员、密钥等站点资产一律留在站点侧，不随包分发；
-- **MapView.vue** 自上游地图项目整体移植，不参与 ESLint（保持原样便于同步）；其数据文件 `docs/.vitepress/data/map-data.js` 同样不参与；
+- **组件不内置站点数据**：依赖站点数据的组件通过 props 接收注入，点位、成员、密钥等站点资产一律留在站点侧，不随包分发；
+- **MapView 校园地图**已拆分为独立包 `packages/wiki-map`（`@nkuwiki/wiki-map`），便于跨项目复用；其源文件不参与 ESLint（保持上游原样便于同步），站点数据 `docs/.vitepress/data/map-data.js` 同样不参与；
 - **新增文件的归置**：构建期或双端共享 → `lib/`（处理内容进 `content/`、站点事实数据进 `data/`、独立子系统进 `search/`）；进浏览器 bundle → `theme/`；依赖 data loader 或站点目录结构的 → 站点装配层，不放这里。
 
 ## 复用到其他站点

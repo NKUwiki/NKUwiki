@@ -11,8 +11,8 @@ title: 校园地图
 ---
 
 <script setup>
-import MapView from '@nkuwiki/theme/theme/components/MapView.vue'
-// 点位与密钥属于站点数据，不随主题包分发，从本仓库 data/ 注入
+import MapView from '@nkuwiki/wiki-map'
+// 点位与密钥属于站点数据，不随组件包分发，从本仓库 data/ 注入
 import * as mapData from './.vitepress/data/map-data.js'
 </script>
 

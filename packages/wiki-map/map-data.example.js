@@ -5,7 +5,7 @@
  * `data` prop 注入。把本文件复制到你的站点（如 docs/.vitepress/data/map-data.js）、
  * 填入真实数据后，在页面中：
  *
- *   import MapView from '@nkuwiki/theme/theme/components/MapView.vue'
+ *   import MapView from '@nkuwiki/wiki-map'
  *   import mapData from './.vitepress/data/map-data.js'
  *
  *   <MapView :data="mapData" />

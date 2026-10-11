@@ -17,7 +17,7 @@ export default antfu({
 		'**/dist/**',
 		'**/cache/**',
 		'.npm-cache/**',
-		'packages/wiki-theme/theme/components/MapView.vue',
+		'packages/wiki-map/MapView.vue',
 		'docs/.vitepress/data/map-data.js',
 	],
 	rules: {
