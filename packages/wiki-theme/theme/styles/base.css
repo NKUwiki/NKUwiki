@@ -145,39 +145,36 @@ html:has(.wiki-announcement) {
 	pointer-events: none;
 }
 
-.wiki-backtop:hover {
-	box-shadow: var(--vp-shadow-3);
-}
-
-.wiki-backtop-ring {
-	position: absolute;
-	inset-block-start: -2px;
-	inset-inline-end: -2px;
-	width: 52px;
-	height: 52px;
-	pointer-events: none;
-}
-
-.wiki-backtop-ring svg {
-	display: block;
-	width: 100%;
-	height: 100%;
-	transform: rotate(-90deg);
-}
-
-.wiki-backtop-icon {
-	width: 24px;
-	height: 24px;
-	color: var(--vp-c-text-2);
-	transition: color var(--wiki-duration);
-}
-
-.wiki-backtop:hover .wiki-backtop-icon {
-	color: var(--vp-c-brand-1);
-}
-
+/* ================= 打印适配 =================
+   导航/侧栏/大纲/浮层打印无意义，全部隐藏，只保留正文、页脚版权声明与文件历史；
+   水印也不印（费墨）；暗色模式打印费墨且效果差，打印时强制浅色（配合站点侧 beforeprint 脚本） */
 @media print {
-	.wiki-backtop {
+	.wiki-announcement,
+	.wiki-backtop,
+	.wiki-sidebar-toggle-floating,
+	.wiki-imgviewer,
+	.wiki-watermark,
+	.wiki-print-button,
+	.VPNavBar,
+	.VPSidebar,
+	.VPLocalNav,
+	.VPAside,
+	.VPFooter,
+	.VPDocFooter {
 		display: none;
+	}
+
+	/* 侧栏隐藏后正文占满页宽，去掉为导航预留的留白 */
+	.VPContent,
+	.VPContent.has-sidebar {
+		padding-right: 0;
+		padding-left: 0;
+	}
+
+	.VPDoc .container,
+	.VPDoc .content-container {
+		max-width: none;
+		padding-right: 0;
+		padding-left: 0;
 	}
 }

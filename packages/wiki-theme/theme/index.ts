@@ -61,6 +61,18 @@ export default {
 			const syncNav = () => window.requestAnimationFrame(syncNavActive)
 			window.addEventListener('wiki:route-change', syncNav)
 			syncNav()
+			// 打印时强制浅色：暗色页面打印费墨且对比度差，打印结束恢复原状
+			let darkBeforePrint: boolean | null = null
+			window.addEventListener('beforeprint', () => {
+				darkBeforePrint = document.documentElement.classList.contains('dark')
+				if (darkBeforePrint)
+					document.documentElement.classList.remove('dark')
+			})
+			window.addEventListener('afterprint', () => {
+				if (darkBeforePrint)
+					document.documentElement.classList.add('dark')
+				darkBeforePrint = null
+			})
 		}
 		// VitePress 2 no longer exposes the plugin's automatic registration marker.
 		app.component('markmap', defineAsyncComponent(async () => (await import('@vitepress-plugin/markmap/markmap')).default as unknown as Component))

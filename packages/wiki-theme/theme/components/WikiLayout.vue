@@ -11,6 +11,7 @@ import ArticleAuthors from './ArticleAuthors.vue'
 import BackTop from './BackTop.vue'
 import GitHistory from './GitHistory.vue'
 import ImagePreview from './ImagePreview.vue'
+import PrintButton from './PrintButton.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
 import WaterMark from './WaterMark.vue'
@@ -59,6 +60,10 @@ onMounted(() => {
 	</template>
 	<template #doc-footer-before>
 		<ArticleAuthors />
+	</template>
+	<!-- 右侧目录面板顶部：「打印本页」入口（打印排版由 base.css 的 @media print 承担） -->
+	<template #aside-top>
+		<PrintButton />
 	</template>
 	<!-- 文件历史：frontmatter 设 hideChangelog: true 可隐藏单篇 -->
 	<template #doc-after>
