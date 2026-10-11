@@ -105,6 +105,91 @@
 	}
 }
 
+/* ================= 马克笔 ==...== ================= */
+/* 移植 plume 主题的 mark 配色：CSS 变量 + 渐变描线动画。
+   作用域限定 mark.wiki-marker，不影响全站搜索的命中 mark */
+
+mark.wiki-marker {
+	--wiki-mark-text: currentcolor;
+	--wiki-mark-bg: transparent;
+	--wiki-mark-bg-shift: 0.55lh;
+	--wiki-mark-linear-color: hsl(var(--wiki-hue) 70% 55%);
+	--wiki-mark-bg-image: linear-gradient(to right, var(--wiki-mark-linear-color) 50%, transparent 50%);
+	background-color: var(--wiki-mark-bg);
+	background-image: var(--wiki-mark-bg-image);
+	background-repeat: no-repeat;
+	background-size: 200% var(--wiki-mark-bg-shift);
+	background-position: 0 center;
+	color: var(--wiki-mark-text);
+	animation: wiki-mark-highlight 1.5s 0.5s forwards;
+	padding: 0.1em 0;
+}
+
+@keyframes wiki-mark-highlight {
+	from {
+		background-position: 0 center;
+	}
+
+	to {
+		background-position: -100% center;
+	}
+}
+
+mark.wiki-marker.note {
+	--wiki-mark-linear-color: #ff0;
+}
+
+mark.wiki-marker.info {
+	--wiki-mark-linear-color: var(--vp-c-default-1);
+}
+
+mark.wiki-marker.tip {
+	--wiki-mark-linear-color: #39ff14;
+}
+
+mark.wiki-marker.warning {
+	--wiki-mark-linear-color: #fc0;
+}
+
+mark.wiki-marker.caution,
+mark.wiki-marker.danger {
+	--wiki-mark-linear-color: #f99;
+}
+
+mark.wiki-marker.important {
+	--wiki-mark-linear-color: #ccf;
+}
+
+.dark mark.wiki-marker.note {
+	--wiki-mark-linear-color: #660;
+}
+
+.dark mark.wiki-marker.tip {
+	--wiki-mark-linear-color: #063;
+}
+
+.dark mark.wiki-marker.warning {
+	--wiki-mark-linear-color: #c60;
+}
+
+.dark mark.wiki-marker.caution,
+.dark mark.wiki-marker.danger {
+	--wiki-mark-linear-color: #c66;
+}
+
+.dark mark.wiki-marker.important {
+	--wiki-mark-linear-color: #66c;
+}
+
+@media print {
+	/* 打印时直接呈现完整底色（跳过描线动画的起始帧） */
+	mark.wiki-marker {
+		animation: none;
+		background-image: none;
+		background-color: var(--wiki-mark-linear-color);
+	}
+}
+
 /* ================= 代码块标题 ================= */
 
 .wiki-code-title > div[class*="language-"] {

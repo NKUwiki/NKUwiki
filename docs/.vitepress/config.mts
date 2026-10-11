@@ -8,6 +8,7 @@ import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import { annotation } from '@nkuwiki/theme/lib/markdown/annotation.ts'
 import { codeTitle } from '@nkuwiki/theme/lib/markdown/code-title.ts'
 import { imageSizePlugin } from '@nkuwiki/theme/lib/markdown/image-size.ts'
+import { mark } from '@nkuwiki/theme/lib/markdown/mark.ts'
 import { plot } from '@nkuwiki/theme/lib/markdown/plot.ts'
 import { steps } from '@nkuwiki/theme/lib/markdown/steps.ts'
 import { timeline } from '@nkuwiki/theme/lib/markdown/timeline.ts'
@@ -173,6 +174,7 @@ export default defineConfig({
 			// 本地图片构建期注入宽高防 CLS（组件在主题包全局注册，见 theme/index.ts）
 			annotation(md)
 			plot(md)
+			mark(md)
 			codeTitle(md)
 			steps(md)
 			timeline(md)
