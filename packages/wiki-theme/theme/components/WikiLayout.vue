@@ -10,8 +10,10 @@ import AnnouncementBar from './AnnouncementBar.vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import BackTop from './BackTop.vue'
 import GitHistory from './GitHistory.vue'
+import ImagePreview from './ImagePreview.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
+import WaterMark from './WaterMark.vue'
 import '@nolebase/vitepress-plugin-enhanced-readabilities/client/style.css'
 
 // <WikiSearch/> 由站点侧薄壳注册为全局异步组件（searchDocs 依赖站点侧 data loader），
@@ -63,4 +65,8 @@ onMounted(() => {
 		<GitHistory v-if="frontmatter.hideChangelog !== true" :key="changelogKey" />
 	</template>
 </DefaultTheme.Layout>
+<!-- 图片预览：文档级 click 委托唤起，Teleport 到 body，全站唯一实例 -->
+<ImagePreview />
+<!-- 全局水印：斜向平铺站名，frontmatter 设 watermark: false 可单页关闭 -->
+<WaterMark />
 </template>
