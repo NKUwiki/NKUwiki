@@ -39,14 +39,31 @@ const cardIcons: Record<string, { body: string, vb: string }> = {
 	feishu: { body: feishuBody, vb: '0 0 256 256' },
 	mail: { body: mailIcon.body, vb: '0 0 24 24' },
 	link: { body: linkIcon.body, vb: '0 0 24 24' },
+	kitchen: { body: kitchen.body, vb: '0 0 24 24' },
 	// 如需更多，在此追加并 import 对应 @iconify-icons/ri/* 图标
 }
 
-/** 把单元格里的 :名称: 替换为对应 SVG 图标（名称不存在则原样保留） */
+const SPRITE_PREFIX = 'wiki-card-icon-'
+
+/**
+ * 页面级图标精灵图：cardlist 的图标 path 不小（飞书 logo 约 4.5KB），
+ * 若随每张卡片内联，社团页仅飞书图标就重复 14 次平白多出 ~60KB。
+ * 改为每个用卡片的页面注入一次 <symbol> 定义，卡片里用 <use> 引用；
+ * symbol 注入走 env 标记（每次页面渲染一份 env），保证每页只出现一次。
+ */
+function cardIconSprite(): string {
+	const symbols = Object.entries(cardIcons)
+		.map(([name, { body, vb }]) => `<symbol id="${SPRITE_PREFIX}${name}" viewBox="${vb}">${body}</symbol>`)
+		.join('')
+	return `<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">${symbols}</svg>`
+}
+
+/** 把单元格里的 :名称: 替换为引用精灵图的 <use>（名称不存在则原样保留） */
 function renderCardIcons(value: string): string {
 	return value.replace(/:([a-z][a-z0-9-]*):/gi, (match, name: string) => {
-		const icon = cardIcons[name.toLowerCase()]
-		return icon ? `<svg class="card-field-icon" aria-hidden="true" viewBox="${icon.vb}">${icon.body}</svg>` : match
+		return name.toLowerCase() in cardIcons
+			? `<svg class="card-field-icon" aria-hidden="true"><use href="#${SPRITE_PREFIX}${name.toLowerCase()}"></use></svg>`
+			: match
 	})
 }
 
@@ -64,6 +81,11 @@ export function cardlist(md: MarkdownRenderer) {
 			return true
 		const tokens = md.parse(state.getLines(start + 1, close, state.blkIndent, false), state.env)
 		const html: string[] = []
+		// 精灵图只注入一次（同页多个 cardlist 容器共用），见 cardIconSprite 的说明
+		if (!state.env.wikiCardIconSprite) {
+			state.env.wikiCardIconSprite = true
+			html.push(cardIconSprite())
+		}
 		let headers: string[] = []
 		let cells: string[] = []
 		let isGroup = false
@@ -117,7 +139,7 @@ export function cardlist(md: MarkdownRenderer) {
 							: `<GroupAvatar qq="${qq}" name="${nameAttr}" />`)
 					}
 					else {
-						html.push(`<span class="food-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${kitchen.body}</svg></span>`)
+						html.push(`<span class="food-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#${SPRITE_PREFIX}kitchen"></use></svg></span>`)
 					}
 					html.push(`<h3 class="campus-card-title">${cells[0]}</h3>`)
 					for (let i = 1; i < cells.length; i++) {
