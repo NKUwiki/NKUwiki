@@ -45,6 +45,8 @@ const selectedIndex = ref(-1)
 const history = ref<string[]>(readHistory())
 
 const inputEl = ref<HTMLInputElement>()
+/** 中文输入法组词中（拼音未上屏）：期间 Enter/方向键不触发选择与打开 */
+const composing = ref(false)
 
 const scopeOptions: { value: SearchScope, label: string }[] = [
 	{ value: 'all', label: '标题+正文' },
@@ -149,7 +151,12 @@ function closeModal() {
 
 // 弹窗由导航栏实例负责渲染与副作用（移动端菜单实例只提供按钮），
 // 打开时同步最近搜索、加载索引并聚焦输入框。
-if (!props.screen) {
+// 历史记录约定：打开时压入一个带标记的历史条目（保留 VitePress 路由的 state 字段），
+// 浏览器后退（popstate）即可关闭弹窗；程序内关闭时若标记还在则退掉该条目，
+// 避免标记条目滞留在历史栈中间“吃掉”一次后退。
+let skipHistoryBack = false
+// SSR 下 window 不存在：popstate 监听是立即执行语句，必须连同环境判断一起收进守卫
+if (!props.screen && typeof window !== 'undefined') {
 	watch(modalOpen, (open) => {
 		if (open) {
 			// 组件常驻布局，历史在每次打开时重新读取，保证跨页面都能看到最近记录
@@ -157,9 +164,20 @@ if (!props.screen) {
 			ensureIndex()
 			document.body.style.overflow = 'hidden'
 			requestAnimationFrame(() => inputEl.value?.focus())
+			window.history.pushState({ ...window.history.state, 'wiki:search': true }, '')
 		}
 		else {
 			document.body.style.overflow = ''
+			if (!skipHistoryBack && window.history.state?.['wiki:search'])
+				window.history.back()
+			skipHistoryBack = false
+		}
+	})
+	window.addEventListener('popstate', () => {
+		if (modalOpen.value) {
+			// 来自浏览器后退：标记条目已被消费，直接关弹窗，不能再触发 history.back()
+			skipHistoryBack = true
+			modalOpen.value = false
 		}
 	})
 }
@@ -170,6 +188,8 @@ function openResult(result: DisplayResult) {
 	saveHistory(query.value)
 	const original = query.value.trim().replaceAll(/\s+/g, '')
 	sessionStorage.setItem('wiki:search-jump', JSON.stringify({ url: result.id, section: result.section, terms: result.terms, original }))
+	// 即将跳页：弹窗的标记历史条目不再退回（由路由压入的新条目接管），避免与跳页竞态
+	skipHistoryBack = true
 	closeModal()
 	router.go(withBase(result.id))
 }
@@ -206,9 +226,11 @@ function moveSelection(step: number) {
 				<Icon :icon="searchIcon" class="search-icon" />
 				<input
 					ref="inputEl" v-model="query" class="search-input" type="search" placeholder="搜索标题与正文…" enterkeyhint="go"
+					@compositionstart="composing = true"
+					@compositionend="composing = false"
 					@keydown.down.prevent="moveSelection(1)"
 					@keydown.up.prevent="moveSelection(-1)"
-					@keydown.enter="results[selectedIndex] && openResult(results[selectedIndex])"
+					@keydown.enter.prevent="!composing && results[selectedIndex] && openResult(results[selectedIndex])"
 				>
 				<div class="search-actions">
 					<div class="wiki-search-scopes" role="radiogroup" aria-label="搜索范围">
