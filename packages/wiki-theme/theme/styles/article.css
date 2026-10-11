@@ -72,16 +72,7 @@
 	border-radius: var(--wiki-radius-small);
 }
 
-/* 加粗文字底部色带下划线（参照 xupt-wiki：brand 色渐变铺元素底部 40%）；
-   浅色模式用高饱和亮紫保证明亮，深色模式用品牌色 30% 调合发光感 */
-.vp-doc strong {
-	background: linear-gradient(hsl(var(--wiki-hue) 60% 84%), hsl(var(--wiki-hue) 60% 84%)) no-repeat center bottom / 100% 40%;
-}
-
-.dark .vp-doc strong {
-	background: linear-gradient(color-mix(in srgb, var(--vp-c-brand-1) 30%, transparent), color-mix(in srgb, var(--vp-c-brand-1) 30%, transparent)) no-repeat center bottom / 100% 40%;
-}
-
+/* 加粗就是加粗：不再附加底部色带高亮（重点标注交给马克笔 ==...==，见 enhance.css） */
 .site-icon {
 	width: 28px;
 	height: 28px;
