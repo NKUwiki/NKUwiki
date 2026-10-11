@@ -15,13 +15,14 @@ packages/wiki-theme/
 ├── package.json        # exports 指向源码；peerDependencies: vue
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
-│   ├── components/     # 20 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
-│   ├── composables/    # 5 个无 UI 的客户端逻辑
-│   └── styles/         # 10 个分层样式文件
+│   ├── components/     # 26 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
+│   ├── composables/    # 6 个无 UI 的客户端逻辑
+│   └── styles/         # 11 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
     ├── types.ts        # 全局共享类型
     ├── content/        # 文章目录：catalog / category / cardlist
     ├── data/           # 站点数据：members / authors / activity / site
+    ├── markdown/       # markdown-it 内容增强规则：annotation / plot / mark / code-title / image-size / steps / timeline
     └── search/         # 站内搜索：search 索引 / searchCore 纯函数
 ```
 
@@ -33,19 +34,19 @@ packages/wiki-theme/
 
 | 方式 | 组件 | 说明 |
 | --- | --- | --- |
-| 同步注册 | `ArticleMeta`、`CopyContact`、`DownloadPageImage`、`Gallery`、`GroupAvatar`、`QrCode`、`wide`（WidePage） | 体积小或多数页面使用，进主题入口包 |
+| 同步注册 | `ArticleMeta`、`AppCards`、`CopyContact`、`DownloadPageImage`、`Gallery`、`GroupAvatar`、`QrCode`、`wide`（WidePage） | 体积小或多数页面使用，进主题入口包 |
 | 异步注册 | `HoverMedia`（拖 tippy 运行时）、`FriendLinks`、`markmap` | 仅个别页面使用，拆成独立懒加载 chunk |
 | **不由本包注册** | `WikiHome`、`ArticleIndex`、`WikiSearch` | 依赖站点数据（`*.data.ts`），由站点侧薄壳 `docs/.vitepress/theme/index.ts` 注册，本包不感知 |
 
-入口还负责：侧栏收放状态尽早同步（避免闪烁）、导航高亮、`wiki:route-change` 事件派发、标题锚点跳转高亮、Nolebase 聚光灯默认值写入。
+入口还负责：侧栏收放状态尽早同步（避免闪烁）、导航高亮、`wiki:route-change` 事件派发、标题锚点跳转高亮、Nolebase 聚光灯默认值写入、隐秘文本 `{.click}` 的点击开合（`installPlotToggle`）、打印前临时切回浅色主题（暗色页面打印费墨，打印结束恢复）。
 
-### components/ — 21 个组件
+### components/ — 26 个组件
 
 | 组件 | 职责 | 注册方式 |
 | --- | --- | --- |
 | `WikiLayout.vue` | 全站布局：包住默认布局，挂载公告横条、作者区等全局区块 | `Layout` 挂载 |
-| `AnnouncementBar.vue` | 全站公告横条：固定视口顶部，经 `--vp-layout-top-height` 约定让下方区域让位；配置编译期注入 | 内部引用 |
-| `BackTop.vue` | 右下角悬浮球：SVG 环形阅读进度，点击平滑回顶（滚动超过 100px 出现） | 内部引用 |
+| `AnnouncementBar.vue` | 全站公告横条：固定视口顶部，经 `--vp-layout-top-height` 约定让下方区域让位；配置编译期注入，支持 `id`/`lifetime` 关闭记忆（同 id 不再弹出，换 id 重新展示） | 内部引用 |
+| `BackTop.vue` | 右下角悬浮球：SVG 环形阅读进度（滚动中环心显示百分比，静止淡回箭头），点击平滑回顶（滚动超过 100px 出现） | 内部引用 |
 | `ArticleMeta.vue` | 文章页顶部元信息条：日期、分类 chips、字数与阅读时间 | 同步全局 |
 | `ArticleByline.vue` | 文章与卡片上的日期·分类信息行 | 内部引用 |
 | `ArticleAuthors.vue` | 页尾「本文作者」列表 | 内部引用 |
@@ -63,6 +64,12 @@ packages/wiki-theme/
 | `HoverMedia.vue` | 悬停显示媒体（二维码/图片预览） | 异步全局 |
 | `FriendLinks.vue` | 友情链接页 | 异步全局 |
 | `Gallery.vue` | 图片画廊：容器内写 Markdown 图片，客户端测宽高比后排成等高行（布局纯函数在 `lib/content/gallery.ts`） | 同步全局 |
+| `AppCards.vue` | 「图标 + 名称 + 简介 + 跳转」的紧凑应用卡片网格（`links` 数组 prop） | 同步全局 |
+| `RepoCard.vue` | GitHub 仓库卡片（星标/Fork k 格式化/主语言色点/License/可见性徽章/fullname 组织识别，localStorage 缓存 24h 防限流），markdown 写 `<RepoCard repo="owner/name" />`，接口失败降级为链接卡片 | 异步全局 |
+| `WikiSwiper.vue` | 轻量轮播：纯 CSS scroll-snap，容器内写图片/任意块横滑翻页 | 异步全局 |
+| `ImagePreview.vue` | 图片预览（lightbox）：点击正文图片全屏放大，多图轮播、滚轮缩放、拖拽平移（随 WikiLayout 挂载） | 内部引用 |
+| `WaterMark.vue` | 全局水印：斜向平铺站名（SVG 平铺、亮暗两套），打印时不印（随 WikiLayout 挂载） | 内部引用 |
+| `PrintButton.vue` | 「打印本页」按钮：挂在右侧目录面板顶部，唤起浏览器打印（打印排版见 base.css） | 内部引用（aside-top 插槽） |
 
 ### composables/ — 无 UI 的客户端逻辑
 
@@ -71,6 +78,7 @@ packages/wiki-theme/
 | `sidebar.ts` | 左侧目录折叠状态（跨组件共享，localStorage 持久化） |
 | `chips.ts` | 标签/分类 chips 的数据组装 |
 | `headingHighlight.ts` | 点击标题/大纲跳转的平滑滚动与目标高亮 |
+| `plot.ts` | 隐秘文本 `!!...!!{.click}` 的点击开合（文档级事件委托） |
 | `searchState.ts` | 搜索弹窗开关、加载状态与全局快捷键（模块级单例，只注册一次） |
 | `share-image.ts` | 页面分享图的绘制（modern-screenshot + 二维码） |
 
@@ -87,6 +95,7 @@ packages/wiki-theme/
 | `sidebar.css` | 左侧目录树与右侧大纲的交互样式 |
 | `search.css` | 搜索入口、弹窗与结果摘要的视觉 |
 | `share.css` | 分享操作区样式 |
+| `enhance.css` | 内容增强 DOM 的样式：行内注释气泡、隐秘文本黑幕、马克笔高亮、代码块标题栏、步骤条、时间线 |
 | `nolebase.css` | Nolebase 阅读增强插件的主题适配 |
 
 ## lib/ — 构建期业务库（双端共享）
@@ -103,6 +112,13 @@ packages/wiki-theme/
 | `data/activity.ts` | 活动页数据：扫描 `docs/activity/` 生成活动列表 |
 | `data/site.ts` | 站点常量**注入点**：真实值由站点侧 `docs/.vitepress/data/site.ts` 经 `vite.define` 编译期注入（`__SITE_URL__` / `__REPO_URL__`），导出名不变 |
 | `data/announcement.ts` | 公告横条配置**注入点**：真实值由站点侧 `announcement.ts` 经 `vite.define` 注入（`__ANNOUNCEMENT__`）；未注入或解析失败返回 null，横条不渲染 |
+| `markdown/annotation.ts` | 行内注释规则：`{^注释内容}` → 可悬停/聚焦的 ※ 气泡（^ 后紧跟数字时不生效，避免误伤数学上标） |
+| `markdown/plot.ts` | 隐秘文本规则：`!!内容!!`（可带 `{.click}`/`{.blur}` 属性）→ 黑幕/模糊 span，交互参考 plume plugin-md-power |
+| `markdown/mark.ts` | 马克笔规则：`==内容==`（可带 `{.tip}` 等配色）→ 描线动画高亮 `<mark>`，等价于 @mdit/plugin-mark + attrs（手写零依赖） |
+| `markdown/code-title.ts` | 代码块标题规则：fence 信息串 `语言 title="文件名"` → 顶栏标题（CSS `::before` 画） |
+| `markdown/image-size.ts` | 本地图片构建期读宽高写入 `<img>`，防布局跳动（CLS）；远程图与已标尺寸的跳过 |
+| `markdown/steps.ts` | 步骤条容器 `::: steps`：容器内有序/无序列表 → 圆点编号+竖向连线的步骤条（CSS counter 编号，视觉参考 plume plugin-md-power） |
+| `markdown/timeline.ts` | 时间线容器 `::: timeline`：无序列表 → 时间轴（条目属性 time/type/color/line/card/placement，渲染为纯 HTML + CSS，不依赖 plume 的 Vue 组件与 iconify，icon 属性暂不支持） |
 | `search/search.ts` | 构建期索引：扫描全部条目生成 SearchDoc（标题/章节/正文纯文本） |
 | `search/searchCore.ts` | 搜索纯函数：中文分词、变体展开、正文摘要与高亮（构建端与客户端共用） |
 
