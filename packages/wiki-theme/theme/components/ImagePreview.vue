@@ -153,52 +153,57 @@ onBeforeUnmount(() => {
 
 <template>
 <Teleport to="body">
-	<div v-if="visible" class="wiki-imgviewer" @click="close">
-		<button class="wiki-imgviewer-close" aria-label="关闭预览" @click="close">
-			&times;
-		</button>
-		<button
-			v-if="hasGallery"
-			class="wiki-imgviewer-nav wiki-imgviewer-prev"
-			type="button"
-			aria-label="上一张"
-			@click.stop="go(-1)"
-		>
-			&#10094;
-		</button>
-		<button
-			v-if="hasGallery"
-			class="wiki-imgviewer-nav wiki-imgviewer-next"
-			type="button"
-			aria-label="下一张"
-			@click.stop="go(1)"
-		>
-			&#10095;
-		</button>
-		<div
-			class="wiki-imgviewer-stage"
-			@click.stop
-			@wheel="onWheel"
-			@dblclick="onDblClick"
-			@pointerdown="onPointerDown"
-			@pointermove="onPointerMove"
-			@pointerup="onPointerUp"
-		>
-			<img
-				:src="src"
-				class="wiki-imgviewer-img"
-				:style="{
-					transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
-					cursor: scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in',
-				}"
-				draggable="false"
+	<!-- Transition 负责开合动画：遮罩淡入淡出，舞台整体从 0.94 放大到位。
+	缩放放在 .wiki-imgviewer-stage 上而不是 img 上——
+	img 的 transform 被拖拽/缩放逻辑用 inline style 接管着，动它会打架。 -->
+	<Transition name="wiki-imgviewer">
+		<div v-if="visible" class="wiki-imgviewer" @click="close">
+			<button class="wiki-imgviewer-close" aria-label="关闭预览" @click="close">
+				&times;
+			</button>
+			<button
+				v-if="hasGallery"
+				class="wiki-imgviewer-nav wiki-imgviewer-prev"
+				type="button"
+				aria-label="上一张"
+				@click.stop="go(-1)"
 			>
+				&#10094;
+			</button>
+			<button
+				v-if="hasGallery"
+				class="wiki-imgviewer-nav wiki-imgviewer-next"
+				type="button"
+				aria-label="下一张"
+				@click.stop="go(1)"
+			>
+				&#10095;
+			</button>
+			<div
+				class="wiki-imgviewer-stage"
+				@click.stop
+				@wheel="onWheel"
+				@dblclick="onDblClick"
+				@pointerdown="onPointerDown"
+				@pointermove="onPointerMove"
+				@pointerup="onPointerUp"
+			>
+				<img
+					:src="src"
+					class="wiki-imgviewer-img"
+					:style="{
+						transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+						cursor: scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in',
+					}"
+					draggable="false"
+				>
+			</div>
+			<p v-if="alt" class="wiki-imgviewer-caption">
+				{{ alt }}
+			</p>
+			<span v-if="hasGallery" class="wiki-imgviewer-counter">{{ index + 1 }} / {{ sources.length }}</span>
 		</div>
-		<p v-if="alt" class="wiki-imgviewer-caption">
-			{{ alt }}
-		</p>
-		<span v-if="hasGallery" class="wiki-imgviewer-counter">{{ index + 1 }} / {{ sources.length }}</span>
-	</div>
+	</Transition>
 </Teleport>
 </template>
 
@@ -318,6 +323,28 @@ onBeforeUnmount(() => {
 	color: rgb(255 255 255 / 60%);
 	transform: translateX(-50%);
 	pointer-events: none;
+}
+
+/* 开合动画（Vue Transition 的类）：遮罩淡入淡出，舞台从略小放大到位（关闭时反向收回）。
+   时长与曲线走令牌，reduced-motion 下为 0s 即时完成。 */
+.wiki-imgviewer-enter-active,
+.wiki-imgviewer-leave-active {
+	transition: opacity var(--wiki-duration) var(--wiki-ease-out);
+}
+
+.wiki-imgviewer-enter-active .wiki-imgviewer-stage,
+.wiki-imgviewer-leave-active .wiki-imgviewer-stage {
+	transition: transform var(--wiki-duration) var(--wiki-ease-out);
+}
+
+.wiki-imgviewer-enter-from,
+.wiki-imgviewer-leave-to {
+	opacity: 0;
+}
+
+.wiki-imgviewer-enter-from .wiki-imgviewer-stage,
+.wiki-imgviewer-leave-to .wiki-imgviewer-stage {
+	transform: scale(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
