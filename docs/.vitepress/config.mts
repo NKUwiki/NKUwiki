@@ -1,5 +1,5 @@
 import type { MarkdownRenderer } from 'vitepress'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
@@ -26,9 +26,11 @@ interface CommitEntry {
 	github: string | null
 	date: string
 }
-const gitHistory: Record<string, CommitEntry[]> = JSON.parse(
-	readFileSync(fileURLToPath(new URL('./history.json', import.meta.url)), 'utf8'),
-)
+// history.json 不随 git 分发（被 .gitignore 排除），由 pnpm dev/build 脚本前置的
+// gen:history 生成；直接调 vitepress CLI 时可能还不存在，兜底为空对象（页面历史为空，不阻塞构建）。
+const gitHistory: Record<string, CommitEntry[]> = existsSync(fileURLToPath(new URL('./history.json', import.meta.url)))
+	? JSON.parse(readFileSync(fileURLToPath(new URL('./history.json', import.meta.url)), 'utf8'))
+	: {}
 
 /**
  * markmap 插件会往 VitePress 客户端入口（client/app/index）静态注入
