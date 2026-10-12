@@ -108,3 +108,18 @@
 	text-decoration: underline;
 	text-underline-offset: 0.25em;
 }
+
+/* 右侧大纲的当前项过渡：默认主题其实已经配了（指示条的 top 0.25s、
+   链接变色的 0.25s），所以这里不是新增动效，而是把它们纳入项目的
+   时长与曲线令牌，让大纲和侧栏、正文的手感一致。
+   带 #app 前缀提高特异性：默认主题这些规则含 scoped 属性，
+   .outline-link.active 那条本身已是三层选择器，不用 id 压不稳。 */
+#app .VPDocAsideOutline .content .outline-marker {
+	transition: top var(--wiki-duration-slow) var(--wiki-ease-out), background-color var(--wiki-duration-slow), opacity var(--wiki-duration);
+}
+
+#app .VPDocAsideOutline .content .outline-link,
+#app .VPDocAsideOutline .content .outline-link:hover,
+#app .VPDocAsideOutline .content .outline-link.active {
+	transition: color var(--wiki-duration) var(--wiki-ease-out);
+}

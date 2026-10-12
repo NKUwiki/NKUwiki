@@ -27,9 +27,13 @@
 	font-size: 1.25rem;
 	line-height: 1;
 	color: var(--vp-c-text-2);
-	transition: box-shadow ease-in-out;
-	transition-duration: 200ms;
+	/* 保留原有的描边过渡，另加按下时的收缩反馈 */
+	transition: box-shadow 200ms ease-in-out, transform var(--wiki-duration-fast) var(--wiki-ease-out);
 	cursor: pointer;
+}
+
+.wiki-search-trigger:active {
+	transform: scale(0.96);
 }
 
 .wiki-search-trigger .text,

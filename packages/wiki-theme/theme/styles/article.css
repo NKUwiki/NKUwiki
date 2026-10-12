@@ -559,3 +559,33 @@ a.article-author-pill:hover {
 .article-cards .chips {
 	order: 2;
 }
+
+/* ================= 正文表格与链接的交互反馈 ================= */
+
+/* 表格行悬停：横向追踪一行数据时不再串行。
+   校园 wiki 里群汇总、课程信息这类表格较宽，行错位是常见的阅读障碍。
+   只过渡背景色，不动任何尺寸，零重排。 */
+.vp-doc table tbody tr {
+	transition: background-color var(--wiki-duration) var(--wiki-ease-out);
+}
+
+.vp-doc table tbody tr:hover {
+	background-color: var(--vp-c-default-soft);
+}
+
+/* 正文链接：保留常驻下划线（可读性优先，读者靠它识别「可点」），
+   悬停时另有一层品牌色从左扫过——与站点自有的马克笔 ==...== 呼应。
+   用 background-size 过渡而不是改下划线：下划线一动就可能改变行高，
+   背景层则完全在绘制阶段完成，零布局成本。
+   header-anchor 是标题右侧的 # 锚点，不参与（它有自己的一整套样式）。 */
+.vp-doc a:not(.header-anchor) {
+	background-image: linear-gradient(var(--vp-c-brand-soft), var(--vp-c-brand-soft));
+	background-position: 0 100%;
+	background-repeat: no-repeat;
+	background-size: 0% 100%;
+	transition: background-size var(--wiki-duration) var(--wiki-ease-out);
+}
+
+.vp-doc a:not(.header-anchor):hover {
+	background-size: 100% 100%;
+}

@@ -529,7 +529,12 @@
 		height: 36px;
 		border-radius: 8px;
 		color: var(--vp-c-text-2);
-		transition: color var(--wiki-duration), background var(--wiki-duration);
+		transition: color var(--wiki-duration), background var(--wiki-duration), transform var(--wiki-duration-fast) var(--wiki-ease-out);
+	}
+
+	/* 按下时轻微收缩（与图标轮换叠加：图标转、按钮缩，反馈更明确） */
+	.wiki-sidebar-toggle:active {
+		transform: scale(0.94);
 	}
 
 	.sidebar-top .wiki-sidebar-toggle:hover,
