@@ -1,6 +1,21 @@
 /* 内容增强：行内注释、隐秘文本、马克笔、代码块标题、步骤条、时间线（构建期规则在 lib/markdown/，
    这里只负责对应 DOM 的呈现样式） */
 
+/* ================= 滚动进入渐显 data-reveal ================= */
+/* 隐藏只在客户端 JS 执行后（<html class="wiki-reveal-ready">）生效：
+   SSR 输出与禁用 JS 的环境下元素默认可见，不会白屏（见 composables/reveal.ts）。
+   时长走 --wiki-duration-slow，reduced-motion 下为 0s 即时到位。 */
+.wiki-reveal-ready [data-reveal] {
+	opacity: 0;
+	transform: translateY(10px);
+	transition: opacity var(--wiki-duration-slow) var(--wiki-ease-out), transform var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
+.wiki-reveal-ready [data-reveal].wiki-reveal-in {
+	opacity: 1;
+	transform: none;
+}
+
 /* ================= 行内注释 {^...} ================= */
 
 .wiki-annotation {

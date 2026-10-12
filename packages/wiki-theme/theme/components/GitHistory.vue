@@ -108,7 +108,7 @@ function formatRelative(iso: string): string {
 				</svg>
 			</summary>
 			<ul class="git-history-list">
-				<li v-for="commit in sortedCommits" :key="commit.hash" class="git-history-item">
+				<li v-for="commit in sortedCommits" :key="commit.hash" class="git-history-item" data-reveal>
 					<span class="git-history-hash-block">
 						<a
 							class="git-history-hash"

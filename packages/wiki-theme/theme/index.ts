@@ -14,6 +14,7 @@ import WikiLayout from './components/WikiLayout.vue'
 import { highlightHashTarget, installHeadingHighlight } from './composables/headingHighlight'
 import { installPageTransition } from './composables/pageTransition'
 import { installPlotToggle } from './composables/plot'
+import { installReveal } from './composables/reveal'
 import { syncSidebarCollapsed } from './composables/sidebar'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
@@ -25,6 +26,8 @@ installHeadingHighlight()
 installPlotToggle()
 // 跨页转场：与上面两个监听同一事件，同样是「越早注册越优先」的文档级监听
 installPageTransition()
+// data-reveal 元素的滚动渐显（时间线、Git 历史等长列表）
+installReveal()
 
 /**
  * 分类页的「新生入学」等导航入口都用 /categories/?category=xxx 表示，

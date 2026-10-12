@@ -189,7 +189,8 @@ export function timeline(md: MarkdownRenderer) {
 		if (meta.card ? meta.card === 'true' : containerAttrs.card)
 			classes.push('card')
 		const style = meta.color ? ` style="--wiki-timeline-c-line:${escapeHtml(meta.color)};--wiki-timeline-c-point:${escapeHtml(meta.color)}"` : ''
-		return `<div class="${classes.join(' ')}"${style}>`
+		// data-reveal：条目随滚动逐条淡入（composables/reveal.ts；SSR 与无 JS 环境默认可见）
+		return `<div class="${classes.join(' ')}" data-reveal${style}>`
 			+ `<div class="wiki-timeline-line"><span class="wiki-timeline-point"></span></div>`
 			+ `<div class="wiki-timeline-container"><div class="wiki-timeline-content">`
 	}
