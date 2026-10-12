@@ -44,13 +44,19 @@ pre {
 }
 
 /* ================= 跨页转场 =================
-   站内导航后 .VPContent 淡入并上移 8px（composables/pageTransition.ts 加 class）。
-   只动 opacity 与 transform，不触发重排；时长走 --wiki-duration-page，
-   reduced-motion 下为 0s，动画即时完成。 */
+   站内导航后 .VPContent 淡入并轻微上移（composables/pageTransition.ts 加 class）。
+   只动 opacity 与 transform，不触发重排。
+
+   性能取舍（大面积动画的三个要点）：
+   - 位移压到 4px：整页大小的元素做位移时，合成层尺寸就是整页尺寸，
+     低端机每帧重新上传这么大一块纹理会掉帧；位移越小，视觉上的「整页在动」
+     的沉重感越轻，而「页面已切换」的暗示依然成立；
+   - 时长走 --wiki-duration-page（260ms）：比原来的 340ms 少约四分之一帧数；
+   - will-change 只在动画期间存在：class 摘除后即失效，避免长期占用合成层内存。 */
 @keyframes wiki-page-enter {
 	from {
 		opacity: 0;
-		transform: translateY(8px);
+		transform: translateY(4px);
 	}
 
 	to {
@@ -61,6 +67,7 @@ pre {
 
 .VPContent.wiki-page-enter {
 	animation: wiki-page-enter var(--wiki-duration-page) var(--wiki-ease-out);
+	will-change: opacity, transform;
 }
 
 ::selection {
@@ -76,6 +83,7 @@ pre {
 	:root {
 		--wiki-duration-fast: 0s;
 		--wiki-duration: 0s;
+		--wiki-duration-collapse: 0s;
 		--wiki-duration-slow: 0s;
 		--wiki-duration-page: 0s;
 		scroll-behavior: auto;

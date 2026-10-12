@@ -34,7 +34,10 @@ export function installReveal() {
 	}, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' })
 
 	function scan() {
-		document.querySelectorAll(`[${REVEAL_ATTR}]`).forEach((element) => {
+		// 限定在内容区扫描：属性选择器无法走索引，全文档遍历在大页面上是白费；
+		// 主题的 [data-reveal] 只会出现在正文里（导航栏、侧栏都没有）
+		const scope = document.querySelector('.VPContent') ?? document
+		scope.querySelectorAll(`[${REVEAL_ATTR}]`).forEach((element) => {
 			if (observed.has(element))
 				return
 			observed.add(element)

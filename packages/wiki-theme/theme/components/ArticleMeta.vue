@@ -40,7 +40,8 @@ const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().repl
 // ================= 字数与阅读时长的计数动画 =================
 // SSR 输出真实数值（initial 即真实值，hydrate 不会 mismatch）；挂载后才从 0 计数上去，
 // 让「这篇有多长」这个信息有一个被注意到的时间窗口。
-// reduced-motion 下 tokens 的时长为 0s，直接落到终值（见 prefersReducedMotion）。
+// 两个数字共用一个 rAF 循环（而不是各起一个）：减少调度开销，两者也严格同步。
+// reduced-motion 下不启动，停留在 SSR 输出的真实值。
 const COUNT_DURATION = 400
 const displayWordCount = ref(wordCount.value)
 const displayReadingMinutes = ref(readingMinutes.value)
@@ -49,26 +50,24 @@ function prefersReducedMotion(): boolean {
 	return typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
 }
 
-/** rAF 计数：easeOutCubic 让数字快速接近终值，尾部自然收敛，不会一路匀速显得机械 */
-function countUp(display: Ref<number>, target: number) {
-	if (!target || prefersReducedMotion()) {
-		display.value = target
+onMounted(() => {
+	const pairs: Array<[Ref<number>, number]> = [
+		[displayWordCount, wordCount.value],
+		[displayReadingMinutes, readingMinutes.value],
+	]
+	if (prefersReducedMotion() || pairs.every(([, target]) => !target))
 		return
-	}
 	const started = performance.now()
+	// easeOutCubic：数字快速接近终值、尾部自然收敛，比匀速更不机械
 	const step = (now: number) => {
 		const progress = Math.min(1, (now - started) / COUNT_DURATION)
 		const eased = 1 - (1 - progress) ** 3
-		display.value = Math.round(target * eased)
+		for (const [display, target] of pairs)
+			display.value = target ? Math.round(target * eased) : 0
 		if (progress < 1)
 			requestAnimationFrame(step)
 	}
 	requestAnimationFrame(step)
-}
-
-onMounted(() => {
-	countUp(displayWordCount, wordCount.value)
-	countUp(displayReadingMinutes, readingMinutes.value)
 })
 </script>
 

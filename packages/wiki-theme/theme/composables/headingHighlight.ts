@@ -19,7 +19,7 @@ const HIGHLIGHT_CLASS = 'wiki-heading-highlight'
 /** 略长于 CSS 动画（2s），保证动画播完再摘掉 class */
 const HIGHLIGHT_DURATION = 2200
 /** 滚动时长兜底值：正常情况下读 tokens.css 的 --wiki-duration-page（见 scrollDuration） */
-const FALLBACK_SCROLL_DURATION = 340
+const FALLBACK_SCROLL_DURATION = 260
 
 /**
  * 滚动时长取自动效令牌，reduced-motion 下该变量为 0s，此处随之退化为瞬时跳转。
