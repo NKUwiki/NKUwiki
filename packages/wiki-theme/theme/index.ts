@@ -17,7 +17,6 @@ import { installPageTransition } from './composables/pageTransition'
 import { installPlotToggle } from './composables/plot'
 import { installReveal } from './composables/reveal'
 import { syncSidebarCollapsed } from './composables/sidebar'
-import { installSidebarIndicator } from './composables/sidebarIndicator'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
 
@@ -30,8 +29,6 @@ installPlotToggle()
 installPageTransition()
 // data-reveal 元素的滚动渐显（时间线、Git 历史等长列表）
 installReveal()
-// 侧栏当前项的滑动色块
-installSidebarIndicator()
 // 正文图片加载淡入（与 image-size 注入的尺寸配合，避免 CLS）
 installImageFade()
 
