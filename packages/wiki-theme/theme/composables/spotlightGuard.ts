@@ -25,9 +25,18 @@ export function installSpotlightGuard() {
 		return
 	// null 表示尚未判定过，保证第一次移动一定会写一次 class
 	let lastInside: boolean | null = null
+	// 正文元素的缓存。mousemove 是最高频的事件之一，每次重新查询 DOM 是纯浪费；
+	// 路径变化或元素被卸载时缓存自然失效（isConnected 兜底路由切换的场景）。
+	let cachedDoc: HTMLElement | null = null
+	let cachedPath = ''
+
 	document.addEventListener('mousemove', (event) => {
+		if (cachedPath !== location.pathname || !cachedDoc?.isConnected) {
+			cachedDoc = document.querySelector<HTMLElement>(DOC_SELECTOR)
+			cachedPath = location.pathname
+		}
 		const root = document.documentElement
-		const doc = document.querySelector<HTMLElement>(DOC_SELECTOR)
+		const doc = cachedDoc
 		if (!doc) {
 			root.classList.add(OUTSIDE_CLASS)
 			return

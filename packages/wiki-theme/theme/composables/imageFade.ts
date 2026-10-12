@@ -17,37 +17,36 @@ const LOADED_ATTR = 'data-loaded'
 export function installImageFade() {
 	if (typeof document === 'undefined')
 		return
-	const root = document.documentElement
 
-	root.classList.add(FADE_CLASS)
+	document.documentElement.classList.add(FADE_CLASS)
+
+	// 已挂过监听的图片。wiki:route-change 不只在跨页导航时派发——
+	// 分类页切换筛选也会（ArticleIndex 主动 dispatch），
+	// 少了这道防护，同一张尚未加载完的图会被反复挂上 load/error 监听。
+	const watching = new WeakSet<HTMLImageElement>()
 
 	function markLoaded(img: HTMLImageElement) {
 		img.setAttribute(LOADED_ATTR, '')
 	}
 
-	document.querySelectorAll<HTMLImageElement>('.vp-doc img').forEach((img) => {
+	function watch(img: HTMLImageElement) {
+		if (watching.has(img) || img.hasAttribute(LOADED_ATTR))
+			return
 		// 已加载完（缓存命中）的直接标记，否则等 load / error
 		if (img.complete) {
 			markLoaded(img)
 			return
 		}
+		watching.add(img)
 		img.addEventListener('load', () => markLoaded(img), { once: true })
+		// 加载失败也要结束隐藏态，否则破图会一直不可见
 		img.addEventListener('error', () => markLoaded(img), { once: true })
-	})
+	}
 
-	// 路由切换后新正文里的图片重新走一遍
-	window.addEventListener('wiki:route-change', () => {
-		requestAnimationFrame(() => {
-			document.querySelectorAll<HTMLImageElement>('.vp-doc img').forEach((img) => {
-				if (img.hasAttribute(LOADED_ATTR))
-					return
-				if (img.complete) {
-					markLoaded(img)
-					return
-				}
-				img.addEventListener('load', () => markLoaded(img), { once: true })
-				img.addEventListener('error', () => markLoaded(img), { once: true })
-			})
-		})
-	})
+	function scan() {
+		document.querySelectorAll<HTMLImageElement>('.vp-doc img').forEach(watch)
+	}
+
+	scan()
+	window.addEventListener('wiki:route-change', () => requestAnimationFrame(scan))
 }

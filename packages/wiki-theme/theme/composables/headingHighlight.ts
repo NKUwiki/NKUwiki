@@ -91,12 +91,16 @@ function smoothScrollTo(top: number): void {
 		return
 	}
 	const started = performance.now()
+	// 时长只在这里读一次：scrollDuration() 内部是 getComputedStyle，
+	// 若放进下面的 rAF 循环，每帧都会强制一次样式重算，
+	// 而且与循环里的 scrollTo 交替形成读写交替（layout thrashing）
+	const duration = scrollDuration()
 	// easeInOutCubic：起步与收尾都平缓
 	const ease = (progress: number) => (progress < 0.5 ? 4 * progress ** 3 : 1 - (-2 * progress + 2) ** 3 / 2)
 	const step = (now: number) => {
 		if (generation !== animationGeneration)
 			return
-		const progress = Math.min(1, (now - started) / scrollDuration())
+		const progress = Math.min(1, (now - started) / duration)
 		window.scrollTo(0, from + distance * ease(progress))
 		if (progress < 1)
 			requestAnimationFrame(step)
