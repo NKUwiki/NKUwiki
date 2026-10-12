@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { Ref } from 'vue'
 import bookIcon from '@iconify-icons/ri/book-open-line'
 import calendarIcon from '@iconify-icons/ri/calendar-line'
 import penIcon from '@iconify-icons/ri/quill-pen-line'
 import refreshIcon from '@iconify-icons/ri/refresh-line'
 import { Icon } from '@iconify/vue'
 import { useData, withBase } from 'vitepress'
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { tagChips } from '../composables/chips'
 import WikiChips from './WikiChips.vue'
 
@@ -35,6 +36,40 @@ const lastUpdated = computed(() => formatDate(fm.value.lastUpdated) || formatDat
 const hideStats = computed(() => fm.value.layout === 'wide')
 // 标题锚点：标题改由本组件渲染，模仿 markdown-it 生成的 id（小写、空格转连字符）
 const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[/?#&]/g, ''))
+
+// ================= 字数与阅读时长的计数动画 =================
+// SSR 输出真实数值（initial 即真实值，hydrate 不会 mismatch）；挂载后才从 0 计数上去，
+// 让「这篇有多长」这个信息有一个被注意到的时间窗口。
+// reduced-motion 下 tokens 的时长为 0s，直接落到终值（见 prefersReducedMotion）。
+const COUNT_DURATION = 400
+const displayWordCount = ref(wordCount.value)
+const displayReadingMinutes = ref(readingMinutes.value)
+
+function prefersReducedMotion(): boolean {
+	return typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+}
+
+/** rAF 计数：easeOutCubic 让数字快速接近终值，尾部自然收敛，不会一路匀速显得机械 */
+function countUp(display: Ref<number>, target: number) {
+	if (!target || prefersReducedMotion()) {
+		display.value = target
+		return
+	}
+	const started = performance.now()
+	const step = (now: number) => {
+		const progress = Math.min(1, (now - started) / COUNT_DURATION)
+		const eased = 1 - (1 - progress) ** 3
+		display.value = Math.round(target * eased)
+		if (progress < 1)
+			requestAnimationFrame(step)
+	}
+	requestAnimationFrame(step)
+}
+
+onMounted(() => {
+	countUp(displayWordCount, wordCount.value)
+	countUp(displayReadingMinutes, readingMinutes.value)
+})
 </script>
 
 <template>
@@ -60,11 +95,11 @@ const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().repl
 		<span v-if="lastUpdated" class="article-info-item">
 			<Icon :icon="refreshIcon" aria-hidden="true" />最后更新：{{ lastUpdated }}
 		</span>
-		<span v-if="wordCount && !hideStats" class="article-info-item">
-			<Icon :icon="penIcon" aria-hidden="true" />字数：{{ wordCount }}
+		<span v-if="displayWordCount && !hideStats" class="article-info-item">
+			<Icon :icon="penIcon" aria-hidden="true" />字数：{{ displayWordCount }}
 		</span>
-		<span v-if="readingMinutes && !hideStats" class="article-info-item">
-			<Icon :icon="bookIcon" aria-hidden="true" />阅读时间：{{ readingMinutes }} 分钟
+		<span v-if="displayReadingMinutes && !hideStats" class="article-info-item">
+			<Icon :icon="bookIcon" aria-hidden="true" />阅读时间：{{ displayReadingMinutes }} 分钟
 		</span>
 	</div>
 	<p v-if="fm.empty" class="empty-state">

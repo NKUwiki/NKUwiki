@@ -10,7 +10,7 @@ import ArticleByline from '@nkuwiki/theme/theme/components/ArticleByline.vue'
 import WikiChips from '@nkuwiki/theme/theme/components/WikiChips.vue'
 import { tagChips } from '@nkuwiki/theme/theme/composables/chips.ts'
 import { withBase } from 'vitepress'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { data } from '../../data/catalog.data.ts'
 import { ensureSearchIndex, searchDocs } from '../searchDocs'
 
@@ -145,6 +145,50 @@ const groups = computed(() => {
 	return [...result]
 })
 const placeholder = computed(() => selected.value ? `搜索「${selected.value}」栏目的标题与正文…` : '搜索全部文章的标题与正文…')
+
+// ================= 筛选切换的位置过渡（FLIP） =================
+// 切换分类 / 标签 / 搜索词时列表内容会大幅变化：留住的条目位置跳动很大。
+// FLIP：变化前记录每个条目的位置，变化后把它瞬时挪回原处，再过渡到新位置，
+// 读者能看到条目「滑到新位置」而不是整列瞬间重排。新出现的条目直接淡入。
+const listRef = ref<HTMLElement>()
+
+function capturePositions(): Map<Element, number> {
+	const positions = new Map<Element, number>()
+	listRef.value?.querySelectorAll<HTMLElement>('.article-list > li').forEach((item) => {
+		positions.set(item, item.getBoundingClientRect().top)
+	})
+	return positions
+}
+
+async function flipList() {
+	const previous = capturePositions()
+	if (!previous.size)
+		return
+	await nextTick()
+	listRef.value?.querySelectorAll<HTMLElement>('.article-list > li').forEach((item) => {
+		const before = previous.get(item)
+		// 新出现的条目没有旧位置，走淡入（与 reveal 同一族动效，不额外造轮子）
+		if (before === undefined) {
+			item.setAttribute('data-reveal', '')
+			return
+		}
+		const delta = before - item.getBoundingClientRect().top
+		if (!delta)
+			return
+		item.style.transition = 'none'
+		item.style.transform = `translateY(${delta}px)`
+		requestAnimationFrame(() => {
+			item.style.transition = 'transform var(--wiki-duration-slow) var(--wiki-ease-out)'
+			item.style.transform = ''
+		})
+	})
+}
+
+// 只在「筛选结果变化」时做位置过渡：初次挂载与纯视图切换（卡片/列表）不值得动画
+watch([selected, query, view], () => {
+	flipList()
+}, { flush: 'post' })
+
 onMounted(() => {
 	readQuery()
 	runFilter()
@@ -159,7 +203,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-<div class="article-index">
+<div ref="listRef" class="article-index">
 	<WikiChips
 		v-if="choices.length && !category"
 		:items="[{ text: '全部', value: '', count: data.articles.length }, ...choices.map(choice => ({ text: `${mode === 'tags' ? '# ' : ''}${choice.name}`, value: choice.name, count: choice.count }))]"
