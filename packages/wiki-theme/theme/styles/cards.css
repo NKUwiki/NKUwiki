@@ -543,6 +543,28 @@
 		height: 18px;
 	}
 
+	/* 图标轮换：两个图标同占一个网格单元（按钮本身是 grid + place-items: center），
+	   按侧栏状态交叉淡入 + 旋转；展开态显示「收起」图标，收起态显示「展开」图标 */
+	.wiki-sidebar-toggle .toggle-icon {
+		grid-area: 1 / 1;
+		transition: opacity var(--wiki-duration) var(--wiki-ease-out), transform var(--wiki-duration-slow) var(--wiki-ease-out);
+	}
+
+	.wiki-sidebar-toggle .toggle-icon-unfold {
+		opacity: 0;
+		transform: rotate(-90deg) scale(0.7);
+	}
+
+	html[data-wiki-sidebar="collapsed"] .wiki-sidebar-toggle .toggle-icon-fold {
+		opacity: 0;
+		transform: rotate(90deg) scale(0.7);
+	}
+
+	html[data-wiki-sidebar="collapsed"] .wiki-sidebar-toggle .toggle-icon-unfold {
+		opacity: 1;
+		transform: none;
+	}
+
 	.wiki-sidebar-toggle-floating {
 		position: fixed;
 		inset-block-start: calc(var(--vp-nav-height) + 5px);
@@ -552,8 +574,34 @@
 		z-index: 26;
 	}
 
+	/* ================= 侧栏收起的移出动画 =================
+	   原先是 display: none 硬切，侧栏瞬间消失、正文瞬间扩展。
+	   改为 transform 移出（合成动画，不触发重排）：
+	   - 收起：向左滑出并淡出，动画播完再切 visibility（延迟见下），
+	     过程中看得见、且收起后不会残留在 Tab 焦点序列里；
+	   - 展开：visibility 立刻恢复，再从左侧滑回原位。
+	   正文的 padding-left 另做过渡（见下方），两者略有错开，
+	   观感是「正文先让出位置，侧栏随后滑入/滑出」。
+	   选择器带上 html[data-wiki-sidebar]：默认主题的 .VPSidebar 带 scoped
+	   属性（特异性 0,2,0），只写 .VPSidebar 压不过它，展开态的过渡会失效。 */
+	html[data-wiki-sidebar] .VPSidebar {
+		transition: transform var(--wiki-duration-collapse) var(--wiki-ease-out), opacity var(--wiki-duration-collapse) var(--wiki-ease-out), visibility 0s;
+	}
+
 	html[data-wiki-sidebar="collapsed"] .VPSidebar {
-		display: none;
+		visibility: hidden;
+		opacity: 0;
+		transform: translateX(-100%);
+		transition: transform var(--wiki-duration-collapse) var(--wiki-ease-out), opacity var(--wiki-duration-collapse) var(--wiki-ease-out), visibility 0s linear var(--wiki-duration-collapse);
+		pointer-events: none;
+	}
+
+	/* 正文让位：padding 是布局属性，过渡期间会重排这段文字。
+	   这是用户主动触发的低频操作（不是滚动/输入那种高频路径），
+	   且用较短的 fast 档，重排窗口很小；若低端机上仍觉得顿，
+	   把这条 transition 去掉即可退化为「瞬间扩展」（侧栏动画不受影响）。 */
+	.VPContent.has-sidebar {
+		transition: padding-left var(--wiki-duration) var(--wiki-ease-out);
 	}
 
 	html[data-wiki-sidebar="collapsed"] .VPContent.has-sidebar {
@@ -561,8 +609,8 @@
 	}
 
 	/* 收起侧栏后，导航栏背景面与底部横线不再按 has-sidebar 给侧栏留位：
-	   VitePress 会从侧栏宽度处起绘（--vp-nav-col-offset），侧栏 display:none
-	   后左侧露出透明区，滚动时正文文字会透进导航栏、底部横线也会断开 */
+	   VitePress 会从侧栏宽度处起绘（--vp-nav-col-offset），侧栏移出视口后
+	   左侧露出透明区，滚动时正文文字会透进导航栏、底部横线也会断开 */
 	html[data-wiki-sidebar="collapsed"] .VPNavBar.has-sidebar {
 		--vp-nav-col-offset: 0px;
 	}

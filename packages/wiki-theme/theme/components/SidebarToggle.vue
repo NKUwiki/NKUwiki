@@ -15,6 +15,10 @@ import { sidebarCollapsed, toggleSidebarCollapsed } from '../composables/sidebar
 	aria-controls="VPSidebarNav"
 	@click="toggleSidebarCollapsed"
 >
-	<Icon :icon="sidebarCollapsed ? sidebarUnfoldIcon : sidebarFoldIcon" aria-hidden="true" />
+	<!-- 两个图标都渲染、在同一个网格单元里叠放，由 CSS 按侧栏状态交叉淡入并旋转，
+	比 v-if 瞬间换一个 SVG 多一重方向感（收起与展开各转一个方向）；
+	可访问名由按钮自身的 aria-label 承担，图标对读屏隐藏。 -->
+	<Icon :icon="sidebarFoldIcon" class="toggle-icon toggle-icon-fold" aria-hidden="true" />
+	<Icon :icon="sidebarUnfoldIcon" class="toggle-icon toggle-icon-unfold" aria-hidden="true" />
 </button>
 </template>
