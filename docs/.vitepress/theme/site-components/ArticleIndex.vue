@@ -89,15 +89,21 @@ async function runFilter() {
 	const { results } = searchDocs(index, expanded, 'all', 999)
 	const queryTokens = tokenize(expanded)
 	const map = new Map<string, FilterHit>()
+	// 只有排在前面的命中才生成摘要：buildExcerpt 要逐条做区间查找与分块渲染，
+	// 对近千条命中全量生成会让每次输入都卡一下；靠后的条目用户基本翻不到，
+	// 给标题高亮即可（hits 只决定「显示的条目」，不参与排序）
+	let excerptBudget = 60
 	for (const result of results) {
 		if (!inScope(result))
 			continue
+		const titleHtml = highlightText(result.title ?? '', result.terms ?? [], queryTokens)
+		if (excerptBudget <= 0) {
+			map.set(result.id, { titleHtml, excerptHtml: '', section: '' })
+			continue
+		}
+		excerptBudget--
 		const excerpt = buildExcerpt(result.text ?? '', result.terms ?? [], result.sections ?? [], queryTokens)
-		map.set(result.id, {
-			titleHtml: highlightText(result.title ?? '', result.terms ?? [], queryTokens),
-			excerptHtml: excerpt.html,
-			section: excerpt.section,
-		})
+		map.set(result.id, { titleHtml, excerptHtml: excerpt.html, section: excerpt.section })
 	}
 	hits.value = map
 }
@@ -147,16 +153,38 @@ const groups = computed(() => {
 const placeholder = computed(() => selected.value ? `搜索「${selected.value}」栏目的标题与正文…` : '搜索全部文章的标题与正文…')
 
 // ================= 筛选切换的位置过渡（FLIP） =================
-// 切换分类 / 标签 / 搜索词时列表内容会大幅变化：留住的条目位置跳动很大。
+// 切换分类 / 标签时列表内容大幅变化：留住的条目位置跳动很大。
 // FLIP：变化前记录每个条目的位置，变化后把它瞬时挪回原处，再过渡到新位置，
-// 读者能看到条目「滑到新位置」而不是整列瞬间重排。新出现的条目直接淡入。
+// 读者能看到条目「滑到新位置」而不是整列瞬间重排。
+//
+// 三条性能与正确性约束：
+// 1. 不对搜索词变化做动画——输入时每敲一个字都会改变列表，是这里最高频的路径，
+//    做动画只会让输入发卡；搜索本身已有 150ms 防抖，结果整体换一批即可；
+// 2. 读 / 写严格分离：先一次性读完所有旧位置，再一次性读完新位置，最后统一写，
+//    避免「读 → 写 → 读」交替触发的强制同步布局（一百多个条目各触发一次会明显掉帧）；
+// 3. 只对当前视口内、且上限之内的条目做动画——视口外的位移没人看得到，
+//    却照样要建合成层。新出现的条目一律不参与，避免刚挂上的节点被动画藏住。
 const listRef = ref<HTMLElement>()
+/** 参与动画的条目上限：超出部分直接到位，保证重排开销有上界 */
+const FLIP_LIMIT = 60
 
-function capturePositions(): Map<Element, number> {
-	const positions = new Map<Element, number>()
-	listRef.value?.querySelectorAll<HTMLElement>('.article-list > li').forEach((item) => {
-		positions.set(item, item.getBoundingClientRect().top)
-	})
+/** 收集当前可参与动画的条目及其相对列表容器的位置（top 减去容器 top，消除滚动影响） */
+function capturePositions(): Map<HTMLElement, number> {
+	const positions = new Map<HTMLElement, number>()
+	const container = listRef.value
+	if (!container)
+		return positions
+	const containerTop = container.getBoundingClientRect().top
+	const items = container.querySelectorAll<HTMLElement>('.article-list > li')
+	for (const item of items) {
+		if (positions.size >= FLIP_LIMIT)
+			break
+		const rect = item.getBoundingClientRect()
+		// 视口外的条目不参与（留一点余量，滚动边缘的条目也能顺滑衔接）
+		if (rect.bottom < -80 || rect.top > window.innerHeight + 80)
+			continue
+		positions.set(item, rect.top - containerTop)
+	}
 	return positions
 }
 
@@ -165,27 +193,39 @@ async function flipList() {
 	if (!previous.size)
 		return
 	await nextTick()
-	listRef.value?.querySelectorAll<HTMLElement>('.article-list > li').forEach((item) => {
+	const container = listRef.value
+	if (!container)
+		return
+	// 第二个读阶段：同样一次性读完，不与写操作交替
+	const containerTop = container.getBoundingClientRect().top
+	const deltas = new Map<HTMLElement, number>()
+	for (const item of container.querySelectorAll<HTMLElement>('.article-list > li')) {
 		const before = previous.get(item)
-		// 新出现的条目没有旧位置，走淡入（与 reveal 同一族动效，不额外造轮子）
-		if (before === undefined) {
-			item.setAttribute('data-reveal', '')
-			return
-		}
-		const delta = before - item.getBoundingClientRect().top
-		if (!delta)
-			return
+		// 新出现的条目没有旧位置：跳过，保持默认可见（不参与位置动画）
+		if (before === undefined)
+			continue
+		const delta = before - (item.getBoundingClientRect().top - containerTop)
+		if (delta)
+			deltas.set(item, delta)
+	}
+	if (!deltas.size)
+		return
+	// 写阶段：先把所有条目瞬时挪回旧位置
+	for (const [item, delta] of deltas) {
 		item.style.transition = 'none'
 		item.style.transform = `translateY(${delta}px)`
-		requestAnimationFrame(() => {
+	}
+	// 下一帧再统一放行到新位置，让过渡真正发生
+	requestAnimationFrame(() => {
+		for (const item of deltas.keys()) {
 			item.style.transition = 'transform var(--wiki-duration-slow) var(--wiki-ease-out)'
 			item.style.transform = ''
-		})
+		}
 	})
 }
 
-// 只在「筛选结果变化」时做位置过渡：初次挂载与纯视图切换（卡片/列表）不值得动画
-watch([selected, query, view], () => {
+// 只在分类 / 标签切换与视图切换时做位置过渡；搜索词高频变化不走这里
+watch([selected, view], () => {
 	flipList()
 }, { flush: 'post' })
 
@@ -245,7 +285,8 @@ onUnmounted(() => {
 					<a v-if="hits.get(article.url)" class="article-title" :href="withBase(article.url)" v-html="hits.get(article.url)!.titleHtml" />
 					<a v-else class="article-title" :href="withBase(article.url)">{{ article.title }}</a>
 					<WikiChips :items="tagChips(article.tags)" class="tags" label="文章标签" />
-					<span v-if="hits.get(article.url)" class="index-item-excerpt">
+					<!-- 只有生成过摘要的命中才展开摘要块（靠后的命中只有标题高亮） -->
+					<span v-if="hits.get(article.url)?.excerptHtml" class="index-item-excerpt">
 						<span v-if="hits.get(article.url)!.section" class="index-item-section">§ {{ hits.get(article.url)!.section }}</span>
 						<span class="index-item-excerpt-text" v-html="hits.get(article.url)!.excerptHtml" />
 					</span>
