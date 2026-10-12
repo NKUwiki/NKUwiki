@@ -73,39 +73,57 @@ pre {
 /* ================= 深浅色切换开关的动效 =================
    默认主题只在暗色态给日/月图标声明了 opacity 过渡，从暗切回亮是瞬时的；
    滑块虽有一条 0.25s 的 transform 过渡，但缓动与时长不受令牌控制。
-   这里补成双向、并给图标加一点旋转，让「切换」这个动作有方向感。
+   这里补齐双向过渡，并把图标动效从「旋转」换成「缩放 + 位移」交换。
    用 #app 前缀提高特异性：默认主题这些规则带 scoped 属性，暗色态那条
    更是四层选择器，不用 id 压不住（#app 是 VitePress 的挂载根）。 */
+
+/* 滑块：弹性缓动，「咔哒」落位的实感 */
 #app .VPSwitchAppearance .check {
 	transition: transform var(--wiki-duration-slow) var(--wiki-ease-spring);
 }
 
+/* 按钮本体：保留默认主题的描边过渡，另加按下时的轻微收缩作为触觉反馈 */
+#app .VPSwitchAppearance {
+	transition: border-color var(--wiki-duration), transform var(--wiki-duration-fast) var(--wiki-ease-out);
+}
+
+#app .VPSwitchAppearance:active {
+	transform: scale(0.92);
+}
+
+/* 日 / 月图标：一个缩小退场、另一个从反方向放大归位，方向明确。
+   不用旋转——太阳是八条均匀射线、四重对称，转 90 度视觉上等于没动。
+   两个属性都用 slow 档：先前只给透明度最快的 120ms 档，
+   图标还没动完就已经淡没了，等于看不到动效。
+   .icon 自带 overflow: hidden，位移出去的图标会被裁掉，正好形成滑出感。 */
 #app .VPSwitchAppearance .sun,
 #app .VPSwitchAppearance .moon {
-	transition: opacity var(--wiki-duration) var(--wiki-ease-out), transform var(--wiki-duration-slow) var(--wiki-ease-out);
+	transition: opacity var(--wiki-duration-slow) var(--wiki-ease-out), transform var(--wiki-duration-slow) var(--wiki-ease-out);
 }
 
 #app .VPSwitchAppearance .sun {
-	transform: rotate(0deg);
+	transform: none;
 }
 
 #app .VPSwitchAppearance .moon {
-	transform: rotate(-90deg);
+	transform: translateY(70%) scale(0.4);
 }
 
 .dark #app .VPSwitchAppearance .sun {
-	transform: rotate(90deg);
+	transform: translateY(-70%) scale(0.4);
 }
 
 .dark #app .VPSwitchAppearance .moon {
-	transform: rotate(0deg);
+	transform: none;
 }
 
 /* ================= 深浅色切换的整页颜色过渡 =================
    只在真正切换主题的那一小段时间内启用（WikiLayout 挂上、到时摘掉），
    平时不挂 transition，避免影响 hover 等日常交互的响应。
-   只覆盖**大面积背景与描边**：代码块、卡片这类小元素的颜色变化肉眼几乎
-   察觉不到，把它们一并纳入只是白白扩大重绘面积——低端机上一次切换就够掉帧。 */
+   覆盖两类元素：大面积背景（导航/侧栏/正文/页脚）与亮暗差异显著的
+   大色块（代码块、自定义容器、表格、引用）——后者若不适配，切换时会出现
+   「背景平滑变化、代码块啪地跳变」的割裂感。
+   刻意不用 * 全站选择器：那会把每个行内元素都拉进重绘，得不偿失。 */
 html.wiki-theme-fade,
 html.wiki-theme-fade body,
 html.wiki-theme-fade .VPNav,
@@ -115,7 +133,11 @@ html.wiki-theme-fade .VPLocalNav,
 html.wiki-theme-fade .VPContent,
 html.wiki-theme-fade .VPDoc,
 html.wiki-theme-fade .VPDocAside,
-html.wiki-theme-fade .VPFooter {
+html.wiki-theme-fade .VPFooter,
+html.wiki-theme-fade .vp-doc div[class*="language-"],
+html.wiki-theme-fade .vp-doc .custom-block,
+html.wiki-theme-fade .vp-doc table,
+html.wiki-theme-fade .vp-doc blockquote {
 	transition: background-color var(--wiki-duration-slow) var(--wiki-ease-out), border-color var(--wiki-duration-slow) var(--wiki-ease-out);
 }
 
@@ -134,6 +156,7 @@ html.wiki-theme-fade .VPFooter {
 		--wiki-duration: 0s;
 		--wiki-duration-collapse: 0s;
 		--wiki-duration-slow: 0s;
+		--wiki-duration-drawer: 0s;
 		--wiki-duration-page: 0s;
 		scroll-behavior: auto;
 	}

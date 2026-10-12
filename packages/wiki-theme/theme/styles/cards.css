@@ -585,23 +585,24 @@
 	   选择器带上 html[data-wiki-sidebar]：默认主题的 .VPSidebar 带 scoped
 	   属性（特异性 0,2,0），只写 .VPSidebar 压不过它，展开态的过渡会失效。 */
 	html[data-wiki-sidebar] .VPSidebar {
-		transition: transform var(--wiki-duration-collapse) var(--wiki-ease-out), opacity var(--wiki-duration-collapse) var(--wiki-ease-out), visibility 0s;
+		transition: transform var(--wiki-duration-drawer) var(--wiki-ease-out), opacity var(--wiki-duration-drawer) var(--wiki-ease-out), visibility 0s;
 	}
 
 	html[data-wiki-sidebar="collapsed"] .VPSidebar {
 		visibility: hidden;
 		opacity: 0;
 		transform: translateX(-100%);
-		transition: transform var(--wiki-duration-collapse) var(--wiki-ease-out), opacity var(--wiki-duration-collapse) var(--wiki-ease-out), visibility 0s linear var(--wiki-duration-collapse);
+		transition: transform var(--wiki-duration-drawer) var(--wiki-ease-out), opacity var(--wiki-duration-drawer) var(--wiki-ease-out), visibility 0s linear var(--wiki-duration-drawer);
 		pointer-events: none;
 	}
 
-	/* 正文让位：padding 是布局属性，过渡期间会重排这段文字。
-	   这是用户主动触发的低频操作（不是滚动/输入那种高频路径），
-	   且用较短的 fast 档，重排窗口很小；若低端机上仍觉得顿，
-	   把这条 transition 去掉即可退化为「瞬间扩展」（侧栏动画不受影响）。 */
+	/* 正文让位：padding 是布局属性，过渡期间会重排这段文字，
+	   所以比侧栏的 drawer 档（360ms）略快一档，既跟得上又有「先让位」的层次。
+	   这是用户主动触发的低频操作（不是滚动/输入那种高频路径），重排窗口很短；
+	   若低端机上仍觉得顿，把这条 transition 去掉即可退化为「瞬间扩展」
+	   （侧栏动画不受影响）。 */
 	.VPContent.has-sidebar {
-		transition: padding-left var(--wiki-duration) var(--wiki-ease-out);
+		transition: padding-left var(--wiki-duration-slow) var(--wiki-ease-out);
 	}
 
 	html[data-wiki-sidebar="collapsed"] .VPContent.has-sidebar {

@@ -5,7 +5,7 @@ import {
 } from '@nolebase/vitepress-plugin-enhanced-readabilities/client'
 import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import AnnouncementBar from './AnnouncementBar.vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import BackTop from './BackTop.vue'
@@ -27,19 +27,38 @@ const changelogKey = computed(() => route.path)
 /** 整页颜色过渡的持续时间：略长于 --wiki-duration-slow(280ms)，留出收尾余量 */
 const THEME_FADE_DURATION = 320
 let themeFadeTimer: ReturnType<typeof setTimeout> | undefined
+
+/**
+ * 整页颜色过渡只在用户真的点切换按钮时启用。
+ *
+ * 不用 watch(isDark) 判断：客户端 hydrate 时 isDark 会从初始值同步到
+ * localStorage/系统偏好，那次变化同样会触发 watch，导致首次进站
+ * （尤其暗色模式用户）看到颜色白淡一下。
+ * 文档级点击监听排在组件自身的 @click 之后，此时 VitePress 已改好 isDark、
+ * 但 Vue 还没把 .dark 写进 DOM，正好是挂上过渡类的最佳时机。
+ */
+function onAppearanceClick(event: MouseEvent) {
+	const target = event.target
+	if (!(target instanceof Element) || !target.closest('.VPSwitchAppearance'))
+		return
+	const root = document.documentElement
+	root.classList.add('wiki-theme-fade')
+	if (themeFadeTimer)
+		clearTimeout(themeFadeTimer)
+	themeFadeTimer = setTimeout(() => root.classList.remove('wiki-theme-fade'), THEME_FADE_DURATION)
+}
+
 onMounted(() => {
-	watch(isDark, (dark, wasDark) => {
+	watch(isDark, (dark) => {
 		document.querySelectorAll<HTMLLinkElement>('link[data-wiki-icon]').forEach(link => link.href = withBase(dark ? '/favicon-dark.svg' : '/favicon-light.svg'))
-		// 整页颜色过渡只在「用户切换」时启用：immediate 的首次执行（wasDark 为 undefined）
-		// 不该让首屏颜色淡入。到点摘掉 class，避免这条 transition 常驻影响日常 hover。
-		if (wasDark === undefined || wasDark === dark)
-			return
-		const root = document.documentElement
-		root.classList.add('wiki-theme-fade')
-		if (themeFadeTimer)
-			clearTimeout(themeFadeTimer)
-		themeFadeTimer = setTimeout(() => root.classList.remove('wiki-theme-fade'), THEME_FADE_DURATION)
 	}, { immediate: true })
+	document.addEventListener('click', onAppearanceClick)
+})
+
+onUnmounted(() => {
+	document.removeEventListener('click', onAppearanceClick)
+	if (themeFadeTimer)
+		clearTimeout(themeFadeTimer)
 })
 </script>
 

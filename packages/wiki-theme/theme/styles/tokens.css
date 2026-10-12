@@ -16,6 +16,10 @@
 	   属于布局动画，帧成本高于纯合成动画，因此比 slow 档更短，减少总帧数 */
 	--wiki-duration-collapse: 200ms;
 	--wiki-duration-slow: 280ms;
+	/* 抽屉式移出（侧栏整体滑出）：纯合成动画，成本低可以慢一些。
+	   侧栏宽约 272px，200ms 滑完接近 1400px/s，观感是「闪一下」；
+	   360ms 落到约 750px/s，才有「抽屉被推开」的感觉。 */
+	--wiki-duration-drawer: 360ms;
 	/* 跨页转场与标题滚动：整页级运动，时长比 slow 再长一点但不过分，
 	   避免大面积动画拖长帧数（同时用于 headingHighlight 的滚动） */
 	--wiki-duration-page: 260ms;
