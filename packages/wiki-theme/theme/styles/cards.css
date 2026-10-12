@@ -73,14 +73,16 @@
 }
 
 /* 整卡可点击：卡片内注入的覆盖层链接（card-overlay-link）铺满整卡。
-   鼠标悬停时只在卡片边缘给出反馈（描边变品牌色），不改变背景色。 */
+   鼠标悬停时描边变品牌色，并整体轻微抬升（统一走 --wiki-lift，
+   见 tokens.css；只动 transform，不触发重排）。 */
 .campus-card[data-card-link] {
-	transition: border-color var(--wiki-duration);
+	transition: border-color var(--wiki-duration), transform var(--wiki-duration) var(--wiki-ease-out);
 	cursor: pointer;
 }
 
 .campus-card[data-card-link]:hover {
 	border-color: var(--vp-c-brand-1);
+	transform: translateY(calc(-1 * var(--wiki-lift)));
 }
 
 .campus-card[data-card-link] .card-overlay-link {
@@ -254,12 +256,13 @@
 
 .friend-link-card {
 	padding: 0;
-	transition: background var(--wiki-duration), box-shadow var(--wiki-duration);
+	transition: background var(--wiki-duration), box-shadow var(--wiki-duration), transform var(--wiki-duration) var(--wiki-ease-out);
 }
 
 .friend-link-card:hover {
 	box-shadow: 0 0 0 1px var(--vp-c-brand-1);
 	background: var(--vp-c-bg);
+	transform: translateY(calc(-1 * var(--wiki-lift)));
 }
 
 .vp-doc .friend-card-main {
@@ -314,7 +317,7 @@
 	line-height: 1.4;
 	text-decoration: none;
 	color: inherit;
-	transition: border-color var(--wiki-duration), color var(--wiki-duration);
+	transition: border-color var(--wiki-duration), color var(--wiki-duration), transform var(--wiki-duration) var(--wiki-ease-out);
 }
 
 .app-cards a.link.card {
@@ -325,6 +328,7 @@
 	border-color: var(--vp-c-brand-1);
 	text-decoration: none;
 	color: var(--vp-c-brand-1);
+	transform: translateY(calc(-1 * var(--wiki-lift)));
 }
 
 .app-cards .icon {
@@ -392,9 +396,14 @@
 	background: var(--vp-c-bg-soft);
 }
 
+.wiki-wide .article-list.article-cards li {
+	transition: border-color var(--wiki-duration), background var(--wiki-duration), transform var(--wiki-duration) var(--wiki-ease-out);
+}
+
 .wiki-wide .article-list.article-cards li:hover {
 	border-color: var(--vp-c-brand-1);
 	background: var(--vp-c-bg);
+	transform: translateY(calc(-1 * var(--wiki-lift)));
 }
 
 .group-contact {

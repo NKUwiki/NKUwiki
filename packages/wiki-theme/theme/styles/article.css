@@ -70,6 +70,13 @@
 
 .vp-doc img {
 	border-radius: var(--wiki-radius-small);
+	/* 加载淡入：尺寸已由构建期注入（image-size 插件），加载完成前不抖动布局；
+	   隐藏只在 JS 执行后加上的 .wiki-image-fade 下生效，无 JS 环境直接显示 */
+	transition: opacity var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
+.wiki-image-fade .vp-doc img:not([data-loaded]) {
+	opacity: 0;
 }
 
 /* 加粗就是加粗：不再附加底部色带高亮（重点标注交给马克笔 ==...==，见 enhance.css） */

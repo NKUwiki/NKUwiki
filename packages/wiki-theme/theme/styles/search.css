@@ -121,7 +121,18 @@
 	position: absolute;
 	inset: 0;
 	background: var(--vp-backdrop-bg-color);
-	transition: opacity 0.5s;
+	/* 打开时淡入；弹窗是 v-if 挂载，animation 直接起播 */
+	animation: wiki-fade-in var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
+@keyframes wiki-fade-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
 }
 
 .wiki-search-box .shell {
@@ -136,6 +147,21 @@
 	padding: 0.75rem;
 	border-radius: 0.375rem;
 	background: var(--vp-local-search-bg);
+	/* 打开时从「略小 + 略高 + 透明」落到原位：比单纯淡入更有「弹出来」的方向感。
+	   位移量很小（4px），不会让人觉得面板从远处飞来。 */
+	animation: wiki-search-open var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
+@keyframes wiki-search-open {
+	from {
+		opacity: 0;
+		transform: scale(0.98) translateY(-4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 @media not all and (min-width: 48rem) {
