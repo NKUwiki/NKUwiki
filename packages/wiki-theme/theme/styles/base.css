@@ -43,6 +43,26 @@ pre {
 	text-autospace: no-autospace;
 }
 
+/* ================= 跨页转场 =================
+   站内导航后 .VPContent 淡入并上移 8px（composables/pageTransition.ts 加 class）。
+   只动 opacity 与 transform，不触发重排；时长走 --wiki-duration-page，
+   reduced-motion 下为 0s，动画即时完成。 */
+@keyframes wiki-page-enter {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.VPContent.wiki-page-enter {
+	animation: wiki-page-enter var(--wiki-duration-page) var(--wiki-ease-out);
+}
+
 ::selection {
 	background-color: var(--vp-c-brand-soft);
 }
@@ -54,7 +74,10 @@ pre {
 
 @media (prefers-reduced-motion: reduce) {
 	:root {
+		--wiki-duration-fast: 0s;
 		--wiki-duration: 0s;
+		--wiki-duration-slow: 0s;
+		--wiki-duration-page: 0s;
 		scroll-behavior: auto;
 	}
 }

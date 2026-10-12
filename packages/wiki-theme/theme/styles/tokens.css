@@ -5,7 +5,20 @@
 	--wiki-radius-small: 0.375rem;
 	--wiki-radius-large: 1rem;
 	--wiki-content-width: 75rem;
+	/* 动效令牌：时长分四档（微交互 / 色彩背景 / 面板与容器 / 跨页转场），
+	   一律配 --wiki-ease-out 入场曲线，保证全站动效「是同一个人调的」。
+	   新增动效必须引用这里的变量，不得硬编码毫秒数——
+	   base.css 的 prefers-reduced-motion 块靠把这些变量压成 0s 实现全局降级，
+	   硬编码的时长会绕过硬行降级，在系统「减少动态效果」下依然播动画。 */
+	--wiki-duration-fast: 120ms;
 	--wiki-duration: 160ms;
+	--wiki-duration-slow: 280ms;
+	--wiki-duration-page: 340ms;
+	--wiki-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--wiki-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+	--wiki-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	/* 卡片悬停的统一抬升量（只动 transform，不触发重排） */
+	--wiki-lift: 2px;
 	/* 主色为南开紫（青莲紫）#711A5F，悬停/按钮两档在其基础上提亮以求和谐 */
 	--vp-c-brand-1: hsl(var(--wiki-hue) 63% 27%);
 	--vp-c-brand-2: hsl(var(--wiki-hue) 56% 34%);

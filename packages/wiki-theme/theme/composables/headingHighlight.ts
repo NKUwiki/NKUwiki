@@ -18,8 +18,18 @@
 const HIGHLIGHT_CLASS = 'wiki-heading-highlight'
 /** 略长于 CSS 动画（2s），保证动画播完再摘掉 class */
 const HIGHLIGHT_DURATION = 2200
-/** 滚动时长：长短距离都用同一条曲线，观感一致 */
-const SCROLL_DURATION = 480
+/** 滚动时长兜底值：正常情况下读 tokens.css 的 --wiki-duration-page（见 scrollDuration） */
+const FALLBACK_SCROLL_DURATION = 340
+
+/**
+ * 滚动时长取自动效令牌，reduced-motion 下该变量为 0s，此处随之退化为瞬时跳转。
+ * 调用时机都在用户点击之后，此时主题样式必然已注入；读不到时兜底为固定值。
+ */
+function scrollDuration(): number {
+	const raw = getComputedStyle(document.documentElement).getPropertyValue('--wiki-duration-page')
+	const parsed = Number.parseFloat(raw)
+	return Number.isFinite(parsed) ? parsed : FALLBACK_SCROLL_DURATION
+}
 
 let highlightTimer: ReturnType<typeof setTimeout> | undefined
 /** 自增代号：期间又点了别的标题时，用它让上一次动画自行退出 */
@@ -86,7 +96,7 @@ function smoothScrollTo(top: number): void {
 	const step = (now: number) => {
 		if (generation !== animationGeneration)
 			return
-		const progress = Math.min(1, (now - started) / SCROLL_DURATION)
+		const progress = Math.min(1, (now - started) / scrollDuration())
 		window.scrollTo(0, from + distance * ease(progress))
 		if (progress < 1)
 			requestAnimationFrame(step)
