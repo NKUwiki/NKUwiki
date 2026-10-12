@@ -6,7 +6,7 @@ import penIcon from '@iconify-icons/ri/quill-pen-line'
 import refreshIcon from '@iconify-icons/ri/refresh-line'
 import { Icon } from '@iconify/vue'
 import { useData, withBase } from 'vitepress'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { tagChips } from '../composables/chips'
 import WikiChips from './WikiChips.vue'
 
@@ -45,6 +45,7 @@ const anchorId = computed(() => (fm.value.title || '').trim().toLowerCase().repl
 const COUNT_DURATION = 400
 const displayWordCount = ref(wordCount.value)
 const displayReadingMinutes = ref(readingMinutes.value)
+let countFrame: number | undefined
 
 function prefersReducedMotion(): boolean {
 	return typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
@@ -65,9 +66,16 @@ onMounted(() => {
 		for (const [display, target] of pairs)
 			display.value = target ? Math.round(target * eased) : 0
 		if (progress < 1)
-			requestAnimationFrame(step)
+			countFrame = requestAnimationFrame(step)
 	}
-	requestAnimationFrame(step)
+	countFrame = requestAnimationFrame(step)
+})
+
+// 计数途中切页时取消：虽然给已卸载组件的 ref 赋值无害，
+// 但没必要让一个跑不完的循环继续占用帧
+onBeforeUnmount(() => {
+	if (countFrame)
+		cancelAnimationFrame(countFrame)
 })
 </script>
 

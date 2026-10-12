@@ -51,8 +51,10 @@ pre {
    - 位移压到 4px：整页大小的元素做位移时，合成层尺寸就是整页尺寸，
      低端机每帧重新上传这么大一块纹理会掉帧；位移越小，视觉上的「整页在动」
      的沉重感越轻，而「页面已切换」的暗示依然成立；
-   - 时长走 --wiki-duration-page（260ms）：比原来的 340ms 少约四分之一帧数；
-   - will-change 只在动画期间存在：class 摘除后即失效，避免长期占用合成层内存。 */
+   - 时长走 --wiki-duration-page（260ms）：比原来的 340ms 少约四分之一帧数。
+   刻意不加 will-change：.VPContent 是整页大小的元素，预提升合成层要为它
+   分配一整页的纹理内存，反而比让浏览器按需提升更重；而且一旦 class 因
+   动画被打断而残留，will-change 会长期生效，合成层上的文字渲染还可能发虚。 */
 @keyframes wiki-page-enter {
 	from {
 		opacity: 0;
@@ -67,7 +69,6 @@ pre {
 
 .VPContent.wiki-page-enter {
 	animation: wiki-page-enter var(--wiki-duration-page) var(--wiki-ease-out);
-	will-change: opacity, transform;
 }
 
 /* ================= 深浅色切换开关的动效 =================

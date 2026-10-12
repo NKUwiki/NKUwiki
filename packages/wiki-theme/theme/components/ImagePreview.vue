@@ -68,7 +68,9 @@ function go(step: 1 | -1) {
 
 function close() {
 	visible.value = false
-	updateBodyOverflow()
+	// 解锁滚动交给离场动画结束（Transition 的 after-leave）：
+	// 这里提前恢复的话，滚动条会立刻出现、页面宽度随之变化，
+	// 内容横向抖动正好落在遮罩还在淡出的那一小段时间里。
 }
 
 function onWheel(e: WheelEvent) {
@@ -156,7 +158,7 @@ onBeforeUnmount(() => {
 	<!-- Transition 负责开合动画：遮罩淡入淡出，舞台整体从 0.94 放大到位。
 	缩放放在 .wiki-imgviewer-stage 上而不是 img 上——
 	img 的 transform 被拖拽/缩放逻辑用 inline style 接管着，动它会打架。 -->
-	<Transition name="wiki-imgviewer">
+	<Transition name="wiki-imgviewer" @after-leave="updateBodyOverflow">
 		<div v-if="visible" class="wiki-imgviewer" @click="close">
 			<button class="wiki-imgviewer-close" aria-label="关闭预览" @click="close">
 				&times;
