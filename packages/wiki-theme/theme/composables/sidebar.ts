@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { markSpotlightOutside } from './spotlightGuard'
 
 /**
  * 左侧目录的收放状态。
@@ -25,6 +26,11 @@ function readSidebarCollapsed(): boolean {
 export function applySidebarCollapsed(collapsed: boolean) {
 	sidebarCollapsed.value = collapsed
 	document.documentElement.dataset.wikiSidebar = collapsed ? 'collapsed' : 'expanded'
+	// 侧栏收放会让正文整体位移，而聚光灯高亮块不会自己跟着重算（见 spotlightGuard）。
+	// 先隐藏它——此刻要么鼠标正点在按钮上（本就不该有高亮），
+	// 要么是启动时套用上次状态、还没有可信的位置；
+	// 鼠标一移动，守卫就会按实际位置校正显隐。
+	markSpotlightOutside()
 }
 
 export function toggleSidebarCollapsed() {

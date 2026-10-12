@@ -9,6 +9,17 @@
 	background-color: var(--vp-c-brand-3);
 }
 
+/* 鼠标不在正文内、或侧栏收放引起正文位移时隐藏高亮块。
+   组件的逻辑是「只在鼠标移动时重算位置」，鼠标移出正文既不隐藏也不清理，
+   最后一次的高亮会钉在原处；侧栏一收，正文左移，那条竖线就跑到正文之外了。
+   类由 composables/spotlightGuard.ts 维护：鼠标回到正文时摘掉，
+   高亮块由组件重新算出正确位置后自然显示回来。
+   用 opacity 而非 display：组件把位置写在 inline style 上，
+   不去干扰它的显示状态判断。 */
+html.wiki-spotlight-outside .VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock {
+	opacity: 0;
+}
+
 /* 顶栏里 GitHub 与「阅读增强」之间的竖分隔线：组件默认左右各 0.5rem，
    但左侧 GitHub 图形只留 8px 间距、右侧按钮有 12px 内边距加一个箭头，
    视觉上分隔线偏向 GitHub 一侧（左 18.5px / 右 30.1px）。
