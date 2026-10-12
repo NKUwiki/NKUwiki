@@ -70,6 +70,55 @@ pre {
 	will-change: opacity, transform;
 }
 
+/* ================= 深浅色切换开关的动效 =================
+   默认主题只在暗色态给日/月图标声明了 opacity 过渡，从暗切回亮是瞬时的；
+   滑块虽有一条 0.25s 的 transform 过渡，但缓动与时长不受令牌控制。
+   这里补成双向、并给图标加一点旋转，让「切换」这个动作有方向感。
+   用 #app 前缀提高特异性：默认主题这些规则带 scoped 属性，暗色态那条
+   更是四层选择器，不用 id 压不住（#app 是 VitePress 的挂载根）。 */
+#app .VPSwitchAppearance .check {
+	transition: transform var(--wiki-duration-slow) var(--wiki-ease-spring);
+}
+
+#app .VPSwitchAppearance .sun,
+#app .VPSwitchAppearance .moon {
+	transition: opacity var(--wiki-duration) var(--wiki-ease-out), transform var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
+#app .VPSwitchAppearance .sun {
+	transform: rotate(0deg);
+}
+
+#app .VPSwitchAppearance .moon {
+	transform: rotate(-90deg);
+}
+
+.dark #app .VPSwitchAppearance .sun {
+	transform: rotate(90deg);
+}
+
+.dark #app .VPSwitchAppearance .moon {
+	transform: rotate(0deg);
+}
+
+/* ================= 深浅色切换的整页颜色过渡 =================
+   只在真正切换主题的那一小段时间内启用（WikiLayout 挂上、到时摘掉），
+   平时不挂 transition，避免影响 hover 等日常交互的响应。
+   只覆盖**大面积背景与描边**：代码块、卡片这类小元素的颜色变化肉眼几乎
+   察觉不到，把它们一并纳入只是白白扩大重绘面积——低端机上一次切换就够掉帧。 */
+html.wiki-theme-fade,
+html.wiki-theme-fade body,
+html.wiki-theme-fade .VPNav,
+html.wiki-theme-fade .VPNavBar,
+html.wiki-theme-fade .VPSidebar,
+html.wiki-theme-fade .VPLocalNav,
+html.wiki-theme-fade .VPContent,
+html.wiki-theme-fade .VPDoc,
+html.wiki-theme-fade .VPDocAside,
+html.wiki-theme-fade .VPFooter {
+	transition: background-color var(--wiki-duration-slow) var(--wiki-ease-out), border-color var(--wiki-duration-slow) var(--wiki-ease-out);
+}
+
 ::selection {
 	background-color: var(--vp-c-brand-soft);
 }

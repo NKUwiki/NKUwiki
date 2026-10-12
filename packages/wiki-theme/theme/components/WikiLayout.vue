@@ -24,9 +24,21 @@ const { frontmatter, isDark } = useData()
 const route = useRoute()
 // 按路由 key 强制重建组件，切页后文件历史随之刷新
 const changelogKey = computed(() => route.path)
+/** 整页颜色过渡的持续时间：略长于 --wiki-duration-slow(280ms)，留出收尾余量 */
+const THEME_FADE_DURATION = 320
+let themeFadeTimer: ReturnType<typeof setTimeout> | undefined
 onMounted(() => {
-	watch(isDark, (dark) => {
+	watch(isDark, (dark, wasDark) => {
 		document.querySelectorAll<HTMLLinkElement>('link[data-wiki-icon]').forEach(link => link.href = withBase(dark ? '/favicon-dark.svg' : '/favicon-light.svg'))
+		// 整页颜色过渡只在「用户切换」时启用：immediate 的首次执行（wasDark 为 undefined）
+		// 不该让首屏颜色淡入。到点摘掉 class，避免这条 transition 常驻影响日常 hover。
+		if (wasDark === undefined || wasDark === dark)
+			return
+		const root = document.documentElement
+		root.classList.add('wiki-theme-fade')
+		if (themeFadeTimer)
+			clearTimeout(themeFadeTimer)
+		themeFadeTimer = setTimeout(() => root.classList.remove('wiki-theme-fade'), THEME_FADE_DURATION)
 	}, { immediate: true })
 })
 </script>
