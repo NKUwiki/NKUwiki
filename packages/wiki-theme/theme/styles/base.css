@@ -158,6 +158,7 @@ html.wiki-theme-fade .vp-doc blockquote {
 		--wiki-duration-slow: 0s;
 		--wiki-duration-drawer: 0s;
 		--wiki-duration-page: 0s;
+		--wiki-stagger: 0s;
 		scroll-behavior: auto;
 	}
 }
@@ -215,7 +216,24 @@ html:has(.wiki-announcement) {
 	font-size: 13px;
 	line-height: 1.6;
 	text-align: center;
+	/* 入场：从顶部滑入。关闭仍是即时——公告高度参与 --vp-layout-top-height，
+	   导航栏、侧栏、本地导航都按它让位，做离场动画要先解决「高度何时归零」
+	   与这些 fixed 元素的联动。公告是低频且当前站点为空公告，
+	   不值得为它引入这层耦合。transform 不影响 offsetHeight，高度测量照常。 */
+	animation: wiki-announcement-enter var(--wiki-duration-slow) var(--wiki-ease-out);
 	z-index: var(--vp-z-index-layout-top);
+}
+
+@keyframes wiki-announcement-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-100%);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 
 .wiki-announcement p {
@@ -251,7 +269,6 @@ html:has(.wiki-announcement) {
 	transform: scale(0.8);
 	pointer-events: none;
 }
-
 .wiki-backtop:hover {
 	box-shadow: var(--vp-shadow-3);
 }

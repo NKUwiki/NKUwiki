@@ -40,6 +40,10 @@ export function installPageTransition() {
 		const content = findContent()
 		if (!content)
 			return
+		// 首页有自己的区块错落渐显（见 styles/home.css）：
+		// 再叠一层整体淡入会把错落的编排压平，看起来只是「整页闪了一下」
+		if (content.querySelector('.wiki-home'))
+			return
 		// 先摘再加并强制回流，保证连续跳转时动画重新起播
 		content.classList.remove(ENTER_CLASS)
 		void content.offsetWidth

@@ -43,13 +43,16 @@
 	padding: 10px 18px;
 	border: 1px solid var(--vp-c-divider);
 	border-radius: 8px;
+	transition: opacity var(--wiki-duration-fast) var(--wiki-ease-out), transform var(--wiki-duration-fast) var(--wiki-ease-out);
 }
+.hero-actions a:hover { opacity: 0.8; }
+/* 按下时轻微收缩：首页主行动按钮的触觉反馈（时长用最快档，按压要跟手） */
+.hero-actions a:active { transform: scale(0.96); }
 .hero-actions .primary {
 	border-color: transparent;
 	background: var(--vp-c-brand-3);
 	color: #FFF;
 }
-.hero-actions a:hover { opacity: 0.8; }
 .hero-note {
 	display: grid;
 	justify-items: center;
@@ -330,3 +333,53 @@ summary { cursor: pointer; }
 	.community-panel { padding: 22px; }
 }
 @media (max-width: 380px) { .topic-grid { grid-template-columns: 1fr; } }
+
+/* ================= 首屏错落渐显 =================
+   首页是门户页：整屏同时出现会显得「砸」下来，逐块错开入场才有层层展开的感觉。
+   纯 CSS animation，不走 reveal 的 IntersectionObserver——首页区块本就在首屏内，
+   「进入视口才显示」没有意义，而 reveal 对首屏元素会直接跳过动画。
+   时长走 --wiki-duration-slow、间隔走 --wiki-stagger（reduced-motion 下均归零）；
+   both 填充保证延迟期间保持不可见，不会先闪一下再动。
+   跨页转场对首页让位（见 composables/pageTransition.ts），避免两层淡入叠加。 */
+@keyframes wiki-home-enter {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+.wiki-home > .wiki-hero,
+.wiki-home .home-columns > div > section,
+.wiki-home .home-aside > section {
+	animation: wiki-home-enter var(--wiki-duration-slow) var(--wiki-ease-out) both;
+}
+
+/* Hero 立即入场；左栏三块顺延一个间隔；右栏整体比左栏晚半拍起步 */
+.wiki-home .home-columns > div > section:nth-child(1) {
+	animation-delay: var(--wiki-stagger);
+}
+
+.wiki-home .home-columns > div > section:nth-child(2) {
+	animation-delay: calc(var(--wiki-stagger) * 2);
+}
+
+.wiki-home .home-columns > div > section:nth-child(3) {
+	animation-delay: calc(var(--wiki-stagger) * 3);
+}
+
+.wiki-home .home-aside > section:nth-child(1) {
+	animation-delay: calc(var(--wiki-stagger) * 1.5);
+}
+
+.wiki-home .home-aside > section:nth-child(2) {
+	animation-delay: calc(var(--wiki-stagger) * 2.5);
+}
+
+.wiki-home .home-aside > section:nth-child(3) {
+	animation-delay: calc(var(--wiki-stagger) * 3.5);
+}
