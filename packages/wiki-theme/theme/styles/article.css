@@ -79,7 +79,14 @@
 	opacity: 0;
 }
 
-/* 加粗就是加粗：不再附加底部色带高亮（重点标注交给马克笔 ==...==，见 enhance.css） */
+/* 加粗与马克笔耦合（重新）：两者共用同一种「底部色带」形态，
+   区别只剩字重与色深——加粗＝粗体＋淡色带，马克笔＝浓色带不加粗。
+   这里的实参与解耦前（29110a4，参照 xupt-wiki）完全一致：
+   brand-soft 渐变铺元素底部 40%。马克笔侧见 enhance.css。 */
+.vp-doc strong {
+	background: linear-gradient(var(--vp-c-brand-soft), var(--vp-c-brand-soft)) no-repeat center bottom / 100% 40%;
+}
+
 .site-icon {
 	width: 28px;
 	height: 28px;

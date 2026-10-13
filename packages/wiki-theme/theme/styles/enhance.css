@@ -121,33 +121,48 @@
 }
 
 /* ================= 马克笔 ==...== ================= */
-/* 移植 plume 主题的 mark 配色：CSS 变量 + 渐变描线动画。
-   作用域限定 mark.wiki-marker，不影响全站搜索的命中 mark */
+/* 色带位置与高度刻意对齐 .vp-doc strong 的加粗色带（贴底 40%）：
+   两者由此共用同一种强调形态，马克笔就是「不加粗的加粗」，
+   差别只剩字重与色深（加粗用 brand-soft，马克笔用饱和品牌色）。
+   描线动画走 background-size 从 0% 展到 100%，而不是 plume 原来的
+   「宽 200% + 移动 background-position」——后者实测有两个坑：
+   动画终点会把色带整条移出元素（forwards 停在那里，马克笔最终不可见），
+   且静态态下色带只覆盖文字的一半。size 写法直白，起点/终点一眼可验。 */
 
 mark.wiki-marker {
 	--wiki-mark-text: currentcolor;
 	--wiki-mark-bg: transparent;
-	--wiki-mark-bg-shift: 0.55lh;
+	--wiki-mark-bg-shift: 40%;
 	--wiki-mark-linear-color: hsl(var(--wiki-hue) 70% 55%);
-	--wiki-mark-bg-image: linear-gradient(to right, var(--wiki-mark-linear-color) 50%, transparent 50%);
 	padding: 0.1em 0;
 	background-color: var(--wiki-mark-bg);
-	background-image: var(--wiki-mark-bg-image);
-	background-position: 0 center;
+	background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
+	background-position: 0 bottom;
 	background-repeat: no-repeat;
-	background-size: 200% var(--wiki-mark-bg-shift);
+	background-size: 100% var(--wiki-mark-bg-shift);
 	color: var(--wiki-mark-text);
 	animation: wiki-mark-highlight 1.5s 0.5s forwards;
 }
 
+/* 从无到有、自左向右铺满（终态与上面的静态 background-size 一致） */
 @keyframes wiki-mark-highlight {
 	from {
-		background-position: 0 center;
+		background-size: 0% var(--wiki-mark-bg-shift);
 	}
 
 	to {
-		background-position: -100% center;
+		background-size: 100% var(--wiki-mark-bg-shift);
 	}
+}
+
+/* 加粗与马克笔叠加时只保留一层色带。
+   两层半透明色带完全重叠会明显变深，而这两条色带的职责本就重叠。
+   让 strong 让位：色带是马克笔的全部意义，对加粗却只是附加（本职是字重）。
+   两个嵌套方向都要覆盖：
+   ==**x**== 时 mark 在外，**==x==** 时 strong 在外。 */
+.vp-doc mark.wiki-marker strong,
+.vp-doc strong:has(> mark.wiki-marker) {
+	background: none;
 }
 
 mark.wiki-marker.note {
@@ -197,10 +212,13 @@ mark.wiki-marker.important {
 }
 
 @media print {
-	/* 打印时直接呈现完整底色（跳过描线动画的起始帧） */
+	/* 打印时直接呈现描线动画的最终状态（底部色带铺满全宽），跳过起始帧。
+	   用单色渐变等价于动画结束后的样子，不再靠 background-color 铺满整块——
+	   那样打印出来是整块高亮，比屏幕上的底部色带重得多。 */
 	mark.wiki-marker {
-		background-color: var(--wiki-mark-linear-color);
-		background-image: none;
+		background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
+		background-position: 0 bottom;
+		background-size: 100% var(--wiki-mark-bg-shift);
 		animation: none;
 	}
 }
