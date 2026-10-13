@@ -79,12 +79,12 @@
 	opacity: 0;
 }
 
-/* 加粗与马克笔耦合：两者共用同一种「底部色带」形态与同一条色带色，
+/* 加粗与马克笔耦合：两者共用同一种「底部色带」形态、同一条色带色与同一份厚度，
    区别只剩字重——加粗＝粗体＋色带，马克笔＝色带不加粗。
-   色带色取 tokens 里的 --wiki-emphasis-band（单独一档，比 brand-soft 明确），
-   改那一处即可同时调整三种写法。马克笔侧见 enhance.css。 */
+   色带色取 tokens 里的 --wiki-emphasis-band、厚度取 --wiki-emphasis-band-height，
+   改那两处即可同时调整三种写法。马克笔侧见 enhance.css。 */
 .vp-doc strong {
-	background: linear-gradient(var(--wiki-emphasis-band), var(--wiki-emphasis-band)) no-repeat center bottom / 100% 40%;
+	background: linear-gradient(var(--wiki-emphasis-band), var(--wiki-emphasis-band)) no-repeat center bottom / 100% var(--wiki-emphasis-band-height);
 }
 
 .site-icon {

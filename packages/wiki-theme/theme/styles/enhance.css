@@ -121,7 +121,8 @@
 }
 
 /* ================= 马克笔 ==...== ================= */
-/* 与加粗共用**完全同一套**视觉：同一条 brand-soft 色带、同样的贴底 40%。
+/* 与加粗共用**完全同一套**视觉：同一条 brand-soft 色带、同一份厚度与贴底位置
+   （厚度由 tokens.css 的 --wiki-emphasis-band-height 控制）。
    三者的差别只剩「有没有加粗」：
      **加粗**       粗体 + 色带
      ==马克笔==     色带（不加粗）
@@ -144,7 +145,7 @@
 .vp-doc mark {
 	--wiki-mark-text: currentcolor;
 	--wiki-mark-bg: transparent;
-	--wiki-mark-bg-shift: 40%;
+	--wiki-mark-bg-shift: var(--wiki-emphasis-band-height);
 	--wiki-mark-linear-color: var(--wiki-emphasis-band);
 	background-color: var(--wiki-mark-bg);
 	background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
@@ -182,24 +183,25 @@
 
 /* 配色变体：只保留「提示 tip / 注意 caution / 警告 warning」三种。
    颜色对齐 markdown 自定义容器的实际配色，取各自的 --vp-c-<类型>-1
-   （容器文字与链接那一档），再按色带惯用的 40% 铺开——
+   （容器文字与链接那一档），再按与默认色带相同的浓度铺开——
    容器背景用的 -soft 是给整块容器铺的大面积浅色，
-   落到只有元素高度 40% 的窄色带上会淡到看不见。
+   落到窄色带上会淡到看不见。
+   浓度取 60%，与 --wiki-emphasis-band 一致，三种变体才和默认色带一样醒目。
    用 -1 变量还有个好处：深浅色模式与 VitePress 的 --vp-graded-containers
    配色方案都会自动跟随，不必再写 .dark 覆盖，也不必硬编码色值。
    注意 tip 在项目里是绿色（tokens.css 取自 VuePress Theme Hope 预设），
    不是 VitePress 默认的品牌色，这里跟随变量即可。 */
 
 .vp-doc mark.tip {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-tip-1) 40%, transparent);
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-tip-1) 60%, transparent);
 }
 
 .vp-doc mark.caution {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-caution-1) 40%, transparent);
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-caution-1) 60%, transparent);
 }
 
 .vp-doc mark.warning {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-warning-1) 40%, transparent);
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-warning-1) 60%, transparent);
 }
 
 @media print {
