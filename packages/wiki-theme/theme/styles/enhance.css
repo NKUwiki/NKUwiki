@@ -182,26 +182,36 @@
 }
 
 /* 配色变体：只保留「提示 tip / 注意 caution / 警告 warning」三种。
-   颜色对齐 markdown 自定义容器的实际配色，取各自的 --vp-c-<类型>-1
-   （容器文字与链接那一档），再按与默认色带相同的浓度铺开——
-   容器背景用的 -soft 是给整块容器铺的大面积浅色，
-   落到窄色带上会淡到看不见。
-   浓度取 60%，与 --wiki-emphasis-band 一致，三种变体才和默认色带一样醒目。
-   用 -1 变量还有个好处：深浅色模式与 VitePress 的 --vp-graded-containers
-   配色方案都会自动跟随，不必再写 .dark 覆盖，也不必硬编码色值。
-   注意 tip 在项目里是绿色（tokens.css 取自 VuePress Theme Hope 预设），
-   不是 VitePress 默认的品牌色，这里跟随变量即可。 */
+   色值取自上游 plume 的 tip / warning / danger 三色，按本站的语义强度递增分配：
+     提示 tip      绿（上游 tip）
+     注意 caution  黄（上游 warning）—— 程度较轻
+     警告 warning  红（上游 danger）—— 程度最重
+   用实色而不是透明度混合——上游就是实色，色带只占字面半高、面积不大，
+   再压一层透明度会发灰；深浅两档各自给值，与上游一致。
+   来源：https://theme-plume.vuejs.press/guide/markdown/mark */
 
 .vp-doc mark.tip {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-tip-1) 60%, transparent);
+	--wiki-mark-linear-color: #39FF14;
 }
 
 .vp-doc mark.caution {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-caution-1) 60%, transparent);
+	--wiki-mark-linear-color: #FC0;
 }
 
 .vp-doc mark.warning {
-	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-warning-1) 60%, transparent);
+	--wiki-mark-linear-color: #F99;
+}
+
+.dark .vp-doc mark.tip {
+	--wiki-mark-linear-color: #063;
+}
+
+.dark .vp-doc mark.caution {
+	--wiki-mark-linear-color: #C60;
+}
+
+.dark .vp-doc mark.warning {
+	--wiki-mark-linear-color: #C66;
 }
 
 @media print {
