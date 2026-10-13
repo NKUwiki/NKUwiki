@@ -36,16 +36,18 @@
 	--vp-c-brand-2: hsl(var(--wiki-hue) 56% 34%);
 	--vp-c-brand-3: hsl(var(--wiki-hue) 52% 38%);
 	--vp-c-brand-soft: color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent);
-	/* 强调色带（加粗与马克笔共用同一条）：brand-soft 只有 12%，
-	   铺成色带后几乎看不见，这里给色带单独一档更明确的浓度。
+	/* 强调色带（加粗 / 马克笔 / 两者组合共用同一条）：沿用 e8b39f8 定下的配色——
+	   浅色模式用高饱和亮紫保证明亮（brand-soft 只有 12% 透明度，铺成色带几乎看不见）；
+	   深色模式见下方 .dark，用品牌色 30% 调合出发光感。
 	   改动这一处即可同时调整「**加粗**」「==马克笔==」「==**组合**==」三者。
 	   不要直接调 brand-soft——分类胶囊、卡片悬停等好几处也在用它。 */
-	--wiki-emphasis-band: color-mix(in srgb, var(--vp-c-brand-1) 40%, transparent);
+	--wiki-emphasis-band: hsl(var(--wiki-hue) 60% 84%);
 }
 .dark {
 	--vp-c-brand-1: hsl(var(--wiki-hue) 46% 68%);
 	--vp-c-brand-2: hsl(var(--wiki-hue) 52% 75%);
 	--vp-c-brand-3: hsl(var(--wiki-hue) 44% 38%);
+	--wiki-emphasis-band: color-mix(in srgb, var(--vp-c-brand-1) 30%, transparent);
 }
 
 /* 字体采用 VitePress 默认方案：默认主题的 fonts.css 提供按语言子集化的
