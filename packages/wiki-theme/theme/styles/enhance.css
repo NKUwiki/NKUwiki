@@ -137,7 +137,7 @@ mark.wiki-marker {
 	--wiki-mark-text: currentcolor;
 	--wiki-mark-bg: transparent;
 	--wiki-mark-bg-shift: 40%;
-	--wiki-mark-linear-color: var(--vp-c-brand-soft);
+	--wiki-mark-linear-color: var(--wiki-emphasis-band);
 	background-color: var(--wiki-mark-bg);
 	background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
 	background-position: 0 bottom;

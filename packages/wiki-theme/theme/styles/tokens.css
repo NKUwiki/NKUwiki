@@ -36,6 +36,11 @@
 	--vp-c-brand-2: hsl(var(--wiki-hue) 56% 34%);
 	--vp-c-brand-3: hsl(var(--wiki-hue) 52% 38%);
 	--vp-c-brand-soft: color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent);
+	/* 强调色带（加粗与马克笔共用同一条）：brand-soft 只有 12%，
+	   铺成色带后几乎看不见，这里给色带单独一档更明确的浓度。
+	   改动这一处即可同时调整「**加粗**」「==马克笔==」「==**组合**==」三者。
+	   不要直接调 brand-soft——分类胶囊、卡片悬停等好几处也在用它。 */
+	--wiki-emphasis-band: color-mix(in srgb, var(--vp-c-brand-1) 40%, transparent);
 }
 .dark {
 	--vp-c-brand-1: hsl(var(--wiki-hue) 46% 68%);
