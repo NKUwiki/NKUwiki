@@ -161,8 +161,12 @@ mark.wiki-marker {
 /* 加粗与马克笔叠加时只保留一层色带。
    两层半透明色带完全重叠会明显变深，而这两条色带的职责本就重叠。
    让 strong 让位：色带是马克笔的全部意义，对加粗却只是附加（本职是字重）。
-   两个嵌套方向都要覆盖：
-   ==**x**== 时 mark 在外，**==x==** 时 strong 在外。 */
+   两条规则的分工：
+   - `mark.wiki-marker strong`：对应 `==**加粗**==`——唯一可用的组合写法；
+   - `strong:has(> mark.wiki-marker)`：反过来写 `**==加粗==**` 时，
+     markdown-it 的定界符配对不跨越容器边界，根本配不出 strong（`**` 会退化成
+     字面文本，见 lib/markdown/mark.ts 的规则注释）。这条只为手写 HTML 的
+     <strong><mark> 结构兜底。 */
 .vp-doc mark.wiki-marker strong,
 .vp-doc strong:has(> mark.wiki-marker) {
 	background: none;

@@ -10,7 +10,11 @@
 // 匹配约定（对齐 plugin-mark）：
 //   - 开头 == 后不能紧跟空白或 =（避免误伤 a === b、a == b）；
 //   - 闭合 == 前必须有非空白字符（`== x ==` 不算）；
-//   - 内容走正常行内解析，**加粗**、`代码` 等嵌套标记可用。
+//   - 内容走正常行内解析，**加粗**、`代码` 等嵌套标记可用；
+//   - 嵌套加粗必须**马克笔在外**（`==**粗**==`）。反过来写 `**==粗==**` 时，
+//     markdown-it 的定界符配对不跨越容器边界，`**` 会退化成字面文本显示出来。
+//     这是 markdown-it 的机制限制，本规则无法绕过；两种写法视觉效果本就相同，
+//     统一用前者即可。
 import type { MarkdownRenderer } from 'vitepress'
 
 // 已知类名：命中则按原类名输出（如 class="tip"）。
@@ -23,7 +27,10 @@ const WS = new Set([0x20, 0x09, 0x0A, 0x0B, 0x0C, 0x0D])
 export function mark(md: MarkdownRenderer) {
 	md.renderer.rules.wiki_marker_open = (tokens, index) => {
 		const cls = (tokens[index].meta as string | undefined) ?? ''
-		return `<mark${cls ? ` class="${cls}"` : ''}>`
+		// 必须始终输出 wiki-marker 基类：样式层（enhance.css）的选择器是
+		// mark.wiki-marker / mark.wiki-marker.tip，只输出后缀类会一条都匹配不上，
+		// 马克笔会退化成浏览器给 <mark> 的默认黄色底。
+		return `<mark class="wiki-marker${cls ? ` ${cls}` : ''}">`
 	}
 	md.renderer.rules.wiki_marker_close = () => '</mark>'
 

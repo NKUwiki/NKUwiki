@@ -26,9 +26,13 @@ async function render(source: string) {
 }
 
 test('mark renders ==highlight== with optional color class', async () => {
+	// 断言里必须带上 wiki-marker 基类：样式层（enhance.css）的选择器是
+	// mark.wiki-marker / mark.wiki-marker.tip，只输出后缀类的话一条都匹配不上，
+	// 马克笔会静默退化成浏览器给 <mark> 的默认黄底（此断言此前写成了无基类版本，
+	// 把错误行为固化了下来，导致该 bug 长期未被发现）。
 	const html = await render('==重点==和==提示=={.tip}\n')
-	assert.ok(html.includes('<mark>重点</mark>'), html)
-	assert.ok(html.includes('<mark class="tip">提示</mark>'), html)
+	assert.ok(html.includes('<mark class="wiki-marker">重点</mark>'), html)
+	assert.ok(html.includes('<mark class="wiki-marker tip">提示</mark>'), html)
 })
 
 test('mark ignores ===, spaced content and unclosed marker without eating text', async () => {
@@ -41,7 +45,7 @@ test('mark ignores ===, spaced content and unclosed marker without eating text',
 
 test('mark supports nested emphasis and keeps literal == in code span', async () => {
 	const html = await render('==**加粗**与`a == b`代码==\n')
-	assert.ok(html.includes('<mark>'), html)
+	assert.ok(html.includes('<mark class="wiki-marker">'), html)
 	assert.ok(html.includes('<strong>加粗</strong>'), html)
 	assert.ok(html.includes('a == b'), html)
 })
