@@ -131,9 +131,17 @@
    描线动画走 background-size 从 0% 展到 100%，而不是 plume 原来的
    「宽 200% + 移动 background-position」——后者实测有两个坑：
    动画终点会把色带整条移出元素（forwards 停在那里，马克笔最终不可见），
-   且静态态下色带只覆盖文字的一半。size 写法直白，起点/终点一眼可验。 */
+   且静态态下色带只覆盖文字的一半。size 写法直白，起点/终点一眼可验。
 
-mark.wiki-marker {
+   选择器用 `.vp-doc mark` 而不是 `mark.wiki-marker`：对齐上游 plume 的做法，
+   把基础样式挂在元素选择器上，不依赖 renderer 是否输出类名——此前正是因为
+   renderer 输出 `<mark>` 而样式写 `mark.wiki-marker`，两边对不上，
+   马克笔静默退化成浏览器默认黄底，且长期没被发现。
+   限定在 `.vp-doc` 内是为了不误伤搜索面板的高亮：它在 `<Teleport to="body">`
+   下、不在正文容器里。renderer 仍会输出 wiki-marker 类（见 lib/markdown/mark.ts），
+   但样式层不再依赖它。 */
+
+.vp-doc mark {
 	--wiki-mark-text: currentcolor;
 	--wiki-mark-bg: transparent;
 	--wiki-mark-bg-shift: 40%;
@@ -162,13 +170,13 @@ mark.wiki-marker {
    两层半透明色带完全重叠会明显变深，而这两条色带的职责本就重叠。
    让 strong 让位：色带是马克笔的全部意义，对加粗却只是附加（本职是字重）。
    两条规则的分工：
-   - `mark.wiki-marker strong`：对应 `==**加粗**==`——唯一可用的组合写法；
-   - `strong:has(> mark.wiki-marker)`：反过来写 `**==加粗==**` 时，
+   - `.vp-doc mark strong`：对应 `==**加粗**==`——唯一可用的组合写法；
+   - `.vp-doc strong:has(> mark)`：反过来写 `**==加粗==**` 时，
      markdown-it 的定界符配对不跨越容器边界，根本配不出 strong（`**` 会退化成
      字面文本，见 lib/markdown/mark.ts 的规则注释）。这条只为手写 HTML 的
      <strong><mark> 结构兜底。 */
-.vp-doc mark.wiki-marker strong,
-.vp-doc strong:has(> mark.wiki-marker) {
+.vp-doc mark strong,
+.vp-doc strong:has(> mark) {
 	background: none;
 }
 
@@ -182,15 +190,15 @@ mark.wiki-marker {
    注意 tip 在项目里是绿色（tokens.css 取自 VuePress Theme Hope 预设），
    不是 VitePress 默认的品牌色，这里跟随变量即可。 */
 
-mark.wiki-marker.tip {
+.vp-doc mark.tip {
 	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-tip-1) 40%, transparent);
 }
 
-mark.wiki-marker.caution {
+.vp-doc mark.caution {
 	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-caution-1) 40%, transparent);
 }
 
-mark.wiki-marker.warning {
+.vp-doc mark.warning {
 	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-warning-1) 40%, transparent);
 }
 
@@ -198,7 +206,7 @@ mark.wiki-marker.warning {
 	/* 打印时直接呈现描线动画的最终状态（底部色带铺满全宽），跳过起始帧。
 	   用单色渐变等价于动画结束后的样子，不再靠 background-color 铺满整块——
 	   那样打印出来是整块高亮，比屏幕上的底部色带重得多。 */
-	mark.wiki-marker {
+	.vp-doc mark {
 		background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
 		background-position: 0 bottom;
 		background-size: 100% var(--wiki-mark-bg-shift);

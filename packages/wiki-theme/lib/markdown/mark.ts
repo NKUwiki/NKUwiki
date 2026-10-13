@@ -27,9 +27,11 @@ const WS = new Set([0x20, 0x09, 0x0A, 0x0B, 0x0C, 0x0D])
 export function mark(md: MarkdownRenderer) {
 	md.renderer.rules.wiki_marker_open = (tokens, index) => {
 		const cls = (tokens[index].meta as string | undefined) ?? ''
-		// 必须始终输出 wiki-marker 基类：样式层（enhance.css）的选择器是
-		// mark.wiki-marker / mark.wiki-marker.tip，只输出后缀类会一条都匹配不上，
-		// 马克笔会退化成浏览器给 <mark> 的默认黄色底。
+		// 输出 wiki-marker 基类，作为「这个 mark 来自马克笔语法」的语义标记。
+		// 样式层（enhance.css）现在用的是 `.vp-doc mark` / `.vp-doc mark.tip`，
+		// 并不依赖这个类名——那样更健壮，不会因为 renderer 与样式两边的类名
+		// 约定不一致而静默失效（历史上正是如此退化成浏览器默认黄底的）。
+		// 保留基类是为了 DOM 可辨识，也方便将来需要时精确定位。
 		return `<mark class="wiki-marker${cls ? ` ${cls}` : ''}">`
 	}
 	md.renderer.rules.wiki_marker_close = () => '</mark>'

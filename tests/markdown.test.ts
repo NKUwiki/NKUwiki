@@ -26,10 +26,10 @@ async function render(source: string) {
 }
 
 test('mark renders ==highlight== with optional color class', async () => {
-	// 断言里必须带上 wiki-marker 基类：样式层（enhance.css）的选择器是
-	// mark.wiki-marker / mark.wiki-marker.tip，只输出后缀类的话一条都匹配不上，
-	// 马克笔会静默退化成浏览器给 <mark> 的默认黄底（此断言此前写成了无基类版本，
-	// 把错误行为固化了下来，导致该 bug 长期未被发现）。
+	// 断言输出里带 wiki-marker 基类。样式层如今用的是 `.vp-doc mark`，
+	// 并不依赖这个类名（那样更健壮）；这里仍断言它，是因为基类既是「这段 mark
+	// 来自马克笔语法」的语义标记，也正是历史上出错的地方——当时的断言写成了
+	// 无基类版本，等于把「renderer 输出与样式选择器对不上」固化成了期望值。
 	const html = await render('==重点==和==提示=={.tip}\n')
 	assert.ok(html.includes('<mark class="wiki-marker">重点</mark>'), html)
 	assert.ok(html.includes('<mark class="wiki-marker tip">提示</mark>'), html)
