@@ -45,11 +45,11 @@
 	--wiki-emphasis-band: color-mix(in srgb, var(--vp-c-brand-1) 60%, transparent);
 	/* 色带厚度（占元素高度）：加粗与马克笔共用，必须一起调，否则「加粗等于
 	   马克笔加粗组合」就不成立。
-	   20%：一道细色带托住文字，满屏加粗时也不抢眼。此前按上游 plume 的实测
-	   观感取过 50%，实机上显得偏重，收窄到这个值。
+	   30%：贴底的一道色带——比上游 plume 实测的约一半更收，比纯细线更有存在感，
+	   满屏加粗时也不抢眼。
 	   （不用 0.55lh 那种相对行高的写法：那是上游的语义，本站用「元素高度
 	   百分比」更直观，也便于和加粗共用同一个值。） */
-	--wiki-emphasis-band-height: 20%;
+	--wiki-emphasis-band-height: 30%;
 }
 .dark {
 	--vp-c-brand-1: hsl(var(--wiki-hue) 46% 68%);
