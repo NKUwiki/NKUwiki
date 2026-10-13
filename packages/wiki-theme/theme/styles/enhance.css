@@ -168,50 +168,26 @@ mark.wiki-marker {
 	background: none;
 }
 
-mark.wiki-marker.note {
-	--wiki-mark-linear-color: #FF0;
-}
-
-mark.wiki-marker.info {
-	--wiki-mark-linear-color: var(--vp-c-default-1);
-}
+/* 配色变体：只保留「提示 tip / 注意 caution / 警告 warning」三种。
+   颜色对齐 markdown 自定义容器的实际配色，取各自的 --vp-c-<类型>-1
+   （容器文字与链接那一档），再按色带惯用的 40% 铺开——
+   容器背景用的 -soft 是给整块容器铺的大面积浅色，
+   落到只有元素高度 40% 的窄色带上会淡到看不见。
+   用 -1 变量还有个好处：深浅色模式与 VitePress 的 --vp-graded-containers
+   配色方案都会自动跟随，不必再写 .dark 覆盖，也不必硬编码色值。
+   注意 tip 在项目里是绿色（tokens.css 取自 VuePress Theme Hope 预设），
+   不是 VitePress 默认的品牌色，这里跟随变量即可。 */
 
 mark.wiki-marker.tip {
-	--wiki-mark-linear-color: #39FF14;
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-tip-1) 40%, transparent);
+}
+
+mark.wiki-marker.caution {
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-caution-1) 40%, transparent);
 }
 
 mark.wiki-marker.warning {
-	--wiki-mark-linear-color: #FC0;
-}
-
-mark.wiki-marker.caution,
-mark.wiki-marker.danger {
-	--wiki-mark-linear-color: #F99;
-}
-
-mark.wiki-marker.important {
-	--wiki-mark-linear-color: #CCF;
-}
-
-.dark mark.wiki-marker.note {
-	--wiki-mark-linear-color: #660;
-}
-
-.dark mark.wiki-marker.tip {
-	--wiki-mark-linear-color: #063;
-}
-
-.dark mark.wiki-marker.warning {
-	--wiki-mark-linear-color: #C60;
-}
-
-.dark mark.wiki-marker.caution,
-.dark mark.wiki-marker.danger {
-	--wiki-mark-linear-color: #C66;
-}
-
-.dark mark.wiki-marker.important {
-	--wiki-mark-linear-color: #66C;
+	--wiki-mark-linear-color: color-mix(in srgb, var(--vp-c-warning-1) 40%, transparent);
 }
 
 @media print {

@@ -1,9 +1,10 @@
 // 马克笔（mark）：正文里写 `==重点==` 渲染为高亮底色的 <mark>，支持配色后缀
-// `==内容=={.tip}`。语法与配色参考 plume 主题（plume 用 @mdit/plugin-mark +
+// `==内容=={.tip}`。语法参考 plume 主题（plume 用 @mdit/plugin-mark +
 // @mdit/plugin-attrs 实现，这里手写等价规则，保持主题包零额外依赖）：
 //
-//   ==内容==              默认配色（品牌色）
-//   ==内容=={.tip}        内置配色：info / note / tip / warning / danger / caution / important
+//   ==内容==              默认配色（品牌色，与加粗共用同一条色带）
+//   ==内容=={.tip}        内置配色共三种：tip / caution / warning，
+//                        色值与 markdown 自定义容器（::: tip 等）对齐
 //                        （其余类名输出为 wiki-marker-<类名>，可在样式里自定义）
 //
 // 匹配约定（对齐 plugin-mark）：
@@ -12,7 +13,9 @@
 //   - 内容走正常行内解析，**加粗**、`代码` 等嵌套标记可用。
 import type { MarkdownRenderer } from 'vitepress'
 
-// 内置配色类名
+// 已知类名：命中则按原类名输出（如 class="tip"）。
+// 集合比实际带配色的三种更宽——它管的是「类名怎么输出」，
+// 至于要不要配色由样式层决定，未配色的会落回默认色带。
 const KNOWN_CLASSES = new Set(['info', 'note', 'tip', 'warning', 'danger', 'caution', 'important'])
 
 const WS = new Set([0x20, 0x09, 0x0A, 0x0B, 0x0C, 0x0D])
