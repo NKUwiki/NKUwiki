@@ -121,9 +121,13 @@
 }
 
 /* ================= 马克笔 ==...== ================= */
-/* 色带位置与高度刻意对齐 .vp-doc strong 的加粗色带（贴底 40%）：
-   两者由此共用同一种强调形态，马克笔就是「不加粗的加粗」，
-   差别只剩字重与色深（加粗用 brand-soft，马克笔用饱和品牌色）。
+/* 与加粗共用**完全同一套**视觉：同一条 brand-soft 色带、同样的贴底 40%。
+   三者的差别只剩「有没有加粗」：
+     **加粗**       粗体 + 色带
+     ==马克笔==     色带（不加粗）
+     ==**组合**==   粗体 + 色带，外观与「加粗」等同
+   因此这里不再自带颜色与内边距——自带 padding 会让 mark 的背景区域比
+   strong 高出 0.2em，色带随之变高，「加粗等效于马克笔加粗组合」就不成立了。
    描线动画走 background-size 从 0% 展到 100%，而不是 plume 原来的
    「宽 200% + 移动 background-position」——后者实测有两个坑：
    动画终点会把色带整条移出元素（forwards 停在那里，马克笔最终不可见），
@@ -133,8 +137,7 @@ mark.wiki-marker {
 	--wiki-mark-text: currentcolor;
 	--wiki-mark-bg: transparent;
 	--wiki-mark-bg-shift: 40%;
-	--wiki-mark-linear-color: hsl(var(--wiki-hue) 70% 55%);
-	padding: 0.1em 0;
+	--wiki-mark-linear-color: var(--vp-c-brand-soft);
 	background-color: var(--wiki-mark-bg);
 	background-image: linear-gradient(var(--wiki-mark-linear-color), var(--wiki-mark-linear-color));
 	background-position: 0 bottom;
