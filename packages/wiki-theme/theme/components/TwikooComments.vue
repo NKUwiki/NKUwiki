@@ -31,8 +31,12 @@ onMounted(async () => {
 	if (!enabled.value || !container.value)
 		return
 	await nextTick()
+	const twikoo = await import('twikoo')
+	// 动态 import 首次要走网络下载 chunk，期间用户可能已切页导致组件卸载、
+	// 容器 ref 被置空——必须在拿到模块后再查一次，否则 init(el: null) 会报错
+	if (!enabled.value || !container.value)
+		return
 	try {
-		const twikoo = await import('twikoo')
 		await twikoo.init({ envId: COMMENT_ENV_ID as string, el: container.value, lang: 'zh-CN' })
 	}
 	catch (error) {
