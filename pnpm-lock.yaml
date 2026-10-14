@@ -93,6 +93,9 @@ importers:
       image-size:
         specifier: ^2.0.2
         version: 2.0.4
+      twikoo:
+        specifier: ^2.0.13
+        version: 2.0.13
       vue:
         specifier: ^3.5.42
         version: 3.5.42(typescript@6.0.3)
@@ -847,6 +850,9 @@ packages:
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: ^9.0.0 || ^10.0.0
+
+  '@twikoojs/shared@2.0.13':
+    resolution: {integrity: sha512-Snxizz8/I4VTk71OepqXXzYo5Lu9vrTzP1e3DTBR14aZ1r0w6QC52DT2XhXX1oZQCPssR11GQcrYBermqW5Bsg==}
 
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
@@ -2730,6 +2736,9 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  twikoo@2.0.13:
+    resolution: {integrity: sha512-1hs4U47z2tZtqjj4dayU8t0axg+LP8prJOOjw1Z0zUdxtnN10oA4NAcl4etZhg6uWTXEQnN+UjXLr45zSWm1jQ==}
+
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
     engines: {node: '>= 0.8.0'}
@@ -3521,6 +3530,8 @@ snapshots:
       espree: 10.4.0
       estraverse: 5.3.0
       picomatch: 4.0.7
+
+  '@twikoojs/shared@2.0.13': {}
 
   '@types/debug@4.1.13':
     dependencies:
@@ -5763,6 +5774,10 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
+
+  twikoo@2.0.13:
+    dependencies:
+      '@twikoojs/shared': 2.0.13
 
   type-check@0.4.0:
     dependencies:

@@ -11,9 +11,11 @@ import ArticleAuthors from './ArticleAuthors.vue'
 import BackTop from './BackTop.vue'
 import GitHistory from './GitHistory.vue'
 import ImagePreview from './ImagePreview.vue'
+import OnlineEdit from './OnlineEdit.vue'
 import PrintButton from './PrintButton.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
+import TwikooComments from './TwikooComments.vue'
 import WaterMark from './WaterMark.vue'
 import '@nolebase/vitepress-plugin-enhanced-readabilities/client/style.css'
 
@@ -91,13 +93,16 @@ onUnmounted(() => {
 	</template>
 	<template #doc-footer-before>
 		<ArticleAuthors />
+		<OnlineEdit />
 	</template>
 	<!-- 右侧目录面板顶部：「打印本页」入口（打印排版由 base.css 的 @media print 承担） -->
 	<template #aside-top>
 		<PrintButton />
 	</template>
-	<!-- 文件历史：frontmatter 设 hideChangelog: true 可隐藏单篇 -->
+	<!-- 评论与文件历史：两个组件各自带门控（环境变量 + frontmatter 开关），
+	comments: false 关单篇评论，hideChangelog: true 关单篇历史 -->
 	<template #doc-after>
+		<TwikooComments :key="changelogKey" />
 		<GitHistory v-if="frontmatter.hideChangelog !== true" :key="changelogKey" />
 	</template>
 </DefaultTheme.Layout>
