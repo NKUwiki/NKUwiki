@@ -43,6 +43,11 @@ jobs:
 
       - name: Build VitePress site
         run: pnpm build
+        # 评论与在线编辑的预留接口（见站点功能说明）：密钥未配置时为空串，
+        # 对应功能整体不渲染，构建不受影响
+        env:
+          VITE_TWIKOO_ENV_ID: ${{ secrets.VITE_TWIKOO_ENV_ID }}
+          VITE_EDITOR_URL: ${{ secrets.VITE_EDITOR_URL }}
 
       - name: Upload built site to artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
