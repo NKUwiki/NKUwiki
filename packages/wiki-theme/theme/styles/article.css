@@ -82,6 +82,13 @@
 	opacity: 0;
 }
 
+/* Twikoo 评论区包在 .vp-doc 里渲染：VitePress 给 .vp-doc img 加的 margin: 1rem 0
+   会顶歪 40px 的头像容器、撑开表情所在的行，这里归零；头像圆角等外观由
+   Twikoo 自己的规则管（特异性更高），不要在这里碰 */
+.vp-doc .twikoo img {
+	margin: 0;
+}
+
 /* 加粗与马克笔耦合：两者共用同一种「底部色带」形态、同一条色带色与同一份厚度，
    区别只剩字重——加粗＝粗体＋色带，马克笔＝色带不加粗。
    色带色取 tokens 里的 --wiki-emphasis-band、厚度取 --wiki-emphasis-band-height，
