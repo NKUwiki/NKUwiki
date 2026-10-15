@@ -89,60 +89,51 @@
 	margin: 0;
 }
 
-/* 任务列表（- [ ] / - [x]）：自定义复选框外观——灰框未选、绿底白勾已选，
-   悬停时左侧浮出蓝色小竖条。
+/* 任务列表（- [ ] / - [x]）：样式移植自上游 vuepress-theme-plume。
+   原生复选框隐藏（opacity 0），勾选框画在 label::before 上——
+   未选为灰色方框，选中为绿色勾 + 方框图标。
    结构（VitePress task-lists 插件，勾选框均带 disabled，仅作展示）：
    ul.task-list-container > li.task-list-item > input.task-list-item-checkbox
-   + label.task-list-item-label */
-.vp-doc ul.task-list-container {
+   + label.task-list-item-label（input 与 label 相邻，靠 + 兄弟选择器联动） */
+.vp-doc .task-list-container {
+	padding-left: 0;
 	list-style: none;
 }
 
-.vp-doc .task-list-item {
+.vp-doc .task-list-container .task-list-item {
 	position: relative;
 }
 
-.vp-doc .task-list-item-checkbox {
-	width: 1.05em;
-	height: 1.05em;
-	margin: 0 0.5em 0 0;
-	border: 1.5px solid var(--vp-c-border);
-	border-radius: 0.3em;
-	box-sizing: border-box;
-	background: var(--vp-c-bg);
-	vertical-align: -0.18em;
-	transition:
-		background var(--wiki-duration-fast) var(--wiki-ease-out),
-		border-color var(--wiki-duration-fast) var(--wiki-ease-out);
-	-webkit-appearance: none;
-	appearance: none;
-	cursor: default;
-}
-
-.vp-doc .task-list-item-checkbox:checked {
-	border-color: #2EA44F;
-	/* 勾用内联 SVG：input 是替换元素，::before/::after 在部分浏览器不渲染 */
-	background:
-		#2EA44F
-		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 8.5 6.5 12 13 4.5'/%3E%3C/svg%3E")
-		center / 72% no-repeat;
-}
-
-.vp-doc .task-list-item::before {
-	content: "";
+.vp-doc .task-list-container .task-list-item input {
 	position: absolute;
-	top: 50%;
-	left: -1rem;
-	width: 4px;
-	height: 0;
-	border-radius: 2px;
-	background: #3B82F6;
-	transition: height var(--wiki-duration-fast) var(--wiki-ease-out);
-	translate: 0 -50%;
+	opacity: 0;
+	top: 0.1em;
+	left: -0.15em;
+	z-index: 1;
 }
 
-.vp-doc .task-list-item:hover::before {
-	height: 1.3em;
+.vp-doc .task-list-container .task-list-item label {
+	margin-left: 1.2em;
+}
+
+.vp-doc .task-list-container .task-list-item label::before {
+	--icon: url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='1em' height='1em' viewBox='0 0 32 32'%3E%3Cpath fill='%23C2C2C4' d='M26 27.5H6A1.5 1.5 0 0 1 4.5 26V6c0-.83.67-1.5 1.5-1.5h20c.828 0 1.5.67 1.5 1.5v20a1.5 1.5 0 0 1-1.5 1.5m-18.5-3h17v-17h-17z'/%3E%3C%2Fsvg%3E");
+	content: "";
+	display: inline-block;
+	position: absolute;
+	top: -0.1em;
+	left: -0.15em;
+	width: 1.2em;
+	height: 1.2em;
+	background-image: var(--icon);
+	background-position: center;
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+	transform: translateY(4px);
+}
+
+.vp-doc .task-list-container .task-list-item input:checked + label::before {
+	--icon: url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='1em' height='1em' viewBox='0 0 32 32'%3E%3Cpath fill='%23299764' d='M29.548 3.043a2.5 2.5 0 0 0-3.513.4L16 16.067l-3.508-4.414a2.5 2.5 0 0 0-3.915 3.112l5.465 6.875c.474.597 1.195.943 1.957.943s1.482-.35 1.957-.944L29.95 6.555c.86-1.08.68-2.654-.402-3.513zM24.5 24.5h-17v-17h12.756l2.385-3H6c-.83 0-1.5.67-1.5 1.5v20c0 .828.67 1.5 1.5 1.5h20a1.5 1.5 0 0 0 1.5-1.5V12.85l-3 3.774z'/%3E%3C%2Fsvg%3E");
 }
 
 /* 加粗与马克笔耦合：两者共用同一种「底部色带」形态、同一条色带色与同一份厚度，
