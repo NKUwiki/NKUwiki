@@ -89,6 +89,62 @@
 	margin: 0;
 }
 
+/* 任务列表（- [ ] / - [x]）：自定义复选框外观——灰框未选、绿底白勾已选，
+   悬停时左侧浮出蓝色小竖条。
+   结构（VitePress task-lists 插件，勾选框均带 disabled，仅作展示）：
+   ul.task-list-container > li.task-list-item > input.task-list-item-checkbox
+   + label.task-list-item-label */
+.vp-doc ul.task-list-container {
+	list-style: none;
+}
+
+.vp-doc .task-list-item {
+	position: relative;
+}
+
+.vp-doc .task-list-item-checkbox {
+	width: 1.05em;
+	height: 1.05em;
+	margin: 0 0.5em 0 0;
+	border: 1.5px solid var(--vp-c-border);
+	border-radius: 0.3em;
+	box-sizing: border-box;
+	background: var(--vp-c-bg);
+	vertical-align: -0.18em;
+	transition:
+		background var(--wiki-duration-fast) var(--wiki-ease-out),
+		border-color var(--wiki-duration-fast) var(--wiki-ease-out);
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: default;
+}
+
+.vp-doc .task-list-item-checkbox:checked {
+	border-color: #2EA44F;
+	/* 勾用内联 SVG：input 是替换元素，::before/::after 在部分浏览器不渲染 */
+	background:
+		#2EA44F
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 8.5 6.5 12 13 4.5'/%3E%3C/svg%3E")
+		center / 72% no-repeat;
+}
+
+.vp-doc .task-list-item::before {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: -1rem;
+	width: 4px;
+	height: 0;
+	border-radius: 2px;
+	background: #3B82F6;
+	transition: height var(--wiki-duration-fast) var(--wiki-ease-out);
+	translate: 0 -50%;
+}
+
+.vp-doc .task-list-item:hover::before {
+	height: 1.3em;
+}
+
 /* 加粗与马克笔耦合：两者共用同一种「底部色带」形态、同一条色带色与同一份厚度，
    区别只剩字重——加粗＝粗体＋色带，马克笔＝色带不加粗。
    色带色取 tokens 里的 --wiki-emphasis-band、厚度取 --wiki-emphasis-band-height，
