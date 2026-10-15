@@ -15,5 +15,7 @@ export default {
 		app.component('ArticleIndex', defineAsyncComponent(() => import('./site-components/ArticleIndex.vue')))
 		// WikiLayout（主题包内）通过全局组件解析 <WikiSearch/>，不直接 import
 		app.component('WikiSearch', defineAsyncComponent(() => import('./site-components/WikiSearch.vue')))
+		// 美食卡片墙：数据在 docs/.vitepress/data/food-data.js（站点侧维护）
+		app.component('FoodCards', defineAsyncComponent(() => import('./site-components/FoodCards.vue')))
 	},
 } satisfies Theme

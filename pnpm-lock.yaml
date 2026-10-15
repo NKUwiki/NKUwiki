@@ -32,6 +32,9 @@ importers:
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
+      twikoo:
+        specifier: ^2.0.13
+        version: 2.0.13
       uqr:
         specifier: ^0.1.3
         version: 0.1.3
