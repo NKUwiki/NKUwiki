@@ -82,6 +82,8 @@ export default defineConfig({
 	base,
 	lang: 'zh-CN',
 	title: 'NKUwiki',
+	// 搜索结果里的「页面名 | 后缀」：后缀带上定位词，命中「南开 + 知识库」类搜索词
+	titleTemplate: ':title | NKUwiki-南开校园知识库',
 	description,
 	cleanUrls: true,
 	lastUpdated: false,
