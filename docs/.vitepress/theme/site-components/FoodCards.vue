@@ -10,6 +10,7 @@ import {
 	loadRatings,
 	myRatings,
 	ratingState,
+	registerAliases,
 	setMyRating,
 	submitRatingOnly,
 	twikooEnvId,
@@ -28,6 +29,8 @@ interface FoodItem {
 	cover?: string
 	gallery?: string[]
 	photos?: string[]
+	/** 历史旧 id：id 更换过时填在这里，旧评分仍会计入平均分 */
+	aliases?: string[]
 }
 
 /**
@@ -285,6 +288,13 @@ watch([currentCampus, currentCategory], () => loadRatings(filtered.value.map(ite
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeydown)
+	// 登记旧 id 别名：改过 id 的店铺，历史评分仍计入平均分
+	const aliasMap: Record<string, string[]> = {}
+	for (const item of foods.value) {
+		if (item.aliases?.length)
+			aliasMap[item.id] = item.aliases
+	}
+	registerAliases(aliasMap)
 	loadRatings(foods.value.map(item => item.id))
 })
 

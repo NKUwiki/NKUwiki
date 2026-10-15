@@ -2,10 +2,19 @@
  * NKUwiki 美食推荐数据（页面：04.校园生活/02.美食推荐）
  *
  * 添加条目：在 FOODS 数组追加 { id, name, category, campus, location, price, tags, recommend, desc, cover, gallery }
- * - id 是评论与评分的唯一标识（Twikoo 路径 /food/<id>），一经发布不要再改，否则历史评分会丢失
+ * - id 是评论与评分的唯一标识（Twikoo 路径 /food/<id>），把 id 当「主键」而非「名字」用
  * - 同一品牌在不同商场的门店各占一条（各自独立评分），id 用「地点-店名拼音」区分
  * - price / recommend / desc 是编辑参考值，欢迎同学投稿修正；留空的字段在页面上自动隐藏
  * - cover / gallery 需 https 直链，没有图就留空（卡片用店名首字占位）
+ *
+ * ── 关于修改 id ──
+ * 原则：店改名、搬家、换菜单都【不要】动 id——id 跟店不跟名，只改对应字段即可。
+ * 确需更换 id 时（如当初的 slug 起得太糟），按顺序做两件事：
+ * 1. 新条目的 id 换成新值，并加 aliases: ['旧id'] —— 旧评分仍会计入平均分（前端自动兼容）
+ * 2. 让后端在 Twikoo 数据库里把旧路径的评论迁移到新路径，否则弹窗里看不到历史评论：
+ *    MongoDB:  db.comment.updateMany({ url: '/food/旧id' }, { $set: { url: '/food/新id' } })
+ *    MySQL:    UPDATE comment SET url = '/food/新id' WHERE url = '/food/旧id';
+ *    （集合/表名以实际部署为准；迁移前先备份。迁移完成后 aliases 可保留也可移除）
  */
 
 /** 校区 key → 展示名 */

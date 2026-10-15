@@ -104,8 +104,36 @@ function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+/* ============ 旧 id 兼容（aliases） ============ */
+/* id 原则上永不更换；确需更换时（如当初的 slug 起得太糟），在 food-data.js 的
+ * 条目上写 aliases: ['旧id']，这里登记后评分聚合会把旧路径的评论一并计入。
+ * 注意 aliases 只保评分——弹窗里的历史评论列表仍挂在旧路径上，根治要靠
+ * 数据库迁移（见 food-data.js 头部注释的 SOP）。 */
+
+/** alias id → 当前 id */
+const aliasToPrimary = new Map()
+/** 当前 id → alias 列表 */
+const primaryToAliases = new Map()
+
+/**
+ * 登记旧 id 映射，在拉取评分前调用一次。
+ * @param {Record<string, string[]>} map 当前 id → 旧 id 列表
+ */
+export function registerAliases(map) {
+	for (const [primary, aliases] of Object.entries(map || {})) {
+		primaryToAliases.set(primary, aliases || [])
+		for (const alias of aliases || []) aliasToPrimary.set(alias, primary)
+	}
+}
+
 async function loadChunk(ids) {
-	const urls = ids.map(foodUrl)
+	/* 每个当前 id 的请求范围 = 自身路径 + 全部旧别名路径，命中后都归到当前 id */
+	const urlToId = new Map()
+	for (const id of ids) {
+		urlToId.set(foodUrl(id), id)
+		for (const alias of primaryToAliases.get(id) || []) urlToId.set(foodUrl(alias), id)
+	}
+	const urls = [...urlToId.keys()]
 	const totals = new Map(ids.map(id => [id, { sum: 0, count: 0 }]))
 	const seen = new Set()
 
@@ -127,7 +155,8 @@ async function loadChunk(ids) {
 				continue
 			seen.add(item.id)
 			added++
-			const id = idFromUrl(item.url)
+			const rawId = idFromUrl(item.url)
+			const id = rawId ? (aliasToPrimary.get(rawId) || rawId) : null
 			if (!id || !totals.has(id))
 				continue
 			const rating = parseRating(item.commentText || item.comment)
