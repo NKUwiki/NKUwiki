@@ -242,6 +242,9 @@ async function submitOnlyRating() {
 	else if (result.reason === 'submit') {
 		ratingOnlyMessage.value = result.message || '评分提交失败，请稍后重试。'
 	}
+	else if (result.reason === 'timeout') {
+		ratingOnlyMessage.value = '提交结果未确认，请刷新页面后查看是否提交成功。'
+	}
 	else {
 		ratingOnlyMessage.value = '评分组件尚未加载完成，请稍后重试。'
 	}
@@ -308,10 +311,13 @@ onMounted(() => {
 	}
 	registerAliases(aliasMap)
 	loadRatings(foods.value.map(item => item.id))
-	// 深链：/pages/Food/?food=<id> 直接展开对应店铺（Twikoo 后台「详情」
-	// 经站点侧改写会落到这里）
+	// 深链：/pages/Food?food=<id> 直接展开对应店铺（Twikoo 后台「详情」
+	// 经站点侧改写会落到这里）；别名 id 也能命中（兼容换过 id 的店铺）
 	const requestedId = new URLSearchParams(window.location.search).get('food')
-	const requested = requestedId ? foods.value.find(item => item.id === requestedId) : null
+	const requested = requestedId
+		? foods.value.find(item => item.id === requestedId)
+		|| foods.value.find(item => item.aliases?.includes(requestedId))
+		: null
 	if (requested)
 		void openDialog(requested)
 })

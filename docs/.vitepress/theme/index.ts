@@ -19,16 +19,23 @@ export default {
 		app.component('FoodCards', defineAsyncComponent(() => import('./site-components/FoodCards.vue')))
 		// 美食评论挂在虚拟路径 /food/<id> 上（Twikoo 后台「详情」链接会指向它），
 		// 站点没有对应的真实页面，直接点会 404——捕获阶段改跳美食页并带上
-		// ?food=<id>，由 FoodCards 读参数自动展开对应弹窗
+		// ?food=<id>，由 FoodCards 读参数自动展开对应弹窗。
+		// 注意：Food 页 permalink 无尾斜杠（/pages/Food/ 是 404），不能多写斜杠；
+		// 只处理本站链接，外站碰巧含 /food/ 路径的不碰
 		if (!import.meta.env.SSR) {
 			document.addEventListener('click', (event) => {
 				const anchor = (event.target as HTMLElement | null)?.closest?.('a[href]')
-				const match = anchor?.getAttribute('href')?.match(/\/food\/([^/?#]+)/)
-				if (!anchor || !match)
+				if (!anchor)
+					return
+				const resolved = new URL(anchor.getAttribute('href') || '', window.location.href)
+				if (resolved.origin !== window.location.origin)
+					return
+				const match = resolved.pathname.match(/^\/food\/([^/?#]+)/)
+				if (!match)
 					return
 				event.preventDefault()
 				event.stopPropagation()
-				window.location.assign(`/pages/Food/?food=${encodeURIComponent(match[1])}`)
+				window.location.assign(`/pages/Food?food=${encodeURIComponent(match[1])}`)
 			}, true)
 		}
 	},

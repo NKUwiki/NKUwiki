@@ -208,8 +208,25 @@ export async function loadRatings(ids, { force = false } = {}) {
 
 /* ============ Twikoo DOM 交互（Vue3 版） ============ */
 
+/**
+ * 定位主评论输入框。回复框也带 .tk-input / .tk-submit 类（在 .tk-comment 内），
+ * 主评论框是 .tk-comments 的直接子级且在文档序上最靠前，两者都限定一下；
+ * 找不到精确结构时退回首个匹配（主框在回复框之前，首匹配即主框）。
+ */
+/**
+ * @param {Element | undefined} slot
+ * @param {string} selector
+ */
+function findMainSubmit(slot, selector) {
+	return slot?.querySelector(`.tk-comments > .tk-submit ${selector}`)
+		|| slot?.querySelector(`.tk-submit ${selector}`)
+		|| null
+}
+
 function findEditor(slot) {
-	return slot?.querySelector('.tk-input textarea, .tk-textarea__inner') || null
+	return findMainSubmit(slot, '.tk-input textarea, .tk-textarea__inner')
+		|| slot?.querySelector('.tk-input textarea, .tk-textarea__inner')
+		|| null
 }
 
 function visibleError(slot) {
@@ -250,7 +267,7 @@ function metaMissing(slot) {
  */
 export async function submitRatingOnly(slot, getRating) {
 	const editor = findEditor(slot)
-	const sendButton = slot?.querySelector('.tk-send')
+	const sendButton = findMainSubmit(slot, '.tk-send')
 	if (!editor || !sendButton)
 		return { ok: false, reason: 'unavailable' }
 	if (metaMissing(slot))
@@ -287,15 +304,17 @@ export async function submitRatingOnly(slot, getRating) {
  * 在用户自己的「发送」上打补丁：主评论发送前把星星拼进正文。
  * 用捕获阶段监听——祖先的捕获监听先于 Twikoo 按钮自身的 click 处理器执行，
  * input 事件同步驱动 v-model，Twikoo 的处理器读到的是已拼接的内容。
- * 只绑定打开弹窗时的主提交框，回复用的输入框不受影响（回复不打分）。
+ * 每次点击时重新解析主提交框（而非缓存安装时的引用）：
+ * Twikoo 重绘评论区后旧按钮会被替换成新节点，缓存引用会静默失效；
+ * 回复框虽然也用 .tk-submit 类，但 findMainSubmit 已限定到主框。
  */
 export function installRatingInjector(slot, getRating) {
-	const mainSend = slot.querySelector('.tk-submit .tk-send')
-	if (!mainSend)
-		return () => {}
 	const handler = (event) => {
 		const button = event.target?.closest?.('.tk-send')
-		if (!button || button !== mainSend || button.disabled)
+		if (!button || button.disabled)
+			return
+		const mainSend = findMainSubmit(slot, '.tk-send')
+		if (!button || button !== mainSend)
 			return
 		const editor = findEditor(slot)
 		if (!editor)
