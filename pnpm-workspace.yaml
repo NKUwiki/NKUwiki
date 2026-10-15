@@ -12,3 +12,7 @@ allowBuilds:
 
 engineStrict: true
 shellEmulator: true
+# 关闭跑脚本前的依赖自动校验/重链：本机 node_modules 的 workspace 链接
+# 由手工维护（无符号链接权限时 pnpm 12 重链会静默失败只留空目录），
+# 自动重链反而会把可用链接破坏掉（2026-10-15）
+verifyDepsBeforeRun: false
