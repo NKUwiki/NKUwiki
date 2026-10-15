@@ -17,5 +17,19 @@ export default {
 		app.component('WikiSearch', defineAsyncComponent(() => import('./site-components/WikiSearch.vue')))
 		// 美食卡片墙：数据在 docs/.vitepress/data/food-data.js（站点侧维护）
 		app.component('FoodCards', defineAsyncComponent(() => import('./site-components/FoodCards.vue')))
+		// 美食评论挂在虚拟路径 /food/<id> 上（Twikoo 后台「详情」链接会指向它），
+		// 站点没有对应的真实页面，直接点会 404——捕获阶段改跳美食页并带上
+		// ?food=<id>，由 FoodCards 读参数自动展开对应弹窗
+		if (!import.meta.env.SSR) {
+			document.addEventListener('click', (event) => {
+				const anchor = (event.target as HTMLElement | null)?.closest?.('a[href]')
+				const match = anchor?.getAttribute('href')?.match(/\/food\/([^/?#]+)/)
+				if (!anchor || !match)
+					return
+				event.preventDefault()
+				event.stopPropagation()
+				window.location.assign(`/pages/Food/?food=${encodeURIComponent(match[1])}`)
+			}, true)
+		}
 	},
 } satisfies Theme

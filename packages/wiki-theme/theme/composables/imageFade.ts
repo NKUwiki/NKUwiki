@@ -32,6 +32,10 @@ export function installImageFade() {
 	function watch(img: HTMLImageElement) {
 		if (watching.has(img) || img.hasAttribute(LOADED_ATTR))
 			return
+		// Twikoo 的头像/表情是评论渲染后才插入的 img，不参与正文淡入——
+		// 否则它们赶不上扫描时机，会被隐藏态 CSS 永久藏住（评论区头像不显示的根因）
+		if (img.closest('.twikoo'))
+			return
 		// 已加载完（缓存命中）的直接标记，否则等 load / error
 		if (img.complete) {
 			markLoaded(img)

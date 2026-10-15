@@ -26,7 +26,7 @@ const hasGallery = computed(() => sources.value.length > 1)
 
 /** 可预览的正文图片范围与排除项（头像/卡片图标/行内绘图等非内容图不参与） */
 const SCOPE = '.vp-doc'
-const EXCLUDE = 'a, .article-author-avatar, .wiki-repo-card-avatar, .wiki-annotation, .VPLocalSearchBox'
+const EXCLUDE = 'a, .article-author-avatar, .wiki-repo-card-avatar, .wiki-annotation, .VPLocalSearchBox, .twikoo'
 
 function updateBodyOverflow() {
 	document.body.style.overflow = visible.value ? 'hidden' : ''

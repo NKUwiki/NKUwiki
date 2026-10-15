@@ -75,7 +75,10 @@
 	transition: opacity var(--wiki-duration-slow) var(--wiki-ease-out);
 }
 
-.wiki-image-fade .vp-doc img:not([data-loaded]) {
+/* :not(.twikoo img) 排除 Twikoo 动态插入的头像/表情——它们没有 data-loaded 标记，
+   若被本规则命中会永久不可见。不支持复杂 :not 的老浏览器会整条丢弃本规则，
+   退化为「无淡入、图片直接显示」，方向安全 */
+.wiki-image-fade .vp-doc img:not([data-loaded]):not(.twikoo img) {
 	opacity: 0;
 }
 

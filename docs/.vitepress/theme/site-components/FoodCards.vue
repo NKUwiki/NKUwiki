@@ -158,10 +158,21 @@ function scheduleDecorate() {
 	decorateTimer = window.setTimeout(decorateRatings, 120, commentSlot.value)
 }
 
+/** 弹窗与 ?food=<id> 查询参数双向同步：深链可直接展开对应店铺，也方便分享 */
+function syncFoodQuery(id: string | null) {
+	const url = new URL(window.location.href)
+	if (id)
+		url.searchParams.set('food', id)
+	else
+		url.searchParams.delete('food')
+	history.replaceState(null, '', url)
+}
+
 async function openDialog(item: FoodItem) {
 	active.value = item
 	viewerOpen.value = false
 	viewerIndex.value = 0
+	syncFoodQuery(item.id)
 	document.body.style.overflow = 'hidden'
 
 	loadRatings([item.id], { force: true })
@@ -240,6 +251,7 @@ async function submitOnlyRating() {
 function closeDialog() {
 	active.value = null
 	viewerOpen.value = false
+	syncFoodQuery(null)
 	observer?.disconnect()
 	observer = null
 	if (decorateTimer)
@@ -296,6 +308,12 @@ onMounted(() => {
 	}
 	registerAliases(aliasMap)
 	loadRatings(foods.value.map(item => item.id))
+	// 深链：/pages/Food/?food=<id> 直接展开对应店铺（Twikoo 后台「详情」
+	// 经站点侧改写会落到这里）
+	const requestedId = new URLSearchParams(window.location.search).get('food')
+	const requested = requestedId ? foods.value.find(item => item.id === requestedId) : null
+	if (requested)
+		void openDialog(requested)
 })
 
 onBeforeUnmount(() => {
