@@ -1,6 +1,11 @@
 packages:
   - packages/*
 
+# hoisted 布局：包实体直接落盘，不依赖符号链接。
+# pnpm 12（Rust 版）在无开发者模式权限的 Windows 环境下创建符号链接会静默失败
+# （只留空目录，2026-10-15 事故根因），hoisted 在任何环境下都可安装
+nodeLinker: hoisted
+
 allowBuilds:
   esbuild: true
   unrs-resolver: true
