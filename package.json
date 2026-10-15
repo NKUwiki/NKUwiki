@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "node docs/.vitepress/scripts/gen-history.mjs && vitepress dev docs",
+    "postinstall": "node scripts/fix-workspace-links.mjs",
     "build": "node docs/.vitepress/scripts/gen-history.mjs && vitepress build docs",
     "gen:history": "node docs/.vitepress/scripts/gen-history.mjs",
     "preview": "vitepress preview docs",
