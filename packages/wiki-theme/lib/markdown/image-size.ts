@@ -43,6 +43,11 @@ export function imageSizePlugin(md: MarkdownRenderer, srcDir: string) {
 				token.attrSet('height', String(size.height))
 			}
 		}
+		// 声明异步解码：图片解码不再占用主线程去做同步工作，长页面（含大量图片）
+		// 的滚动与交互更顺。刻意不加 loading="lazy"——本项目有打印/导出图片的功能，
+		// 视口外的懒加载图在打印时尚未开始下载，会印成空白。
+		if (src && !hasDim('decoding'))
+			token.attrSet('decoding', 'async')
 		return raw?.(tokens, idx, options, env, self) ?? self.renderToken(tokens, idx, options)
 	}
 }
