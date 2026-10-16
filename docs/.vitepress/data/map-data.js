@@ -95,10 +95,12 @@ export const CATEGORY_ICON_PATHS = {
     '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>'
 }
 
-/* 南开大学校区（coord 为 GCJ02，zoom 与 CQUMAPS 一致） */
+/* 南开大学校区（coord 为 GCJ02，zoom 与 CQUMAPS 一致）。
+   name 会出现在校区切换按钮、搜索框占位文案与拾取面板的下拉里，
+   都是窄容器，故用短名（南开大学八里台校区 → 八里台校区）。 */
 export const CAMPUS_CONFIG = {
-  n: { id: 'n', name: '南开大学八里台校区', coord: [117.171274, 39.102101], zoom: 17 },
-  j: { id: 'j', name: '南开大学津南校区', coord: [117.345, 38.989], zoom: 16 }
+  n: { id: 'n', name: '八里台校区', coord: [117.171274, 39.102101], zoom: 17 },
+  j: { id: 'j', name: '津南校区', coord: [117.345, 38.989], zoom: 16 }
 }
 
 export const FILTER_LIST = [

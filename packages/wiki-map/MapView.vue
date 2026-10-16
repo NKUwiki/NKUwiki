@@ -11,6 +11,9 @@
  * 字段格式与必备导出见同目录 map-data.example.js。
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import MapPickPanel from './MapPickPanel.vue'
+import { createChipsScroll } from './chips-scroll.js'
+import { clampTipCenterX } from './hover-tip.js'
 import { createBuildingSearch } from './search.js'
 
 const props = defineProps({
@@ -32,7 +35,6 @@ const {
 
 const PIN_SIZE = 28
 const PIN_SCALE = { idle: 1, hover: 1.3, selected: 1.4 }
-const FIRST_PAINT_TIMEOUT_MS = 2500
 /* 高德官方内置样式：normal 标准 / dark 夜间 */
 const MAP_STYLES = { light: 'amap://styles/normal', dark: 'amap://styles/dark' }
 
@@ -69,6 +71,15 @@ const currentCampus = ref('n')
 const currentCategory = ref('all')
 const searchKeyword = ref('')
 const sidebarOpen = ref(false)
+/** 左侧卡片收起成小卡片：只留校区 / 搜索 / 分类三行，隐藏点位列表 */
+const sidebarCollapsed = ref(false)
+
+/* ---- 坐标拾取模式（URL 带 ?pick=1 时启用，供维护地图数据用；见 MapPickPanel） ---- */
+const pickMode = ref(false)
+/** 拾取到的坐标 [经度, 纬度]，GCJ-02 */
+const pickedCoord = ref(null)
+/** 拾取点标记：可拖动微调，拖动结束回写坐标 */
+let pickMarker = null
 const selected = ref(null)
 const hoverTip = ref(null)
 const locationDialogOpen = ref(false)
@@ -121,6 +132,8 @@ const markerBuildings = computed(() => {
 })
 
 const campusName = computed(() => CAMPUS_CONFIG[currentCampus.value]?.name || '')
+/** 搜索框占位文案带上当前校区：卡片里同时放着校区切换，写清搜的是哪儿 */
+const searchPlaceholder = computed(() => campusName.value ? `搜索${campusName.value}的地点` : '搜索地点')
 const selectedPhotos = computed(() => buildingPhotos(selected.value))
 const currentViewerPhoto = computed(() => selectedPhotos.value[photoViewerIndex.value] || '')
 const isDark = () => document.documentElement.classList.contains('dark')
@@ -244,17 +257,6 @@ function wgs84ToGcj02([lng, lat]) {
 	const aLat = (dLat * 180) / (((AXIS * (1 - ECCENTRICITY)) / (magic * sqrtMagic)) * Math.PI)
 	const aLng = (dLng * 180) / ((AXIS / sqrtMagic) * Math.cos(rad) * Math.PI)
 	return [lng + aLng, lat + aLat]
-}
-
-function escapeHtml(str) {
-	if (str == null)
-		return ''
-	return String(str)
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;')
 }
 
 /* ================= Lucide 分类图标（marker / 列表 / 详情卡用） ================= */
@@ -438,6 +440,9 @@ function initMap() {
 		viewMode: '2D',
 		scrollWheel: true,
 	})
+	/* 高德地图点击：拾取模式下取坐标。注意与点位标点的 click 不冲突——
+	   标点自带 click 监听（选中），点标点时事件不会冒泡到地图 click */
+	map.on('click', onMapPickClick)
 	map.on('mapmove', syncDetailPosition)
 	map.on('zoomchange', syncDetailPosition)
 	renderPolygons(campus.id)
@@ -492,6 +497,12 @@ function applyPinState(root, selectedFlag) {
 	const pin = body.querySelector('svg path')
 	if (pin)
 		pin.style.fill = selectedFlag ? shade(base, SELECTED_MIX_RATIO) : base
+	// 名称标签跟着强调：选中时用与标点同源的加深色，未选中清空、交回 CSS 的常规文字色
+	// 注意本文件是不带 lang="ts" 的 <script setup>——不能写 querySelector<HTMLElement>()，
+	// 那在纯 JS 里会被解析成比较运算，返回值恒为 false，标签色会静默失效
+	const label = root.querySelector('.qut-pin-label')
+	if (label)
+		label.style.color = selectedFlag ? shade(base, SELECTED_MIX_RATIO) : ''
 }
 
 function applyPinHover(root, hovered) {
@@ -516,6 +527,18 @@ function createMarkerPin(building, selectedFlag) {
 	body.innerHTML = markerPinMarkup(building.category)
 
 	root.appendChild(body)
+
+	/* 常驻名称标签：挂在标点正下方。
+	   刻意用绝对定位而不是让它参与布局：AMap.Marker 的 offset 是按 content 容器尺寸
+	   算的，标签一旦把容器撑宽，锚点就会整体偏移、标点不再对准真实坐标。
+	   绝对定位后容器仍是 28×28，锚点不变，标签溢出容器显示。
+	   pointer-events: none —— 密集处标签会互相压住，不设的话后绘制的标签
+	   会挡住相邻标点的点击热区。 */
+	const label = document.createElement('span')
+	label.className = 'qut-pin-label'
+	label.textContent = building.name
+	root.appendChild(label)
+
 	return root
 }
 
@@ -563,13 +586,30 @@ function renderMarkers() {
 }
 
 /* ================= hover 提示（跟随地图移动） ================= */
+/**
+ * 算悬停提示的位置。x 必须夹取：提示的 z-index（25）高于左侧悬浮卡片（12），
+ * 点位若贴地图左缘，提示会整块压在卡片上（夹取逻辑见 hover-tip.js）。
+ * y 仍按标点上方定位（贴顶时不翻转，属既有行为）。
+ */
+function hoverTipPosition(building) {
+	const { x, y } = map.lngLatToContainer(building.coord)
+	const cardRight = document.querySelector('.map-sidebar')?.getBoundingClientRect().right ?? 0
+	return {
+		x: clampTipCenterX({
+			x,
+			viewWidth: mapEl.value?.clientWidth || 0,
+			cardRight,
+		}),
+		y: y - PIN_SIZE * PIN_SCALE.hover,
+	}
+}
+
 function showHoverTip(building, root) {
 	if (!map)
 		return
 	clearHoverCloseTimer()
 	applyPinHover(root, true)
-	const { x, y } = map.lngLatToContainer(building.coord)
-	hoverTip.value = { building, x, y: y - PIN_SIZE * PIN_SCALE.hover }
+	hoverTip.value = { building, ...hoverTipPosition(building) }
 }
 
 function hideHoverTip(root) {
@@ -588,11 +628,11 @@ watch(hoverTip, (tip) => {
 	const sync = () => {
 		if (!map || !hoverTip.value || hoverTip.value.building.id !== tip.building.id)
 			return
-		const { x, y } = map.lngLatToContainer(tip.building.coord)
-		const nextY = y - PIN_SIZE * PIN_SCALE.hover
-		if (Math.abs(hoverTip.value.x - x) < 0.5 && Math.abs(hoverTip.value.y - nextY) < 0.5)
+		// 与 showHoverTip 走同一个定位函数，否则拖动地图时提示会滑回卡片上
+		const next = hoverTipPosition(tip.building)
+		if (hoverTip.value.x === next.x && hoverTip.value.y === next.y)
 			return
-		hoverTip.value = { building: tip.building, x, y: nextY }
+		hoverTip.value = { building: tip.building, ...next }
 	}
 	map.on('mapmove', sync)
 	map.on('zoomchange', sync)
@@ -631,8 +671,8 @@ function clearSelection() {
 	}
 }
 
-function selectCampus(e) {
-	const next = e.target.value
+/** 切换校区（接校区 id，不是事件对象——拾取面板也要复用） */
+function selectCampus(next) {
 	if (next === currentCampus.value)
 		return
 	currentCampus.value = next
@@ -648,6 +688,95 @@ function selectCampus(e) {
 	}
 }
 
+/* ================= 坐标拾取模式 =================
+   维护 map-data.js 用的小工具：?pick=1 打开，点地图取坐标、填信息、
+   复制生成的数据条。逻辑集中在 MapPickPanel.vue，这里只负责地图侧的三件事——
+   读 URL 开关、接地图 click、放一个可拖动的拾取标记。 */
+function initPickMode() {
+	// URL 只在客户端可读；SSR 阶段保持关闭，避免服务端渲染出面板
+	if (typeof window === 'undefined')
+		return
+	pickMode.value = new URLSearchParams(window.location.search).get('pick') === '1'
+}
+
+/**
+ * 开关拾取模式，并把状态同步到 URL 的 pick 参数。
+ *
+ * 历史栈用 replaceState 而非 pushState：这是一次界面开关，不该占用「后退」——
+ * 否则用户点后退会回到上一个 URL 状态、拾取面板却还开着，两边对不上。
+ * 同步过去的好处是可以直接书签/分享这个地址，刷新也不丢。
+ */
+function togglePickMode(on) {
+	const next = typeof on === 'boolean' ? on : !pickMode.value
+	pickMode.value = next
+	if (typeof window !== 'undefined') {
+		const url = new URL(window.location.href)
+		if (next)
+			url.searchParams.set('pick', '1')
+		else
+			url.searchParams.delete('pick')
+		window.history.replaceState(window.history.state, '', url)
+	}
+	if (!next) {
+		// 退出时清掉拾取标记与坐标，下次进来是干净状态
+		if (pickMarker && map) {
+			try { map.remove(pickMarker) }
+			catch (e) { /* noop */ }
+		}
+		pickMarker = null
+		pickedCoord.value = null
+	}
+}
+
+/** Shift+P 开关拾取（输入框里按 P 就是在打字，不能抢） */
+function onPickHotkey(e) {
+	if (e.key !== 'P' || !e.shiftKey || e.ctrlKey || e.metaKey || e.altKey)
+		return
+	const t = e.target
+	const editing = t instanceof HTMLElement
+		&& (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')
+	if (editing)
+		return
+	e.preventDefault()
+	togglePickMode()
+}
+
+function updatePickMarker() {
+	if (!map || !AMap || !pickedCoord.value)
+		return
+	if (!pickMarker) {
+		pickMarker = new AMap.Marker({
+			position: pickedCoord.value,
+			draggable: true,
+			cursor: 'move',
+			content: '<div class="map-pick-marker" aria-hidden="true"></div>',
+			offset: new AMap.Pixel(-7, -7),
+			zIndex: 200,
+		})
+		// 拖动比重新点击更顺手：微调时不必担心又点到别处
+		pickMarker.on('dragend', () => {
+			const p = pickMarker.getPosition()
+			pickedCoord.value = [p.getLng(), p.getLat()]
+		})
+		map.add(pickMarker)
+	}
+	else {
+		pickMarker.setPosition(pickedCoord.value)
+	}
+}
+
+function onMapPickClick(e) {
+	if (!pickMode.value)
+		return
+	pickedCoord.value = [e.lnglat.getLng(), e.lnglat.getLat()]
+	updatePickMarker()
+}
+
+/** 拾取面板里换校区时让地图跟过去（与左侧卡片的校区按钮走同一条路径） */
+function onPickCampusChange(id) {
+	selectCampus(id)
+}
+
 function clearMarkerCache() {
 	for (const [, entry] of markerCache) {
 		try { map.remove(entry.marker) }
@@ -656,9 +785,30 @@ function clearMarkerCache() {
 	markerCache.clear()
 }
 
-function selectCategory(e) {
-	currentCategory.value = e.target.value
+/** 切换分类筛选（接分类 key，供横排药丸调用） */
+function selectCategory(key) {
+	currentCategory.value = key
 	renderMarkers()
+}
+
+/* ================= 分类药丸的横向滚动增强 =================
+   17 个分类在 22rem 的卡片里一行放不下，只能横向滚。除了原生方式
+   （触控板横滑、滚动条），再补两种桌面更顺手的操作：按住鼠标左右拖动、
+   指针停在药丸行上时把滚轮转成横向滚动。只接管鼠标——触摸与触控笔
+   交回浏览器，保留移动端原生惯性滚动。
+   实现见 ./chips-scroll.js（单独成模块是为了能单测：边界放行、
+   Firefox 行单位换算、拖动阈值、拖动后那次 click 的抑制都容易写错而不报错） */
+const categoryChipsEl = ref(null)
+let chipsScroll = null
+
+function bindCategoryChips() {
+	chipsScroll = createChipsScroll(categoryChipsEl.value, window)
+	chipsScroll.bind()
+}
+
+function unbindCategoryChips() {
+	chipsScroll?.unbind()
+	chipsScroll = null
 }
 
 function onSearchInput() {
@@ -715,13 +865,20 @@ function retry() {
 }
 
 onMounted(() => {
-	document.addEventListener('keydown', onViewerKeydown)
-	startVisualViewportObserver()
+	// 地图初始化放最前：后面的辅助初始化若抛错，绝不能拖累地图加载
+	//（上一轮 categoryChipsEl 未声明时，整个 mounted 中断，地图与拖拽一起失效）
 	bootstrap()
+	document.addEventListener('keydown', onViewerKeydown)
+	document.addEventListener('keydown', onPickHotkey)
+	bindCategoryChips()
+	startVisualViewportObserver()
+	initPickMode()
 })
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', onViewerKeydown)
+	document.removeEventListener('keydown', onPickHotkey)
+	unbindCategoryChips()
 	destroyFlag = true
 	if (themeObserver) {
 		themeObserver.disconnect()
@@ -736,6 +893,11 @@ onUnmounted(() => {
 		try { map.remove(locationMarker) }
 		catch (e) { /* noop */ }
 	}
+	if (pickMarker && map) {
+		try { map.remove(pickMarker) }
+		catch (e) { /* noop */ }
+	}
+	pickMarker = null
 	if (locationWatchId != null && navigator.geolocation)
 		navigator.geolocation.clearWatch(locationWatchId)
 	locationWatchId = null
@@ -749,38 +911,54 @@ onUnmounted(() => {
 </script>
 
 <template>
-<section class="map-section">
-	<!-- 顶部工具条（3.5rem，抄 CQU-openlib） -->
-	<header class="map-header">
-		<h1 class="map-title">
-			校园地图
-		</h1>
-		<div class="campus-select-wrap">
-			<select class="campus-select" :value="currentCampus" aria-label="选择校区" @change="selectCampus">
-				<option v-for="(cfg, key) in CAMPUS_CONFIG" :key="key" :value="key">
-					{{ cfg.name }}
-				</option>
-			</select>
-			<svg class="campus-caret" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
-		</div>
-		<div class="map-header-right">
-			<button class="location-btn location-header-btn" type="button" :disabled="!mapReady || locating" @click="requestLocation">
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
-				{{ locating ? '定位中' : '显示定位' }}
-			</button>
-			<button class="mobile-list-btn" aria-label="打开地点列表" @click="sidebarOpen = true">
-				<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></svg>
-			</button>
-		</div>
-	</header>
+<section class="map-section" :class="{ 'map-section-collapsed': sidebarCollapsed }">
+	<!-- 可见的标题让位给悬浮卡片，标题只留在文档结构里（供读屏与 SEO） -->
+	<h1 class="sr-only">
+		校园地图
+	</h1>
 
 	<div class="map-body">
-		<!-- 左侧地点列表 -->
+		<!-- 左侧悬浮卡片：校区切换 + 搜索 + 分类 + 点位列表，整卡浮在地图之上；
+		     收起后只剩前三个控件（可收成小卡片，把地图让出来） -->
 		<aside class="map-sidebar" :class="{ 'map-sidebar-open': sidebarOpen }" aria-label="校园地点">
 			<div class="sidebar-mobile-head">
 				<span>校园地点</span>
 				<button class="icon-btn" aria-label="关闭地点列表" @click="sidebarOpen = false">
 					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+				</button>
+			</div>
+
+			<!-- 控制区：校区 / 搜索 / 分类三行放在同一条浅色带上，与下方白底列表分层。
+			     收起态下它下方的列表已压成 0 高度，底部那条分界线会变成悬在卡片底部的孤线，
+			     故按状态类关掉（见 .sidebar-controls.is-list-collapsed） -->
+			<div class="sidebar-controls" :class="{ 'is-list-collapsed': sidebarCollapsed }">
+			<!-- 校区切换 + 收起按钮。按钮放在滚动容器之外，
+			     否则横向滚动药丸时它会跟着一起滚走 -->
+			<div class="sidebar-campus-row">
+				<div class="campus-tabs" role="group" aria-label="选择校区">
+					<button
+						v-for="(cfg, key) in CAMPUS_CONFIG"
+						:key="key"
+						type="button"
+						class="campus-tab"
+						:class="{ active: currentCampus === key }"
+						:aria-pressed="currentCampus === key"
+						@click="selectCampus(key)"
+					>
+						{{ cfg.name }}
+					</button>
+				</div>
+				<button
+					type="button"
+					class="icon-btn sidebar-collapse-btn"
+					:class="{ collapsed: sidebarCollapsed }"
+					:aria-expanded="!sidebarCollapsed"
+					aria-controls="map-building-list"
+					:aria-label="sidebarCollapsed ? '展开地点列表' : '收起为小卡片'"
+					:title="sidebarCollapsed ? '展开地点列表' : '收起小卡片（只留校区、搜索与分类）'"
+					@click="sidebarCollapsed = !sidebarCollapsed"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6" /></svg>
 				</button>
 			</div>
 
@@ -791,43 +969,64 @@ onUnmounted(() => {
 					<input
 						v-model="searchKeyword"
 						type="text"
-						placeholder="搜索"
+						:placeholder="searchPlaceholder"
 						@input="onSearchInput"
 					>
 					<button v-if="searchKeyword" class="icon-btn clear-btn" aria-label="清空搜索" @click="clearSearch">
 						<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
 					</button>
 				</label>
-				<select class="category-select" :value="currentCategory" aria-label="地点分类" @change="selectCategory">
-					<option v-for="item in FILTER_LIST" :key="item.key" :value="item.key">
-						{{ item.label }}
-					</option>
-				</select>
 			</div>
 
-			<div class="building-list">
+			<!-- 分类筛选：横排彩色药丸，圆点色与标点/列表图标同源（CATEGORY_CONFIG.color）。
+			     分类有 17 个，卡片放不下就横向滚动；「全部」不带圆点（它没有对应色） -->
+			<div ref="categoryChipsEl" class="category-chips" role="group" aria-label="地点分类">
 				<button
-					v-for="b in filteredBuildings"
-					:key="b.id"
+					v-for="item in FILTER_LIST"
+					:key="item.key"
 					type="button"
-					class="building-item"
-					:class="{ active: selected?.id === b.id }"
-					@click="onSelect(b)"
+					class="category-chip"
+					:class="{ active: currentCategory === item.key }"
+					:aria-pressed="currentCategory === item.key"
+					@click="selectCategory(item.key)"
 				>
-					<span class="cat-icon" :style="{ color: categoryColor(b.category) }" v-html="categoryIconMarkup(b.category, 14)" />
-					<span class="building-info">
-						<span class="building-name">{{ b.name }}</span>
-						<span v-if="b.desc" class="building-desc">{{ b.desc }}</span>
-					</span>
+					<span
+						v-if="item.key !== 'all'"
+						class="chip-dot"
+						:style="{ '--chip-dot': categoryColor(item.key) }"
+					/>
+					{{ item.label }}
 				</button>
-				<div v-if="filteredBuildings.length === 0" class="empty-tip">
-					<svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
-					<p class="empty-title">
-						没有匹配的地点
-					</p>
-					<p class="empty-sub">
-						换个关键词或分类试试
-					</p>
+			</div>
+			</div>
+
+			<!-- 列表外面套一层 grid 容器：grid-template-rows 1fr → 0fr 是纯 CSS 里
+			     唯一能「动画到内容自适应高度」的写法（主题包侧栏分组折叠也是这套） -->
+			<div id="map-building-list" class="sidebar-list-wrap" :class="{ 'is-collapsed': sidebarCollapsed }">
+				<div class="building-list">
+					<button
+						v-for="b in filteredBuildings"
+						:key="b.id"
+						type="button"
+						class="building-item"
+						:class="{ active: selected?.id === b.id }"
+						@click="onSelect(b)"
+					>
+						<span class="cat-icon" :style="{ color: categoryColor(b.category) }" v-html="categoryIconMarkup(b.category, 14)" />
+						<span class="building-info">
+							<span class="building-name">{{ b.name }}</span>
+							<span v-if="b.desc" class="building-desc">{{ b.desc }}</span>
+						</span>
+					</button>
+					<div v-if="filteredBuildings.length === 0" class="empty-tip">
+						<svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="M3 6h.01" /><path d="M3 12h.01" /><path d="M3 18h.01" /></svg>
+						<p class="empty-title">
+							没有匹配的地点
+						</p>
+						<p class="empty-sub">
+							换个关键词或分类试试
+						</p>
+					</div>
 				</div>
 			</div>
 		</aside>
@@ -838,6 +1037,18 @@ onUnmounted(() => {
 		<!-- 右侧地图 -->
 		<div class="map-canvas">
 			<div ref="mapEl" class="map-el" />
+
+			<!-- 坐标拾取面板：URL 带 ?pick=1 时出现，用于维护 map-data.js -->
+			<MapPickPanel
+				v-if="pickMode"
+				:coord="pickedCoord"
+				:buildings="BUILDINGS"
+				:categories="CATEGORY_CONFIG"
+				:campuses="CAMPUS_CONFIG"
+				:default-campus="currentCampus"
+				@campus-change="onPickCampusChange"
+				@close="togglePickMode(false)"
+			/>
 
 			<!-- 加载 / 错误占位层 -->
 			<div v-if="!mapReady && !mapError" class="map-placeholder">
@@ -876,7 +1087,7 @@ onUnmounted(() => {
 				</p>
 			</div>
 
-			<!-- 移动端：打开地点列表浮层按钮（仅小屏显示） -->
+			<!-- 移动端：打开地点列表浮层按钮（仅小屏显示；定位按钮在右上角悬浮卡里） -->
 			<div v-if="!sidebarOpen" class="mobile-map-actions">
 				<button
 					type="button"
@@ -887,22 +1098,12 @@ onUnmounted(() => {
 					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h20" /><path d="M6 12h12" /><path d="M9 19h6" /></svg>
 					{{ filteredBuildings.length }} 个地点
 				</button>
-				<button
-					type="button"
-					class="location-btn mobile-location-btn"
-					:disabled="!mapReady || locating"
-					aria-label="显示定位"
-					@click="requestLocation"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
-					<span>显示定位</span>
-				</button>
 			</div>
 			<p v-if="locationError && !selected" class="location-status" role="status">
 				{{ locationError }}
 			</p>
 
-			<!-- 缩放控件 -->
+			<!-- 重定位按钮（定位成功后出现） -->
 			<button
 				v-if="locationReady"
 				type="button"
@@ -916,14 +1117,42 @@ onUnmounted(() => {
 				<span>重定位</span>
 			</button>
 
-			<div class="map-zoom-ctrl">
-				<button class="zoom-btn" aria-label="放大地图" :disabled="!mapReady" @click="map && map.zoomIn()">
-					<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-				</button>
-				<div class="zoom-divider" />
-				<button class="zoom-btn" aria-label="缩小地图" :disabled="!mapReady" @click="map && map.zoomOut()">
-					<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></svg>
-				</button>
+			<!-- 右上角悬浮卡片组：定位 / 坐标拾取 与 缩放 -->
+			<div class="map-right-stack" :class="{ 'map-right-stack-shifted': pickMode }">
+				<div class="map-tools" role="group" aria-label="地图工具">
+					<button
+						type="button"
+						class="map-tool-btn"
+						:disabled="!mapReady || locating"
+						:aria-label="locating ? '定位中' : '显示定位'"
+						@click="requestLocation"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+						<span>{{ locating ? '定位中' : '显示定位' }}</span>
+					</button>
+					<!-- 坐标拾取入口：维护地图数据时才用，故做成图标按钮（另有 Shift+P 快捷键） -->
+					<button
+						type="button"
+						class="map-tool-btn map-pick-entry"
+						:class="{ active: pickMode }"
+						:aria-pressed="pickMode"
+						:aria-label="pickMode ? '退出坐标拾取' : '坐标拾取（数据维护用）'"
+						:title="pickMode ? '退出坐标拾取（Shift+P）' : '坐标拾取（Shift+P）'"
+						@click="togglePickMode()"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 2v3" /><path d="M12 19v3" /><path d="M2 12h3" /><path d="M19 12h3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
+					</button>
+				</div>
+
+				<div class="map-zoom-ctrl">
+					<button class="zoom-btn" aria-label="放大地图" :disabled="!mapReady" @click="map && map.zoomIn()">
+						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+					</button>
+					<div class="zoom-divider" />
+					<button class="zoom-btn" aria-label="缩小地图" :disabled="!mapReady" @click="map && map.zoomOut()">
+						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></svg>
+					</button>
+				</div>
 			</div>
 
 			<!-- 选中地点详情卡片（右下角） -->
@@ -1078,97 +1307,86 @@ html.dark .map-section {
 	--c-backdrop: rgba(0, 0, 0, 0.55);
 }
 
-/* ===== 顶部工具条 ===== */
-.map-header {
+/* ===== 校区切换（悬浮卡片内的横排药丸）+ 收起按钮 ===== */
+/* ===== 控制区：校区 / 搜索 / 分类三行同处一条浅色带 =====
+   控件放在 --c-paper 色带上、点位列表留在白底上，形成「操作 vs 结果」的分层；
+   侧距统一 12px、行距统一 10px，不再各行其是 */
+.sidebar-controls {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	gap: 10px;
+	padding: 12px;
+	border-bottom: 1px solid var(--c-line);
+	background: var(--c-paper);
+	/* 收起时这条分界线要一起淡出，否则会「啪」地消失，与列表 0.2s 的收起动画不同步 */
+	transition: border-bottom-color var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+}
+/* 收起态：下方列表被压成 0 高度，这条分界线已无分界对象，只会在卡片底部悬成一条孤线
+   （用 transparent 而非 border-bottom: none，避免 1px 的高度跳变，也让过渡成立） */
+.sidebar-controls.is-list-collapsed {
+	border-bottom-color: transparent;
+}
+/* 这一行装「校区药丸 + 收起按钮」。
+   类名刻意不叫 .sidebar-top：主题的全局样式（wiki-theme/theme/styles/cards.css）
+   给文档侧栏的顶部行定义了裸选择器 .sidebar-top { border-bottom: 1px solid var(--vp-c-divider) }，
+   会连带作用到本卡片上，在校区药丸底下多出一条分割线（一度被误判成 flex 压缩/旧样式缓存，
+   排查了多轮）。组件内要用的类名必须与主题全局裸选择器错开，见 tests/style-class-collision.test.ts */
+.sidebar-campus-row {
 	display: flex;
 	flex-shrink: 0;
 	align-items: center;
-	gap: 10px;
-	position: relative;
-	height: 3.5rem;
-	padding: 0 12px;
-	border-bottom: 1px solid var(--c-line);
-	background: var(--c-panel);
-	z-index: 25;
+	gap: 4px;
 }
-.map-title {
-	margin: 0;
-	font-size: 18px;
-	font-weight: 600;
-	line-height: 1.2;
+.campus-tabs {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	gap: 6px;
+	/* 药丸比原来的下拉框宽不少，窄卡片里放不下时横向滚动（不显滚动条）。
+	   滚动条若放出来，就是一条贴在按钮底下的横线——看起来像按钮压在分割线上 */
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.campus-tabs::-webkit-scrollbar {
+	display: none;
+}
+.sidebar-collapse-btn {
+	flex-shrink: 0;
+	/* 与左侧校区药丸同高（32px），整行读起来是一条线，而不是一枚悬着的小图标 */
+	height: 32px;
+	color: var(--c-icon);
+}
+.sidebar-collapse-btn svg {
+	transition: transform var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+}
+/* 展开时箭头朝上（点了往上收），收起时翻朝下（点了放下） */
+.sidebar-collapse-btn.collapsed svg {
+	transform: rotate(180deg);
+}
+.campus-tab {
+	flex: 0 0 auto;
+	height: 32px;
+	padding: 0 14px;
+	border: 1px solid var(--c-line);
+	border-radius: 999px;
+	background: var(--c-panel);
+	font-size: 13px;
+	font-weight: 500;
 	white-space: nowrap;
 	color: var(--c-ink);
-}
-.campus-select-wrap {
-	display: flex;
-	flex-shrink: 0;
-	align-items: center;
-	position: relative;
-}
-.campus-select {
-	max-width: 100%;
-	padding: 4px 26px 4px 10px;
-	border: 1px solid var(--c-line);
-	border-radius: 6px;
-	outline: none;
-	background: var(--c-paper);
-	font-size: 13px;
-	color: var(--c-ink);
-	-webkit-appearance: none;
-	appearance: none;
+	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 	cursor: pointer;
 }
-.campus-select:focus {
-	border-color: var(--c-primary);
-}
-.campus-caret {
-	position: absolute;
-	top: 50%;
-	right: 8px;
-	color: var(--c-icon);
-	transform: translateY(-50%);
-	pointer-events: none;
-}
-.map-header-right {
-	display: flex;
-	flex-shrink: 0;
-	align-items: center;
-	margin-left: auto;
-}
-.location-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	height: 32px;
-	padding: 0 10px;
-	border: 1px solid var(--c-line);
-	border-radius: 6px;
-	background: var(--c-paper);
-	font-size: 12px;
-	color: var(--c-icon-strong);
-	cursor: pointer;
-}
-.location-btn:hover:not(:disabled) {
+.campus-tab:hover:not(.active) {
 	border-color: var(--c-primary);
 	color: var(--c-primary);
 }
-.location-btn:disabled {
-	color: var(--c-muted);
-	cursor: not-allowed;
-}
-.mobile-list-btn {
-	display: none;
-	place-items: center;
-	width: 32px;
-	height: 32px;
-	border: none;
-	border-radius: 6px;
-	background: transparent;
-	color: var(--c-icon-strong);
-	cursor: pointer;
-}
-.mobile-list-btn:hover {
-	background: var(--c-mist);
+.campus-tab.active {
+	border-color: transparent;
+	background: var(--c-primary);
+	font-weight: 600;
+	color: #FFF;
 }
 
 /* ===== 主体 ===== */
@@ -1179,19 +1397,34 @@ html.dark .map-section {
 	min-height: 0;
 }
 
-/* ===== 左侧地点列表 ===== */
+/* ===== 左侧悬浮卡片：校区切换 + 搜索 + 点位列表 =====
+   刻意用绝对定位浮在地图之上（而不是 flex 列占据左侧），
+   这样地图铺满整个视口，卡片四周露出地图——参考站的做法 */
 .map-sidebar {
 	display: flex;
 	flex-direction: column;
-	flex-shrink: 0;
-	width: 21rem;
-	border-right: 1px solid var(--c-line);
+	position: absolute;
+	overflow: hidden;
+	top: 12px;
+	left: 12px;
+	width: 22rem;
+	max-width: calc(100% - 24px);
+	/* 用 max-height 而不是 bottom: 12px 撑满：收起时卡片要能缩成小卡片，
+     而 bottom 在 12px 与 auto 之间没法过渡——高度随内容才收得动。
+     展开时内容比上限高，实际高度仍等于 max-height，与原来一致 */
+	max-height: calc(100% - 24px);
+	border: 1px solid var(--c-line);
+	border-radius: 14px;
+	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
 	background: var(--c-panel);
+	z-index: 12;
 }
 .sidebar-mobile-head {
 	display: none;
 	align-items: center;
 	justify-content: space-between;
+	/* 卡片高度不足时它若被压缩，下边框这条分割线会顶到校区药丸上 */
+	flex-shrink: 0;
 	height: 2.5rem;
 	padding: 0 12px;
 	border-bottom: 1px solid var(--c-line);
@@ -1219,9 +1452,8 @@ html.dark .map-section {
 
 .sidebar-search {
 	display: flex;
+	flex-shrink: 0;
 	gap: 8px;
-	padding: 12px;
-	border-bottom: 1px solid var(--c-line);
 }
 .search-box {
 	display: flex;
@@ -1231,9 +1463,10 @@ html.dark .map-section {
 	height: 40px;
 	min-width: 0;
 	border: 1px solid var(--c-line);
-	border-radius: 6px;
-	background: var(--c-paper);
-	transition: border-color 0.15s;
+	border-radius: 10px;
+	/* 白底浮在浅色控制带上：控件带与输入框不再同为灰底、糊成一片 */
+	background: var(--c-panel);
+	transition: border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .search-box:focus-within {
 	border-color: var(--c-primary);
@@ -1246,7 +1479,7 @@ html.dark .map-section {
 .search-box input {
 	width: 100%;
 	height: 100%;
-	padding: 0 30px 0 32px;
+	padding: 0 30px;
 	border: none;
 	outline: none;
 	background: transparent;
@@ -1260,26 +1493,103 @@ html.dark .map-section {
 	position: absolute;
 	right: 6px;
 }
-.category-select {
-	width: 8.5rem;
-	padding: 0 8px;
+
+/* 分类筛选：横排彩色药丸。圆点色取自 CATEGORY_CONFIG（与标点、列表图标同一份色），
+   选中态改用品牌色填充——与上面的校区切换共用一套药丸视觉 */
+.category-chips {
+	display: flex;
+	flex-shrink: 0;
+	gap: 6px;
+	/* 分类有 17 个，22rem 的卡片一行放不下，横向滚动（不显滚动条） */
+	overflow-x: auto;
+	scrollbar-width: none;
+	/* 可按住鼠标左右拖动（见 onChipsPointerDown）：空白处给抓手光标；
+	   药丸本身仍是 pointer——点选才是主要操作 */
+	cursor: grab;
+}
+.category-chips::-webkit-scrollbar {
+	display: none;
+}
+/* 拖动中：抓紧光标 + 禁止选中，否则拖过文案会划出选区 */
+.category-chips.is-dragging {
+	cursor: grabbing;
+	user-select: none;
+}
+.category-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: 0 0 auto;
+	height: 28px;
+	padding: 0 12px;
 	border: 1px solid var(--c-line);
-	border-radius: 6px;
-	outline: none;
-	background: var(--c-paper);
+	border-radius: 999px;
+	background: var(--c-panel);
 	font-size: 12px;
+	font-weight: 500;
+	white-space: nowrap;
 	color: var(--c-ink);
+	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 	cursor: pointer;
 }
-.category-select:focus {
+.category-chip:hover:not(.active) {
 	border-color: var(--c-primary);
+	color: var(--c-primary);
+}
+/* 横向滚动容器会把纵向裁掉，外扩的焦点描边放不下 → 改画在药丸内侧 */
+.category-chip:focus-visible {
+	outline-offset: -2px;
+}
+.category-chip.active {
+	border-color: transparent;
+	background: var(--c-primary);
+	font-weight: 600;
+	color: #FFF;
+}
+.chip-dot {
+	flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	/* 颜色走自定义属性传入：内联 background 会盖掉选中态的覆盖规则 */
+	background: var(--chip-dot, var(--c-muted));
+}
+/* 选中时圆点转白：圆点的作用是在未选中时辨认分类，选中后整枚药丸已是品牌色 */
+.category-chip.active .chip-dot {
+	background: rgba(255, 255, 255, 0.9);
+}
+
+/* 列表折叠：外层 grid 容器高度 1fr ↔ 0fr（纯 CSS 里唯一能动画到「内容自适应高度」
+   的写法，主题包侧栏分组折叠用的也是这套）。flex: 1 1 auto + min-height: 0
+   让它占满卡片剩余高度，同时能被压到 0 */
+.sidebar-list-wrap {
+	display: grid;
+	flex: 1 1 auto;
+	grid-template-rows: 1fr;
+	min-height: 0;
+	overflow: hidden;
+	transition: grid-template-rows var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+}
+.sidebar-list-wrap.is-collapsed {
+	grid-template-rows: 0fr;
+	/* 收起时列表的 padding-bottom 会残留成一条 8px 的「小尾巴」
+     （0fr 只能压掉内容高度，压不掉 padding），必须一并归零 */
+}
+.sidebar-list-wrap.is-collapsed .building-list {
+	/* 收起时 0fr 只压掉内容高度，压不掉 padding——上下内边距会残留成一段空白「小尾巴」，一并归零 */
+	padding-top: 0;
+	padding-bottom: 0;
 }
 
 .building-list {
-	flex: 1;
 	overflow-y: auto;
 	min-height: 0;
-	padding-bottom: 8px;
+	/* 圆角分格：列表四周留出内边距，每一行才成为独立圆角块，而不是通栏贴到卡片边缘 */
+	padding: 6px 6px 8px;
+	/* 卡片是圆角浮层，默认宽度的滚动条压着圆角显得笨重；收细并常驻槽位，
+     避免筛选后条数变化时列表宽度来回跳 */
+	scrollbar-width: thin;
+	scrollbar-gutter: stable;
 }
 .building-item {
 	display: flex;
@@ -1287,18 +1597,31 @@ html.dark .map-section {
 	gap: 10px;
 	width: 100%;
 	padding: 10px 12px;
-	border: none;
-	border-bottom: 1px solid var(--c-line);
+	/* 每一行自成一块圆角卡片，与卡片外层、搜索框、地点浮窗里的按钮同一套圆角语言。
+	   原来的通栏分割线（border-bottom）是直角、且横贯整卡，与圆角块冲突，故改为「间隙分格」 */
+	border: 1px solid var(--c-line);
+	border-radius: 10px;
 	background: var(--c-panel);
 	text-align: left;
-	transition: background 0.15s;
+	transition: background 0.15s, border-color 0.15s;
 	cursor: pointer;
+}
+/* 行与行之间用间隙分格（4px），取代原来的通栏细线 —— 圆角块之间不能再夹一条直角长线 */
+.building-item + .building-item {
+	margin-top: 4px;
 }
 .building-item:hover {
 	background: var(--c-mist);
+	border-color: var(--c-primary-soft);
+}
+/* 列表项是圆角块，全站那圈 2px + 4px offset 的外描边会露在块外、和相邻行的描边叠在一起，
+   改成内描边（同一条边线落在块内） */
+.building-item:focus-visible {
+	outline-offset: -2px;
 }
 .building-item.active {
 	background: var(--c-primary-faint);
+	border-color: var(--c-primary-soft);
 }
 .cat-icon {
 	flex-shrink: 0;
@@ -1592,19 +1915,74 @@ html.dark .map-section {
 	.map-photo-viewer-caption { bottom: max(31px, calc(env(safe-area-inset-bottom) + 13px)); }
 }
 
+/* ===== 右上角悬浮卡片组：工具卡 + 缩放卡，竖排右对齐 =====
+   两张卡都浮在地图之上；缩放控件原先自己 top/right 定位，
+   放进这里后交给 flex 排列（否则会与工具卡重叠） */
+.map-right-stack {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	z-index: 10;
+	transition: right var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+}
+/* 拾取面板固定在右上角（z-index 更高），开启时把工具卡组让到它左边，
+   否则「退出拾取」的按钮会被面板压住 */
+.map-right-stack-shifted {
+	right: calc(344px + 12px);
+}
+.map-tools {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px;
+	border: 1px solid var(--c-line);
+	border-radius: 12px;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+	background: var(--c-panel);
+}
+.map-tool-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 10px;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	font-size: 13px;
+	font-weight: 500;
+	white-space: nowrap;
+	color: var(--c-icon-strong);
+	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
+	cursor: pointer;
+}
+.map-tool-btn:hover:not(:disabled) {
+	background: var(--c-mist);
+	color: var(--c-primary);
+}
+.map-tool-btn:disabled {
+	color: var(--c-icon);
+	cursor: not-allowed;
+}
+/* 坐标拾取入口：开启时用主色底标出来，与相邻的定位按钮区分。
+   写在 hover 规则之后，保证开启状态下悬停不会被 hover 底色盖掉 */
+.map-tool-btn.map-pick-entry.active {
+	background: var(--c-primary-soft);
+	color: var(--c-primary);
+}
 /* 缩放控件 */
 .map-zoom-ctrl {
 	display: flex;
 	flex-direction: column;
-	position: absolute;
 	overflow: hidden;
-	top: 12px;
-	right: 12px;
 	border: 1px solid var(--c-line);
-	border-radius: 6px;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+	border-radius: 12px;
+	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 	background: var(--c-panel);
-	z-index: 10;
 }
 .recenter-btn {
 	display: inline-flex;
@@ -1629,9 +2007,10 @@ html.dark .map-section {
 	border-color: var(--c-primary);
 	color: var(--c-primary);
 }
-.recenter-btn-raised {
-	bottom: 154px;
-}
+/* 桌面端不再抬升重定位按钮：详情卡限宽 30rem 后，它的右边界最多到
+   22rem + 24px + 30rem ≈ 856px，而按钮贴在视口右侧（≥1025px 时左边界约 933px），
+   两者不会重叠——原先那个写死的 bottom: 154px 只为旧的全宽卡片服务。
+   小屏卡片占满整行，抬升规则见 ≤1024px 媒体查询（按实测卡片高度抬） */
 .zoom-btn {
 	display: grid;
 	place-items: center;
@@ -1661,13 +2040,19 @@ html.dark .map-section {
 	position: absolute;
 	right: 12px;
 	bottom: 16px;
-	left: 12px;
+	/* 左侧让开悬浮卡片：卡片 left 12px + 宽 22rem + 间隙 12px。
+     不让开的话详情条会被卡片压在下面（卡片 z-index 更高） */
+	left: calc(22rem + 24px);
+	/* 大屏上限宽：不限宽时卡片会被拉成横贯整屏的长条——4 个导航按钮各摊到很远、
+     描述排成一行，观感很散。30rem（480px）下按钮各约 110px、描述稳定折两行。
+     max-width 生效时 left 胜出（超出约束会忽略 right），卡片贴近左侧栏一侧 */
+	max-width: 30rem;
 	padding: 12px;
 	border: 1px solid var(--c-line);
 	border-radius: 8px;
 	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
 	background: var(--c-elev);
-	animation: detail-in 0.2s ease-out;
+	animation: detail-in var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
 	z-index: 10;
 }
 .location-error {
@@ -1758,7 +2143,9 @@ html.dark .map-section {
 	white-space: nowrap;
 	text-decoration: none;
 	color: var(--c-ink);
-	transition: all 0.15s;
+	/* 不写 transition: all —— 那会让浏览器监听该元素全部可动画属性，
+     这里只需要背景 / 文字 / 描边三样；时长走令牌，reduced-motion 下自动归零 */
+	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .nav-btn:hover {
 	border-color: var(--c-primary);
@@ -1799,9 +2186,6 @@ html.dark .map-section {
 .mobile-open-list {
 	display: none;
 }
-.mobile-location-btn {
-	display: none;
-}
 .mobile-map-actions {
 	display: none;
 }
@@ -1820,12 +2204,6 @@ html.dark .map-section {
 
 /* ===== 移动端 ===== */
 @media (max-width: 1024px) {
-	.location-header-btn {
-		display: none;
-	}
-	.mobile-list-btn {
-		display: none;
-	}
 	.mobile-map-actions {
 		display: flex;
 		align-items: center;
@@ -1843,22 +2221,25 @@ html.dark .map-section {
 		height: 40px;
 		padding: 0 12px;
 		border: 1px solid var(--c-line);
-		border-radius: 6px;
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+		border-radius: 12px;
+		box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
 		background: var(--c-panel);
 		font-size: 13px;
 		font-weight: 500;
 		color: var(--c-icon-strong);
 		cursor: pointer;
 	}
+	/* 抽屉同样做成悬浮卡片：四周留边距、圆角、投影，
+	   收起时连同左边距一起移出屏幕（-100% 只够把卡片本身移走）。
+	   高度同样交给 max-height（不写 bottom），收起后才能缩成小卡片 */
 	.map-sidebar {
 		position: fixed;
-		top: calc(var(--vp-nav-height, 64px) + 3.5rem);
-		bottom: 0;
-		left: 0;
+		top: calc(var(--vp-nav-height, 64px) + 12px);
+		left: 12px;
 		width: min(22rem, 88vw);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-		transform: translateX(-100%);
+		max-height: calc(100% - var(--vp-nav-height, 64px) - 24px);
+		box-shadow: 0 16px 40px rgba(15, 23, 42, 0.24);
+		transform: translateX(calc(-100% - 24px));
 		transition: transform 0.3s ease;
 		z-index: 21;
 	}
@@ -1868,11 +2249,18 @@ html.dark .map-section {
 	.sidebar-mobile-head {
 		display: flex;
 	}
+	/* 小屏没有让位的空间（面板自己就是整条右上角），拾取模式下直接收起工具卡组：
+     退出靠面板自带的关闭按钮或 Shift+P */
+	.map-right-stack-shifted {
+		display: none;
+	}
 	.map-detail-card {
 		position: fixed;
 		right: 8px;
 		bottom: calc(8px + env(safe-area-inset-bottom));
 		left: 8px;
+		/* 小屏要占满整行，抵消桌面端的限宽 */
+		max-width: none;
 	}
 	.recenter-btn {
 		position: fixed;
@@ -1882,32 +2270,6 @@ html.dark .map-section {
 	}
 	.recenter-btn-raised {
 		bottom: calc(16px + var(--detail-card-height, 0px) + env(safe-area-inset-bottom));
-	}
-	.mobile-location-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 6px;
-		position: static;
-		width: auto;
-		height: 40px;
-		padding: 0 12px;
-		border: 1px solid var(--c-line);
-		border-radius: 6px;
-		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-		background: var(--c-panel);
-		font-size: 13px;
-		font-weight: 500;
-		white-space: nowrap;
-		color: var(--c-icon-strong);
-		cursor: pointer;
-	}
-	.mobile-location-btn:hover:not(:disabled) {
-		background: var(--c-mist);
-	}
-	.mobile-location-btn:disabled {
-		color: var(--c-icon-strong);
-		cursor: not-allowed;
 	}
 }
 
@@ -2016,6 +2378,18 @@ html.dark .map-section {
 	z-index: 5 !important;
 }
 
+/* 高德 logo 与版权信息默认贴地图左下角，而左下角现在被悬浮卡片占着——
+   卡片把整块压住、只在左侧露出一条边，看着像被裁了一半。
+   桌面端把两者整体右移到卡片外侧（用 translateX 平移，两者之间的相对位置
+   原样保留，不去猜高德各版本的 left 值）；卡片收起时左下角是空的，就不用让。
+   窄屏卡片是会移出屏幕的抽屉，同样保持原位。 */
+@media (min-width: 1025px) {
+	.map-section:not(.map-section-collapsed) .amap-logo,
+	.map-section:not(.map-section-collapsed) .amap-copyright {
+		transform: translateX(calc(22rem + 24px));
+	}
+}
+
 .qut-pin-root {
 	display: flex;
 	align-items: flex-end;
@@ -2044,9 +2418,64 @@ html.dark .map-section {
 .qut-pin-root > [data-map-pin-body] > span {
 	pointer-events: none;
 }
+
+/* 名称标签溢出在 28×28 的 content 之外，显式声明不裁剪：
+   万一高德的 .amap-marker 容器带了 overflow 规则，标签会在标点下方被切掉。
+   （overflow 默认就是 visible，这里只是把前提写死，不依赖第三方样式） */
+.amap-marker {
+	overflow: visible;
+}
+
+/* 标点下方的常驻名称标签：对齐高德/百度地图「标点 + 名称」的观感。
+   absolute 定位（见 createMarkerPin 注释）让 content 容器保持 28×28、锚点不漂移；
+   白底胶囊在亮/暗两种底图上都清晰，故不跟随站点主题变色 */
+.qut-pin-label {
+	position: absolute;
+	top: calc(100% + 3px);
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: 9rem;
+	overflow: hidden;
+	padding: 2px 7px;
+	border: 1px solid rgb(15 23 42 / 0.07);
+	border-radius: 999px;
+	background: rgb(255 255 255 / 0.94);
+	box-shadow: 0 1px 2px rgb(15 23 42 / 0.16);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 16px;
+	color: #1F2937;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+
+/* 标点放大时标签不变形，只把字重提一档，避免选中后标签被忽略 */
+.qut-pin-root > [data-map-pin-body][data-selected="true"] ~ .qut-pin-label {
+	font-weight: 600;
+}
+
+/* 窄屏地图本身拥挤，标签收窄一档，尽量少盖住相邻标点 */
+@media (max-width: 48rem) {
+	.qut-pin-label {
+		max-width: 6rem;
+		font-size: 11px;
+	}
+}
 .qut-location-marker {
 	width: 28px;
 	height: 28px;
 	filter: drop-shadow(0 1px 2px rgb(15 23 42 / 0.2));
+}
+
+/* 拾取模式的坐标标记：与分类标点区分开——品牌紫圆点 + 白环。
+   刻意不做脉冲动画：这是维护时才出现的临时标记，不值得为它加常驻动画 */
+.map-pick-marker {
+	width: 14px;
+	height: 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	background: #711A5F;
+	box-shadow: 0 0 0 2px rgb(113 26 95 / 0.4), 0 1px 4px rgb(15 23 42 / 0.3);
 }
 </style>
