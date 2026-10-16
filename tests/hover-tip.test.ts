@@ -28,8 +28,8 @@ test('点位贴地图右缘：被拉回，提示不越出地图', () => {
 	)
 })
 
-test('窄屏抽屉在场外（cardRight 为负）：退回 0，只留间隙', () => {
-	// 抽屉被 translateX 移出屏幕时 getBoundingClientRect().right 是负数
+test('卡片整体在视口外（cardRight 为负）：退回 0，只留间隙', () => {
+	// 卡片被移出可视区时 getBoundingClientRect().right 是负数
 	assert.equal(
 		clampTipCenterX({ x: 5, viewWidth: 390, cardRight: -12 }),
 		HOVER_TIP_MARGIN + HOVER_TIP_MAX_WIDTH / 2,

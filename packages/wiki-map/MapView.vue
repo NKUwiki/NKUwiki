@@ -87,7 +87,6 @@ const locationDialogBackdrop = ref(null)
 const locating = ref(false)
 const locationError = ref('')
 const locationReady = ref(false)
-const detailPosition = ref(null)
 const detailCardEl = ref(null)
 const detailCardHeight = ref(0)
 const photoViewer = ref(false)
@@ -305,19 +304,6 @@ function recenterLocation() {
 	map.setCenter(locationMarker.getPosition())
 }
 
-function syncDetailPosition() {
-	if (!map || !selected.value || !window.matchMedia('(max-width: 1024px)').matches) {
-		detailPosition.value = null
-		return
-	}
-	const { x, y } = map.lngLatToContainer(selected.value.coord)
-	const mapWidth = mapEl.value?.clientWidth || 0
-	detailPosition.value = {
-		x: Math.max(170, Math.min(mapWidth - 170, x)),
-		y: Math.max(12, y - PIN_SIZE),
-	}
-}
-
 function onBrowserLocation(position) {
 	if (destroyFlag)
 		return
@@ -443,8 +429,6 @@ function initMap() {
 	/* 高德地图点击：拾取模式下取坐标。注意与点位标点的 click 不冲突——
 	   标点自带 click 监听（选中），点标点时事件不会冒泡到地图 click */
 	map.on('click', onMapPickClick)
-	map.on('mapmove', syncDetailPosition)
-	map.on('zoomchange', syncDetailPosition)
 	renderPolygons(campus.id)
 	mapReady.value = true
 }
@@ -654,8 +638,6 @@ function onSelect(b) {
 		}
 		hoverTip.value = null
 		map.panTo(b.coord)
-		syncDetailPosition()
-		window.setTimeout(syncDetailPosition, 250)
 	}
 	if (window.matchMedia('(max-width: 1024px)').matches)
 		sidebarOpen.value = false
@@ -664,7 +646,6 @@ function onSelect(b) {
 function clearSelection() {
 	closePhotoViewer()
 	selected.value = null
-	detailPosition.value = null
 	for (const [, entry] of markerCache) {
 		applyPinState(entry.root, false)
 		entry.marker.setzIndex(10)
