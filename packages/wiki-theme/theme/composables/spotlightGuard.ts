@@ -25,29 +25,20 @@ export function installSpotlightGuard() {
 		return
 	// null 表示尚未判定过，保证第一次移动一定会写一次 class
 	let lastInside: boolean | null = null
-	// 正文元素的缓存。mousemove 是最高频的事件之一，每次重新查询 DOM 是纯浪费；
-	// 路径变化或元素被卸载时缓存自然失效（isConnected 兜底路由切换的场景）。
-	let cachedDoc: HTMLElement | null = null
-	let cachedPath = ''
 
 	document.addEventListener('mousemove', (event) => {
-		if (cachedPath !== location.pathname || !cachedDoc?.isConnected) {
-			cachedDoc = document.querySelector<HTMLElement>(DOC_SELECTOR)
-			cachedPath = location.pathname
-		}
-		const root = document.documentElement
-		const doc = cachedDoc
-		if (!doc) {
-			root.classList.add(OUTSIDE_CLASS)
-			return
-		}
-		const rect = doc.getBoundingClientRect()
-		const inside = event.clientX >= rect.left && event.clientX <= rect.right
-			&& event.clientY >= rect.top && event.clientY <= rect.bottom
+		// 用 closest 判断「鼠标当前是否悬停在正文内容上」——纯 DOM 树遍历，不读任何布局值。
+		// 原实现每次移动都 doc.getBoundingClientRect() 比对坐标：getBoundingClientRect
+		// 会强制浏览器同步布局（flush layout），而 mousemove 是最高频的输入事件
+		// （高刷屏可达 120+/s），这是明确的掉帧源。
+		// 顺带语义也更准：悬停在正文上方的浮层（如回顶球）上时，按坐标算会误判为「在正文内」，
+		// 按 target 归属判断则正确算作「在正文外」。
+		const target = event.target
+		const inside = target instanceof Element && !!target.closest(DOC_SELECTOR)
 		// 只在状态翻转时改 DOM：鼠标移动是高频事件，不能每次写 class
 		if (inside === lastInside)
 			return
 		lastInside = inside
-		root.classList.toggle(OUTSIDE_CLASS, !inside)
+		document.documentElement.classList.toggle(OUTSIDE_CLASS, !inside)
 	}, { passive: true })
 }
