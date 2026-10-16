@@ -38,6 +38,17 @@ const PIN_SCALE = { idle: 1, hover: 1.3, selected: 1.4 }
 /* 高德官方内置样式：normal 标准 / dark 夜间 */
 const MAP_STYLES = { light: 'amap://styles/normal', dark: 'amap://styles/dark' }
 
+/* 小屏断点，与样式里的 @media (max-width: 1024px) 保持一致。
+   小屏下左侧卡片不再做成抽屉，而是同一张卡片直接浮在地图左上角，
+   于是「默认收起」这件事必须在脚本里按断点决定 */
+const MOBILE_QUERY = '(max-width: 1024px)'
+
+function isMobileViewport() {
+	/* SSR（构建期渲染 HTML）里没有 window，一律按桌面处理；
+	   客户端挂载后再按真实断点纠正（见 onMounted） */
+	return typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches
+}
+
 /* ================= 标点配色 =================
  * 每个分类一个颜色（站点侧 CATEGORY_CONFIG[category].color），标点、列表图标、
  * 详情卡图标共用同一套色，保证「看到什么颜色就是什么分类」。
@@ -70,8 +81,9 @@ const mapError = ref('')
 const currentCampus = ref('n')
 const currentCategory = ref('all')
 const searchKeyword = ref('')
-const sidebarOpen = ref(false)
-/** 左侧卡片收起成小卡片：只留校区 / 搜索 / 分类三行，隐藏点位列表 */
+/** 左侧卡片收起成小卡片：只留校区 / 搜索 / 分类三行，隐藏点位列表。
+ *  初始值固定为 false（SSR 产物与首帧一致，避免水合不匹配），
+ *  小屏在 onMounted 里直接置为收起 */
 const sidebarCollapsed = ref(false)
 
 /* ---- 坐标拾取模式（URL 带 ?pick=1 时启用，供维护地图数据用；见 MapPickPanel） ---- */
@@ -639,8 +651,9 @@ function onSelect(b) {
 		hoverTip.value = null
 		map.panTo(b.coord)
 	}
-	if (window.matchMedia('(max-width: 1024px)').matches)
-		sidebarOpen.value = false
+	/* 小屏选完点位就收起列表：卡片给地图让位，底部详情卡才露得出来 */
+	if (isMobileViewport())
+		sidebarCollapsed.value = true
 }
 
 function clearSelection() {
@@ -849,6 +862,8 @@ onMounted(() => {
 	// 地图初始化放最前：后面的辅助初始化若抛错，绝不能拖累地图加载
 	//（上一轮 categoryChipsEl 未声明时，整个 mounted 中断，地图与拖拽一起失效）
 	bootstrap()
+	/* 小屏默认收起：卡片浮在地图左上角，展开态会盖住大半个地图 */
+	sidebarCollapsed.value = isMobileViewport()
 	document.addEventListener('keydown', onViewerKeydown)
 	document.addEventListener('keydown', onPickHotkey)
 	bindCategoryChips()
@@ -900,15 +915,9 @@ onUnmounted(() => {
 
 	<div class="map-body">
 		<!-- 左侧悬浮卡片：校区切换 + 搜索 + 分类 + 点位列表，整卡浮在地图之上；
-		     收起后只剩前三个控件（可收成小卡片，把地图让出来） -->
-		<aside class="map-sidebar" :class="{ 'map-sidebar-open': sidebarOpen }" aria-label="校园地点">
-			<div class="sidebar-mobile-head">
-				<span>校园地点</span>
-				<button class="icon-btn" aria-label="关闭地点列表" @click="sidebarOpen = false">
-					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-				</button>
-			</div>
-
+		     收起后只剩前三个控件（可收成小卡片，把地图让出来）。
+		     小屏用的也是这张卡片（挂载时默认收起），不再另做抽屉 + 浮层按钮 -->
+		<aside class="map-sidebar" aria-label="校园地点">
 			<!-- 控制区：校区 / 搜索 / 分类三行放在同一条浅色带上，与下方白底列表分层。
 			     收起态下它下方的列表已压成 0 高度，底部那条分界线会变成悬在卡片底部的孤线，
 			     故按状态类关掉（见 .sidebar-controls.is-list-collapsed） -->
@@ -1012,9 +1021,6 @@ onUnmounted(() => {
 			</div>
 		</aside>
 
-		<!-- 移动端遮罩 -->
-		<div v-if="sidebarOpen" class="map-scrim" @click="sidebarOpen = false" />
-
 		<!-- 右侧地图 -->
 		<div class="map-canvas">
 			<div ref="mapEl" class="map-el" />
@@ -1068,71 +1074,67 @@ onUnmounted(() => {
 				</p>
 			</div>
 
-			<!-- 移动端：打开地点列表浮层按钮（仅小屏显示；定位按钮在右上角悬浮卡里） -->
-			<div v-if="!sidebarOpen" class="mobile-map-actions">
-				<button
-					type="button"
-					class="mobile-open-list"
-					aria-label="打开地点列表"
-					@click="sidebarOpen = true"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h20" /><path d="M6 12h12" /><path d="M9 19h6" /></svg>
-					{{ filteredBuildings.length }} 个地点
-				</button>
-			</div>
 			<p v-if="locationError && !selected" class="location-status" role="status">
 				{{ locationError }}
 			</p>
 
-			<!-- 重定位按钮（定位成功后出现） -->
-			<button
-				v-if="locationReady"
-				type="button"
-				class="recenter-btn"
-				:class="{ 'recenter-btn-raised': selected }"
+			<!-- 右下角这一列：重定位 + 定位/拾取工具卡 + 缩放卡。
+			     桌面端（≥1025px）这层是 display: contents，不产生盒子——三个子元素各自
+			     按原样绝对定位（重定位在右下，工具组与缩放卡在右上），桌面观感不变；
+			     小屏才真正成为一列、整体贴到右下角：收起态卡片铺满左上角后，右侧与顶部
+			     都让给了它，而详情卡出现时整列按卡片高度上移（--detail-card-height 挂这层） -->
+			<div
+				class="map-bottom-right"
 				:style="selected ? { '--detail-card-height': `${detailCardHeight}px` } : undefined"
-				aria-label="重新定位到我的位置"
-				@click="recenterLocation"
 			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
-				<span>重定位</span>
-			</button>
+				<!-- 重定位按钮（定位成功后出现） -->
+				<button
+					v-if="locationReady"
+					type="button"
+					class="recenter-btn"
+					aria-label="重新定位到我的位置"
+					@click="recenterLocation"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+					<span>重定位</span>
+				</button>
 
-			<!-- 右上角悬浮卡片组：定位 / 坐标拾取 与 缩放 -->
-			<div class="map-right-stack" :class="{ 'map-right-stack-shifted': pickMode }">
-				<div class="map-tools" role="group" aria-label="地图工具">
-					<button
-						type="button"
-						class="map-tool-btn"
-						:disabled="!mapReady || locating"
-						:aria-label="locating ? '定位中' : '显示定位'"
-						@click="requestLocation"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
-						<span>{{ locating ? '定位中' : '显示定位' }}</span>
-					</button>
-					<!-- 坐标拾取入口：维护地图数据时才用，故做成图标按钮（另有 Shift+P 快捷键） -->
-					<button
-						type="button"
-						class="map-tool-btn map-pick-entry"
-						:class="{ active: pickMode }"
-						:aria-pressed="pickMode"
-						:aria-label="pickMode ? '退出坐标拾取' : '坐标拾取（数据维护用）'"
-						:title="pickMode ? '退出坐标拾取（Shift+P）' : '坐标拾取（Shift+P）'"
-						@click="togglePickMode()"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 2v3" /><path d="M12 19v3" /><path d="M2 12h3" /><path d="M19 12h3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
-					</button>
-				</div>
+				<!-- 悬浮卡片组：定位 / 坐标拾取 与 缩放 -->
+				<div class="map-right-stack" :class="{ 'map-right-stack-shifted': pickMode }">
+					<div class="map-tools" role="group" aria-label="地图工具">
+						<button
+							type="button"
+							class="map-tool-btn"
+							:disabled="!mapReady || locating"
+							:aria-label="locating ? '定位中' : '显示定位'"
+							@click="requestLocation"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
+							<span>{{ locating ? '定位中' : '显示定位' }}</span>
+						</button>
+						<!-- 坐标拾取入口：维护地图数据时才用，故做成图标按钮（另有 Shift+P 快捷键） -->
+						<button
+							type="button"
+							class="map-tool-btn map-pick-entry"
+							:class="{ active: pickMode }"
+							:aria-pressed="pickMode"
+							:aria-label="pickMode ? '退出坐标拾取' : '坐标拾取（数据维护用）'"
+							:title="pickMode ? '退出坐标拾取（Shift+P）' : '坐标拾取（Shift+P）'"
+							@click="togglePickMode()"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 2v3" /><path d="M12 19v3" /><path d="M2 12h3" /><path d="M19 12h3" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /></svg>
+						</button>
+					</div>
 
-				<div class="map-zoom-ctrl">
-					<button class="zoom-btn" aria-label="放大地图" :disabled="!mapReady" @click="map && map.zoomIn()">
-						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
-					</button>
-					<div class="zoom-divider" />
-					<button class="zoom-btn" aria-label="缩小地图" :disabled="!mapReady" @click="map && map.zoomOut()">
-						<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></svg>
-					</button>
+					<div class="map-zoom-ctrl">
+						<button class="zoom-btn" aria-label="放大地图" :disabled="!mapReady" @click="map && map.zoomIn()">
+							<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+						</button>
+						<div class="zoom-divider" />
+						<button class="zoom-btn" aria-label="缩小地图" :disabled="!mapReady" @click="map && map.zoomOut()">
+							<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /></svg>
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -1262,7 +1264,6 @@ onUnmounted(() => {
 	--c-elev: #FFFFFF;
 	--c-icon: #A1A1A6;
 	--c-icon-strong: #3C3C43;
-	--c-backdrop: rgba(33, 53, 71, 0.4);
 
 	display: flex;
 	flex-direction: column;
@@ -1285,7 +1286,6 @@ html.dark .map-section {
 	--c-elev: #2F2F33;
 	--c-icon: #6B6B70;
 	--c-icon-strong: rgba(235, 235, 245, 0.82);
-	--c-backdrop: rgba(0, 0, 0, 0.55);
 }
 
 /* ===== 校区切换（悬浮卡片内的横排药丸）+ 收起按钮 ===== */
@@ -1399,21 +1399,6 @@ html.dark .map-section {
 	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
 	background: var(--c-panel);
 	z-index: 12;
-}
-.sidebar-mobile-head {
-	display: none;
-	align-items: center;
-	justify-content: space-between;
-	/* 卡片高度不足时它若被压缩，下边框这条分割线会顶到校区药丸上 */
-	flex-shrink: 0;
-	height: 2.5rem;
-	padding: 0 12px;
-	border-bottom: 1px solid var(--c-line);
-}
-.sidebar-mobile-head span {
-	font-size: 12px;
-	font-weight: 500;
-	color: var(--c-muted);
 }
 
 .icon-btn {
@@ -1899,6 +1884,12 @@ html.dark .map-section {
 /* ===== 右上角悬浮卡片组：工具卡 + 缩放卡，竖排右对齐 =====
    两张卡都浮在地图之上；缩放控件原先自己 top/right 定位，
    放进这里后交给 flex 排列（否则会与工具卡重叠） */
+/* 重定位按钮 + 这组卡片在模板里同处一个 .map-bottom-right 容器：
+   桌面端用 display: contents 让容器不产生盒子，两个子元素各自按原样绝对定位，
+   桌面观感与「容器不存在」完全一致；小屏才让它成为右下角的一列（见 ≤1024px 媒体查询） */
+.map-bottom-right {
+	display: contents;
+}
 .map-right-stack {
 	display: flex;
 	flex-direction: column;
@@ -1988,10 +1979,10 @@ html.dark .map-section {
 	border-color: var(--c-primary);
 	color: var(--c-primary);
 }
-/* 桌面端不再抬升重定位按钮：详情卡限宽 30rem 后，它的右边界最多到
+/* 桌面端不抬升重定位按钮：详情卡限宽 30rem 后，它的右边界最多到
    22rem + 24px + 30rem ≈ 856px，而按钮贴在视口右侧（≥1025px 时左边界约 933px），
    两者不会重叠——原先那个写死的 bottom: 154px 只为旧的全宽卡片服务。
-   小屏卡片占满整行，抬升规则见 ≤1024px 媒体查询（按实测卡片高度抬） */
+   小屏整列（含本按钮与缩放/工具卡）由 .map-bottom-right 统一按详情卡高度上移 */
 .zoom-btn {
 	display: grid;
 	place-items: center;
@@ -2155,22 +2146,6 @@ html.dark .map-section {
 	color: #FFF;
 }
 
-/* 移动端遮罩：仅覆盖地图区域，不盖住顶部工具条（header z-30 以上可点） */
-.map-scrim {
-	position: absolute;
-	inset: 0;
-	background: var(--c-backdrop);
-	z-index: 20;
-}
-
-/* 移动端：打开地点列表浮层按钮（仅小屏显示） */
-.mobile-open-list {
-	display: none;
-}
-.mobile-map-actions {
-	display: none;
-}
-
 .sr-only {
 	position: absolute;
 	overflow: hidden;
@@ -2185,50 +2160,38 @@ html.dark .map-section {
 
 /* ===== 移动端 ===== */
 @media (max-width: 1024px) {
-	.mobile-map-actions {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		position: absolute;
-		top: 12px;
-		left: 12px;
-		z-index: 10;
-	}
-	.mobile-open-list {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		position: static;
-		height: 40px;
-		padding: 0 12px;
-		border: 1px solid var(--c-line);
-		border-radius: 12px;
-		box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-		background: var(--c-panel);
-		font-size: 13px;
-		font-weight: 500;
-		color: var(--c-icon-strong);
-		cursor: pointer;
-	}
-	/* 抽屉同样做成悬浮卡片：四周留边距、圆角、投影，
-	   收起时连同左边距一起移出屏幕（-100% 只够把卡片本身移走）。
-	   高度同样交给 max-height（不写 bottom），收起后才能缩成小卡片 */
+	/* 小屏不再另做抽屉与浮层按钮：同一张卡片直接浮在地图左上角（定位与桌面一致，
+	   绝对定位的 top/left 是相对地图区，天然落在导航栏下方）；默认收起态由脚本
+	   按断点在 onMounted 里置位 */
 	.map-sidebar {
-		position: fixed;
-		top: calc(var(--vp-nav-height, 64px) + 12px);
-		left: 12px;
 		width: min(22rem, 88vw);
-		max-height: calc(100% - var(--vp-nav-height, 64px) - 24px);
-		box-shadow: 0 16px 40px rgba(15, 23, 42, 0.24);
-		transform: translateX(calc(-100% - 24px));
-		transition: transform 0.3s ease;
-		z-index: 21;
 	}
-	.map-sidebar-open {
-		transform: translateX(0);
-	}
-	.sidebar-mobile-head {
+	/* 小屏：定位/拾取工具卡与缩放卡从右上角下移到右下角，与重定位按钮同处一列，
+	   收起态卡片得以铺满左上角。
+	   bottom 取「详情卡高度」与「浏览器底部工具条高度」两者的较大值：
+	   详情卡出现时整列正好落在卡片上沿，浏览器工具条弹出时也不会被压住 */
+	.map-bottom-right {
 		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 8px;
+		position: fixed;
+		right: 8px;
+		bottom: max(
+			calc(16px + env(safe-area-inset-bottom) + var(--detail-card-height, 0px)),
+			calc(16px + env(safe-area-inset-bottom) + var(--qut-browser-bottom-inset, 0px))
+		);
+		z-index: 11;
+		transition: bottom var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+	}
+	/* 进了这层就由 flex 排布，两个子元素各自的绝对定位（含 top/right）全部失效 */
+	.map-bottom-right .recenter-btn,
+	.map-bottom-right .map-right-stack {
+		position: static;
+	}
+	/* 小屏不显示缩放按钮：触屏本来就能双指捏合缩放，+/- 在手机上只是白占底部空间 */
+	.map-bottom-right .map-zoom-ctrl {
+		display: none;
 	}
 	/* 小屏没有让位的空间（面板自己就是整条右上角），拾取模式下直接收起工具卡组：
      退出靠面板自带的关闭按钮或 Shift+P */
@@ -2242,15 +2205,6 @@ html.dark .map-section {
 		left: 8px;
 		/* 小屏要占满整行，抵消桌面端的限宽 */
 		max-width: none;
-	}
-	.recenter-btn {
-		position: fixed;
-		right: 8px;
-		bottom: calc(18px + env(safe-area-inset-bottom) + var(--qut-browser-bottom-inset, 0px));
-		z-index: 11;
-	}
-	.recenter-btn-raised {
-		bottom: calc(16px + var(--detail-card-height, 0px) + env(safe-area-inset-bottom));
 	}
 }
 
@@ -2363,7 +2317,7 @@ html.dark .map-section {
    卡片把整块压住、只在左侧露出一条边，看着像被裁了一半。
    桌面端把两者整体右移到卡片外侧（用 translateX 平移，两者之间的相对位置
    原样保留，不去猜高德各版本的 left 值）；卡片收起时左下角是空的，就不用让。
-   窄屏卡片是会移出屏幕的抽屉，同样保持原位。 */
+   小屏卡片更窄、且默认收起，同样保持原位。 */
 @media (min-width: 1025px) {
 	.map-section:not(.map-section-collapsed) .amap-logo,
 	.map-section:not(.map-section-collapsed) .amap-copyright {
