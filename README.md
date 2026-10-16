@@ -20,7 +20,7 @@ NKUwiki 不是把 Markdown 直接套上默认主题——站点在 VitePress 之
 - **认真的阅读体验**：正文图片点击放大浏览、可切换页面宽度的阅读增强与聚光灯、阅读进度悬浮球、深浅色切换、分享长图导出、全站水印与打印样式；
 - **克制而统一的动效**：跨页转场、错落入场、滚动渐显等一律共用同一套时长与缓动令牌，并完整遵循系统的「减少动态效果」偏好。
 
-功能清单、参数与接线方式见[站点功能说明](https://freshnkuer.wiki/pages/SiteFeatures/)（面向开发者）；只想投稿写文章的话，看 [Markdown 专题](https://freshnkuer.wiki/pages/MarkdownGuide/) 就够了——从[常见语法](https://freshnkuer.wiki/pages/markdown-syntax/)、[本站特有语法](https://freshnkuer.wiki/pages/MarkdownGuide/)到[编辑软件对比](https://freshnkuer.wiki/pages/MarkdownEditors/)与[速查表](https://freshnkuer.wiki/pages/MarkdownCheatsheet/)。
+功能清单、参数与接线方式见[站点功能说明](https://freshnkuer.wiki/pages/SiteFeatures/)（面向开发者）；只想投稿写文章的话，看 [Markdown 专题](https://freshnkuer.wiki/pages/MarkdownGuide/) 就够了——从[基础语法](https://freshnkuer.wiki/pages/markdown-basic/)、[常见扩展语法](https://freshnkuer.wiki/pages/markdown-extended/)、[本站特有语法](https://freshnkuer.wiki/pages/MarkdownGuide/)到[编辑软件对比](https://freshnkuer.wiki/pages/MarkdownEditors/)与[速查表](https://freshnkuer.wiki/pages/MarkdownCheatsheet/)。
 
 ## 参与共建
 
