@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { repoUrl } from '../../lib/data/site'
 
 interface CommitEntry {
@@ -21,7 +21,37 @@ const commits = computed<CommitEntry[]>(() =>
 )
 
 const lastCommit = computed(() => commits.value[0] ?? null)
-const lastEdited = computed(() => lastCommit.value ? formatRelative(lastCommit.value.date) : '')
+
+/**
+ * 时间文本一律等挂载后再按本地时区/当前时刻生成。
+ *
+ * VitePress 是 SSG：构建机（CI 通常是 UTC）与访问者所在时区不同，
+ * 若直接在渲染里 new Date(...).getHours()，SSR 输出与客户端首次渲染会差上
+ * 几个小时、甚至跨天；formatRelative 里的 Date.now() 更糟——「4 个月前」
+ * 在构建时刻和访问时刻本来就可能不同。两者都会触发 hydration mismatch。
+ * 未挂载时退回直接切 ISO 字符串（纯字符串操作，两边必然一致）。
+ */
+const mounted = ref(false)
+onMounted(() => {
+	mounted.value = true
+})
+
+/** ISO 字符串里的日期部分（YYYY-MM-DD），不经过 Date，无时区差异 */
+function dayKey(iso: string): string {
+	return String(iso || '').slice(0, 10)
+}
+
+const lastEdited = computed(() => {
+	const commit = lastCommit.value
+	if (!commit)
+		return ''
+	return mounted.value ? formatRelative(commit.date) : dayKey(commit.date)
+})
+
+/** 列表里的精确时间：挂载后才转本地时区 */
+function displayDate(iso: string): string {
+	return mounted.value ? formatDate(iso) : dayKey(iso)
+}
 
 /** 排序切换：默认按时间倒序（最新在前），点击图标改为正序（旧提交在前） */
 const isDescending = ref(true)
@@ -129,7 +159,7 @@ function formatRelative(iso: string): string {
 							:title="`${commit.author} 的 GitHub 主页`"
 						>{{ commit.author }}</a>
 						<span v-else class="git-history-author">{{ commit.author }}</span>
-						<span class="git-history-time">于 {{ formatDate(commit.date) }}</span>
+						<span class="git-history-time">于 {{ displayDate(commit.date) }}</span>
 					</span>
 				</li>
 			</ul>

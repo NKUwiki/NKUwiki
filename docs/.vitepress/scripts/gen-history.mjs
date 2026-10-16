@@ -91,8 +91,18 @@ function main() {
 		return
 	}
 
-	// 缓存命中：HEAD 与 contributors-mapping.json 都没变时直接复用上次结果
-	const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8', cwd: repoRoot }).trim()
+	// 缓存命中：HEAD 与 contributors-mapping.json 都没变时直接复用上次结果。
+	// rev-parse 要兜住：.git 存在但还没有任何提交（unborn HEAD，刚 git init 完）
+	// 时它会非零退出并抛异常，而这个脚本是 pnpm build 的前置步骤，一抛整个构建就挂了
+	let head = ''
+	try {
+		head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf-8', cwd: repoRoot }).trim()
+	}
+	catch {
+		writeFileSync(outPath, '{}')
+		console.log('无法读取 git HEAD（仓库可能还没有提交），已生成空的页面历史数据')
+		return
+	}
 	const mappingSig = existsSync(mappingPath) ? statSync(mappingPath).mtimeMs : 0
 	const cache = existsSync(cachePath) ? JSON.parse(readFileSync(cachePath, 'utf-8')) : {}
 	if (cache.head === head && cache.mappingSig === mappingSig && existsSync(outPath)) {

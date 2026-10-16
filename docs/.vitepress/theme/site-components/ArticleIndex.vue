@@ -69,6 +69,8 @@ interface FilterHit {
 }
 
 const hits = ref<Map<string, FilterHit>>(new Map())
+/** 索引加载失败：给个明确反馈，否则搜索框失灵却毫无提示 */
+const indexFailed = ref(false)
 let filterTimer: ReturnType<typeof setTimeout> | undefined
 
 function scheduleFilter() {
@@ -82,7 +84,17 @@ async function runFilter() {
 		hits.value = new Map()
 		return
 	}
-	const index = await ensureSearchIndex()
+	let index
+	try {
+		index = await ensureSearchIndex()
+	}
+	catch (error) {
+		// 不接住就是 unhandled rejection，且 hits 永远不更新（输入毫无反应、无任何提示）
+		console.error('条目索引加载失败：', error)
+		indexFailed.value = true
+		return
+	}
+	indexFailed.value = false
 	// 变体展开后的查询串用于检索与标记（如“吉它”追加“吉他”）
 	const expanded = expandQuery(text)
 	// 范围先于截断：多取一些结果再按本页栏目过滤，保证限定范围内不漏命中
@@ -263,7 +275,10 @@ onUnmounted(() => {
 		</div>
 	</div>
 
-	<p v-if="!articles.length && (!childEntries.length || query.trim())" class="empty-state">
+	<p v-if="indexFailed && query.trim()" class="empty-state">
+		搜索索引加载失败，请刷新页面重试。
+	</p>
+	<p v-else-if="!articles.length && (!childEntries.length || query.trim())" class="empty-state">
 		没有找到符合条件的文章。<button @click="query = ''; updateQuery('')">
 			清除筛选
 		</button>

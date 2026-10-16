@@ -54,7 +54,8 @@ const editUrl = computed(() => {
 	line-height: 20px;
 	text-decoration: none;
 	color: var(--vp-c-text-1);
-	transition: border-color ease-in-out, color ease-in-out;
+	/* transition 简写里漏了时长，过渡会退回 0s 变成硬跳 */
+	transition: border-color var(--wiki-duration) var(--wiki-ease-out), color var(--wiki-duration) var(--wiki-ease-out);
 }
 
 .online-edit-link:hover {

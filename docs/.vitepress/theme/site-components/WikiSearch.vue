@@ -10,7 +10,7 @@ import { Icon } from '@iconify/vue'
 import { buildExcerpt, expandQuery, highlightText, tokenize } from '@nkuwiki/theme/lib/search/searchCore.ts'
 import { searchIndexLoading, searchModalOpen } from '@nkuwiki/theme/theme/composables/searchState.ts'
 import { useRouter, withBase } from 'vitepress'
-import { onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { ensureSearchIndex, searchDocs } from '../searchDocs'
 
 const props = defineProps<{ screen?: boolean }>()
@@ -18,6 +18,8 @@ const props = defineProps<{ screen?: boolean }>()
 // 点任意入口按钮，打开的都是导航栏实例渲染的同一个弹窗。
 const modalOpen = searchModalOpen
 const indexLoading = searchIndexLoading
+/** 索引加载失败：给用户一个明确反馈，而不是永远停在「没有找到相关结果」 */
+const indexFailed = ref(false)
 let searchIndex: MiniSearch<IndexedSearchDoc> | undefined
 
 const HISTORY_KEY = 'wiki:search-history'
@@ -34,8 +36,11 @@ interface DisplayResult {
 	terms: string[]
 }
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform ?? '')
-const shortcutLabel = isMac ? '⌘K' : 'Ctrl K'
+// 快捷键提示要等挂载后再定：Node 21+ 起全局就有 navigator 对象，
+// 「typeof navigator !== 'undefined'」在 SSR 下恒为真，守卫形同虚设——
+// 服务端永远算出 'Ctrl K'，macOS 客户端却算成 '⌘K'，文本节点对不上会报
+// hydration mismatch。挂载后再改是普通响应式更新，不会有这个问题。
+const shortcutLabel = ref('Ctrl K')
 
 const query = ref('')
 const scope = ref<SearchScope>('all')
@@ -90,10 +95,17 @@ async function ensureIndex() {
 	try {
 		searchIndex = await ensureSearchIndex()
 	}
+	catch (error) {
+		// 不接住就是 unhandled rejection：部署后旧页面请求已被删除的索引 chunk
+		// 时会 reject，搜索框从此毫无反应且控制台看不到任何线索
+		console.error('搜索索引加载失败：', error)
+		indexFailed.value = true
+	}
 	finally {
 		indexLoading.value = false
 	}
-	runSearch()
+	if (searchIndex)
+		runSearch()
 }
 
 function runSearch() {
@@ -155,8 +167,14 @@ function closeModal() {
 // 浏览器后退（popstate）即可关闭弹窗；程序内关闭时若标记还在则退掉该条目，
 // 避免标记条目滞留在历史栈中间“吃掉”一次后退。
 let skipHistoryBack = false
+/** popstate 监听的具名 handler：卸载时要摘掉，否则会泄漏并残留 body 滚动锁 */
+let popstateHandler: (() => void) | undefined
 // SSR 下 window 不存在：popstate 监听是立即执行语句，必须连同环境判断一起收进守卫
 if (!props.screen && typeof window !== 'undefined') {
+	onMounted(() => {
+		// navigator.platform 已废弃，改用 userAgent 判断
+		shortcutLabel.value = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘K' : 'Ctrl K'
+	})
 	watch(modalOpen, (open) => {
 		if (open) {
 			// 组件常驻布局，历史在每次打开时重新读取，保证跨页面都能看到最近记录
@@ -173,13 +191,14 @@ if (!props.screen && typeof window !== 'undefined') {
 			skipHistoryBack = false
 		}
 	})
-	window.addEventListener('popstate', () => {
+	popstateHandler = () => {
 		if (modalOpen.value) {
 			// 来自浏览器后退：标记条目已被消费，直接关弹窗，不能再触发 history.back()
 			skipHistoryBack = true
 			modalOpen.value = false
 		}
-	})
+	}
+	window.addEventListener('popstate', popstateHandler)
 }
 
 const router = useRouter()
@@ -201,6 +220,13 @@ function openResult(result: DisplayResult) {
 
 onUnmounted(() => {
 	clearTimeout(searchTimer)
+	if (popstateHandler) {
+		window.removeEventListener('popstate', popstateHandler)
+		popstateHandler = undefined
+	}
+	// 卸载时若弹窗还开着，滚动锁会一直留着
+	if (modalOpen.value)
+		document.body.style.overflow = ''
 })
 
 function moveSelection(step: number) {
@@ -276,7 +302,7 @@ function moveSelection(step: number) {
 						</a>
 					</li>
 					<li v-if="!results.length" class="no-results">
-						{{ indexLoading ? '搜索索引加载中…' : '没有找到相关结果' }}
+						{{ indexFailed ? '搜索索引加载失败，请刷新页面重试' : indexLoading ? '搜索索引加载中…' : '没有找到相关结果' }}
 					</li>
 				</template>
 				<template v-else-if="history.length">

@@ -24,15 +24,30 @@ export default {
 		// 只处理本站链接，外站碰巧含 /food/ 路径的不碰
 		if (!import.meta.env.SSR) {
 			document.addEventListener('click', (event) => {
-				const anchor = (event.target as HTMLElement | null)?.closest?.('a[href]')
-				if (!anchor)
+				// Ctrl / Cmd / Shift 点击、中键、新标签页、下载链接都不劫持：
+				// 这些是「我想在新标签打开」的明确意图，强行改成当前页跳转会很恼人
+				if (event.defaultPrevented || event.button !== 0
+					|| event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) {
 					return
+				}
+				const anchor = (event.target as HTMLElement | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+				if (!anchor) {
+					return
+				}
+				if (anchor.target && anchor.target !== '_self') {
+					return
+				}
+				if (anchor.hasAttribute('download')) {
+					return
+				}
 				const resolved = new URL(anchor.getAttribute('href') || '', window.location.href)
-				if (resolved.origin !== window.location.origin)
+				if (resolved.origin !== window.location.origin) {
 					return
+				}
 				const match = resolved.pathname.match(/^\/food\/([^/?#]+)/)
-				if (!match)
+				if (!match) {
 					return
+				}
 				event.preventDefault()
 				event.stopPropagation()
 				window.location.assign(`/pages/Food?food=${encodeURIComponent(match[1])}`)

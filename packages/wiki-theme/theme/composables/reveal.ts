@@ -31,7 +31,11 @@ export function installReveal() {
 			// 只表演一次：反复滚上滚下不再重播，避免干扰回读
 			observer.unobserve(entry.target)
 		}
-	}, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' })
+		// 阈值带上 0 兜底：单用 0.15 时，高度超过视口约 7 倍的元素（长 timeline、
+		// 完整提交历史列表）在任何滚动位置下可见比例都到不了 15%，回调永不上门，
+		// 而 CSS 已经把它设成 opacity: 0——这段内容就永久消失了。
+		// 0 让它一相交就触发，触发线仍由下面的 rootMargin 控制。
+	}, { threshold: [0, 0.15], rootMargin: '0px 0px -8% 0px' })
 
 	function scan() {
 		// 限定在内容区扫描：属性选择器无法走索引，全文档遍历在大页面上是白费；

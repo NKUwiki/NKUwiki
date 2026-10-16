@@ -23,7 +23,9 @@ if (typeof window !== 'undefined') {
 			searchModalOpen.value = !searchModalOpen.value
 			return
 		}
-		if (event.key === '/' && !searchModalOpen.value && !isEditable(event.target)) {
+		// 带修饰键的 / 是别的快捷键（如部分浏览器的 Cmd+/），不要抢
+		if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey
+			&& !searchModalOpen.value && !isEditable(event.target)) {
 			event.preventDefault()
 			searchModalOpen.value = true
 			return
@@ -37,10 +39,20 @@ if (typeof window !== 'undefined') {
 const normalize = (text: string) => text.replaceAll('#', '').replaceAll(/\s+/g, '')
 
 function onRouteChange() {
-	const raw = sessionStorage.getItem('wiki:search-jump')
+	// 与 sidebar.ts / AnnouncementBar 一致：Safari 隐私模式等场景下访问
+	// sessionStorage 会直接抛错，这里是路由回调，抛出去就是未捕获异常，
+	// 还会让后续的高亮定位一起失效
+	let raw: string | null = null
+	try {
+		raw = sessionStorage.getItem('wiki:search-jump')
+		if (raw)
+			sessionStorage.removeItem('wiki:search-jump')
+	}
+	catch {
+		return
+	}
 	if (!raw)
 		return
-	sessionStorage.removeItem('wiki:search-jump')
 	let jump: { url?: string, section?: string, terms?: string[], original?: string }
 	try {
 		jump = JSON.parse(raw)

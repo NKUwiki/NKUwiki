@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 /**
  * GitHub 仓库卡片：markdown 里写 <RepoCard repo="vuejs/vitepress" />。
@@ -111,6 +111,13 @@ function writeCache(key: string, value: RepoInfo) {
 	catch {}
 }
 
+let controller: AbortController | undefined
+
+onUnmounted(() => {
+	// 请求还没回来就切页时取消，别白耗 GitHub API 配额
+	controller?.abort()
+})
+
 onMounted(async () => {
 	const key = safeRepo.value
 	const cached = readCache(key)
@@ -118,14 +125,13 @@ onMounted(async () => {
 		info.value = cached
 		return
 	}
+	controller = new AbortController()
+	const timer = setTimeout(() => controller?.abort(), 8000)
 	try {
-		const controller = new AbortController()
-		const timer = setTimeout(() => controller.abort(), 8000)
 		const res = await fetch(`https://api.github.com/repos/${key}`, {
 			signal: controller.signal,
 			headers: { Accept: 'application/vnd.github+json' },
 		})
-		clearTimeout(timer)
 		if (!res.ok)
 			throw new Error(String(res.status))
 		const data = await res.json() as RepoInfo
@@ -134,6 +140,11 @@ onMounted(async () => {
 	}
 	catch {
 		failed.value = true
+	}
+	finally {
+		// 必须放 finally：fetch 直接 reject（网络错误、被 abort）时会跳过
+		// try 末尾那句 clearTimeout，8 秒定时器就留在事件循环里了
+		clearTimeout(timer)
 	}
 })
 </script>

@@ -57,18 +57,27 @@ const ratingOnlyMessage = ref('')
 let observer: MutationObserver | null = null
 let decorateTimer: number | undefined
 let removeInjector: (() => void) | null = null
+/** 挂在评论区容器上的 click 监听，关闭弹窗时要一并摘掉（否则每开关一次多一个） */
+let slotDecorateHandler: (() => void) | null = null
 
 const campusOptions = computed(() => {
 	const keys = [...new Set(foods.value.map(item => item.campus).filter(Boolean))] as string[]
 	return keys.map(key => ({ key, label: FOOD_CAMPUS[key] || key }))
 })
 
+/** 未登记的分类统一归为 'other' */
+function normalizeCategory(key?: string) {
+	return FOOD_CATEGORIES.some(category => category.key === key) ? key! : 'other'
+}
+
 const filtered = computed(() => {
 	const kw = keyword.value.trim().toLowerCase()
 	return foods.value.filter((item) => {
 		if (currentCampus.value !== 'all' && item.campus !== currentCampus.value)
 			return false
-		if (currentCategory.value !== 'all' && item.category !== currentCategory.value)
+		// 未定义分类统一归到 'other'，与 groups / categoryOptions 的口径一致，
+		// 否则「其他」这个筛选入口点下去什么都筛不到
+		if (currentCategory.value !== 'all' && normalizeCategory(item.category) !== currentCategory.value)
 			return false
 		if (kw) {
 			const hay = [item.name, item.desc, item.location, item.category, ...(item.tags || [])]
@@ -82,17 +91,23 @@ const filtered = computed(() => {
 	})
 })
 
+/** 分类排序权重：未知分类（'other'）排到最后，而不是因为 indexOf 得 -1 排到最前 */
+function rank(order: string[], key: string) {
+	const at = order.indexOf(key)
+	return at < 0 ? order.length : at
+}
+
 const groups = computed(() => {
 	const order = FOOD_CATEGORIES.map(category => category.key)
 	const map = new Map<string, FoodItem[]>()
 	for (const item of filtered.value) {
-		const key = order.includes(item.category || '') ? item.category! : 'other'
+		const key = normalizeCategory(item.category)
 		if (!map.has(key))
 			map.set(key, [])
 		map.get(key)!.push(item)
 	}
 	return [...map.entries()]
-		.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
+		.sort((a, b) => rank(order, a[0]) - rank(order, b[0]))
 		.map(([key, list]) => ({
 			key,
 			label: FOOD_CATEGORIES.find(category => category.key === key)?.label || '其他',
@@ -106,13 +121,17 @@ const categoryOptions = computed(() => {
 		const key = item.category || 'other'
 		counts.set(key, (counts.get(key) || 0) + 1)
 	}
+	// 数据里出现了未定义分类时也要给个入口，否则「其他」分组没有任何 chip 能筛到
+	const known = FOOD_CATEGORIES.filter(category => counts.has(category.key)).map(category => ({
+		key: category.key,
+		label: category.label,
+		count: counts.get(category.key)!,
+	}))
+	const otherCount = counts.get('other') || 0
 	return [
 		{ key: 'all', label: '全部', count: foods.value.length },
-		...FOOD_CATEGORIES.filter(category => counts.has(category.key)).map(category => ({
-			key: category.key,
-			label: category.label,
-			count: counts.get(category.key)!,
-		})),
+		...known,
+		...(otherCount ? [{ key: 'other', label: '其他', count: otherCount }] : []),
 	]
 })
 
@@ -155,7 +174,10 @@ function hideBroken(event: Event) {
 function scheduleDecorate() {
 	if (decorateTimer)
 		window.clearTimeout(decorateTimer)
-	decorateTimer = window.setTimeout(decorateRatings, 120, commentSlot.value)
+	// 这里必须包一层箭头函数，不能写成 setTimeout(decorateRatings, 120, commentSlot.value)：
+	// 定时器参数是「调度时」求值的，120ms 内弹窗若已关闭，就会拿着已卸载的节点白跑一遍
+	// eslint-disable-next-line e18e/prefer-timer-args
+	decorateTimer = window.setTimeout(() => decorateRatings(commentSlot.value), 120)
 }
 
 /** 弹窗与 ?food=<id> 查询参数双向同步：深链可直接展开对应店铺，也方便分享 */
@@ -165,10 +187,22 @@ function syncFoodQuery(id: string | null) {
 		url.searchParams.set('food', id)
 	else
 		url.searchParams.delete('food')
-	history.replaceState(null, '', url)
+	// 保留既有 history.state：搜索弹窗往里写了 'wiki:search' 标记，
+	// 关搜索时靠它决定要不要 history.back()，被置成 null 就丢了
+	history.replaceState({ ...history.state }, '', url)
 }
 
+/**
+ * 每次打开弹窗领一个新的代次号。
+ * Twikoo 首次要动态 import（近 1MB），等它回来的这段时间里用户可能已经
+ * 按 Esc / 点遮罩关掉弹窗，或点了另一家店——续体若照常往下跑，就会把
+ * MutationObserver 挂到已卸载的节点上（从此再也没人 disconnect），
+ * 并对同一个容器重复 init 出两套评论区。
+ */
+let openToken = 0
+
 async function openDialog(item: FoodItem) {
+	const token = ++openToken
 	active.value = item
 	viewerOpen.value = false
 	viewerIndex.value = 0
@@ -189,11 +223,17 @@ async function openDialog(item: FoodItem) {
 
 	const mountPoint = commentMount.value
 	const slot = commentSlot.value
-	if (!mountPoint || !slot)
+	if (!mountPoint || !slot) {
+		// 别把 commentLoading 留在 true：那会一直显示「评论加载中……」
+		// 并永久禁用「只提交评分」按钮
+		commentLoading.value = false
 		return
+	}
 
 	try {
 		const twikoo = await getTwikoo()
+		if (token !== openToken || !active.value)
+			return
 		await twikoo.init({
 			envId: twikooEnvId,
 			el: mountPoint,
@@ -201,15 +241,20 @@ async function openDialog(item: FoodItem) {
 			lang: 'zh-CN',
 		})
 		await nextTick()
+		if (token !== openToken || !active.value)
+			return
 		// 评论区在「加载更多 / 切换排序」后会整体重绘，MutationObserver 兜底重打徽章
 		observer?.disconnect()
 		observer = new MutationObserver(scheduleDecorate)
 		observer.observe(slot, { childList: true, subtree: true })
-		slot.addEventListener('click', scheduleDecorate)
+		if (slotDecorateHandler)
+			slot.removeEventListener('click', slotDecorateHandler)
+		slotDecorateHandler = scheduleDecorate
+		slot.addEventListener('click', slotDecorateHandler)
 		// 弹窗打开时主评论框可能已渲染完成，直接挂注入器；晚渲染也无妨，
 		// 「只提交评分」走的是实时查询，不依赖这一步
 		removeInjector?.()
-		removeInjector = installRatingInjector(slot, () => ratingOf(active.value!) || 0)
+		removeInjector = installRatingInjector(slot, () => (active.value ? ratingOf(active.value) : 0))
 		decorateRatings(slot)
 		commentLoading.value = false
 	}
@@ -221,38 +266,48 @@ async function openDialog(item: FoodItem) {
 }
 
 async function submitOnlyRating() {
-	if (!active.value || !ratingOf(active.value) || ratingOnlySubmitting.value)
+	const item = active.value
+	if (!item || !ratingOf(item) || ratingOnlySubmitting.value)
 		return
 	ratingOnlySubmitting.value = true
 	ratingOnlyMessage.value = ''
-	const result = await submitRatingOnly(commentSlot.value, () => ratingOf(active.value!))
-	if (result.ok) {
-		ratingOnlyMessage.value = '评分已提交，列表刷新后会更新统计。'
-		await loadRatings([active.value.id], { force: true })
+	try {
+		// 提交最长要轮询 ~7 秒，期间用户完全可能按 Esc 关掉弹窗：
+		// 后面的分支不能再读 active.value（已为 null），一律用缓存下来的 id
+		const result = await submitRatingOnly(commentSlot.value, () => (active.value ? ratingOf(active.value) : 0))
+		if (result.ok) {
+			ratingOnlyMessage.value = '评分已提交，列表刷新后会更新统计。'
+			await loadRatings([item.id], { force: true })
+		}
+		else if (result.reason === 'meta') {
+			ratingOnlyMessage.value = '请先在下方评论框填写昵称和邮箱。'
+		}
+		else if (result.reason === 'comment') {
+			ratingOnlyMessage.value = '评论框已有文字；如需评分加评论，请直接使用评论区的发送按钮（发送前会自动带上星星）。'
+		}
+		else if (result.reason === 'sending') {
+			ratingOnlyMessage.value = '正在提交，请稍候。'
+		}
+		else if (result.reason === 'submit') {
+			ratingOnlyMessage.value = result.message || '评分提交失败，请稍后重试。'
+		}
+		else if (result.reason === 'timeout') {
+			ratingOnlyMessage.value = '提交结果未确认，请刷新页面后查看是否提交成功。'
+		}
+		else {
+			ratingOnlyMessage.value = '评分组件尚未加载完成，请稍后重试。'
+		}
 	}
-	else if (result.reason === 'meta') {
-		ratingOnlyMessage.value = '请先在下方评论框填写昵称和邮箱。'
+	finally {
+		// 必须放在 finally：任何一步抛错都会让按钮永远卡在「提交中…」
+		ratingOnlySubmitting.value = false
 	}
-	else if (result.reason === 'comment') {
-		ratingOnlyMessage.value = '评论框已有文字；如需评分加评论，请直接使用评论区的发送按钮（发送前会自动带上星星）。'
-	}
-	else if (result.reason === 'sending') {
-		ratingOnlyMessage.value = '正在提交，请稍候。'
-	}
-	else if (result.reason === 'submit') {
-		ratingOnlyMessage.value = result.message || '评分提交失败，请稍后重试。'
-	}
-	else if (result.reason === 'timeout') {
-		ratingOnlyMessage.value = '提交结果未确认，请刷新页面后查看是否提交成功。'
-	}
-	else {
-		ratingOnlyMessage.value = '评分组件尚未加载完成，请稍后重试。'
-	}
-	ratingOnlySubmitting.value = false
 }
 
 function closeDialog() {
 	active.value = null
+	// 递增代次：让仍在等待 Twikoo 回来的那次 openDialog 自行放弃
+	openToken++
 	viewerOpen.value = false
 	syncFoodQuery(null)
 	observer?.disconnect()
@@ -261,6 +316,10 @@ function closeDialog() {
 		window.clearTimeout(decorateTimer)
 	removeInjector?.()
 	removeInjector = null
+	if (slotDecorateHandler && commentSlot.value) {
+		commentSlot.value.removeEventListener('click', slotDecorateHandler)
+	}
+	slotDecorateHandler = null
 	destroyTwikoo(commentSlot.value)
 	document.body.style.overflow = ''
 }
@@ -318,8 +377,15 @@ onMounted(() => {
 		? foods.value.find(item => item.id === requestedId)
 		|| foods.value.find(item => item.aliases?.includes(requestedId))
 		: null
-	if (requested)
+	if (requested) {
 		void openDialog(requested)
+	}
+	else if (requestedId) {
+		// id 已改名又没配 aliases 时，点开就是毫无反应、地址栏还挂着旧参数，
+		// 清掉并给出提示
+		console.warn(`[FoodCards] ?food=${requestedId} 未匹配到任何店铺`)
+		syncFoodQuery(null)
+	}
 })
 
 onBeforeUnmount(() => {
@@ -328,6 +394,9 @@ onBeforeUnmount(() => {
 	if (decorateTimer)
 		window.clearTimeout(decorateTimer)
 	removeInjector?.()
+	if (slotDecorateHandler && commentSlot.value)
+		commentSlot.value.removeEventListener('click', slotDecorateHandler)
+	slotDecorateHandler = null
 	destroyTwikoo(commentSlot.value)
 	document.body.style.overflow = ''
 })

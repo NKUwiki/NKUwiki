@@ -21,7 +21,7 @@ const links: FriendLink[] = (props.links ?? []).map(link => ({
 <div class="friend-list">
 	<article v-for="link in links" :key="link.name" class="friend-link-card">
 		<img v-if="link.image" class="card-blur" :src="link.image" alt="" loading="lazy">
-		<component :is="link.qr || link.preview ? 'div' : 'a'" class="friend-card-main" :href="link.qr || link.preview ? undefined : link.url" :target="link.qr || link.preview ? undefined : '_blank'" rel="noreferrer">
+		<component :is="link.qr || link.preview ? 'div' : 'a'" class="friend-card-main" :href="link.qr || link.preview ? undefined : link.url" :target="link.qr || link.preview ? undefined : '_blank'" rel="noopener noreferrer">
 			<img v-if="link.image" class="card-avatar" :src="link.image" :alt="link.name" loading="lazy">
 			<span v-else class="card-avatar card-avatar-fallback"><SiteIcon /></span>
 			<h2>{{ link.name }}</h2>

@@ -2,7 +2,6 @@
 // ================= 数据来源 =================
 
 import { repoUrl, siteUrl } from '@nkuwiki/theme/lib/data/site.ts'
-
 // 下面是首页用到的内部展示组件：
 // ArticleByline —— 文章的日期 / 作者信息行；
 // QrCode —— 生成二维码；SiteIcon —— 站点徽标；
@@ -18,7 +17,9 @@ import WikiChips from '@nkuwiki/theme/theme/components/WikiChips.vue'
 // tagChips() 把标签数据（字符串或 { name, count } 对象）转换为
 // WikiChips 组件需要的 ChipItem 数组，并自动生成标签筛选页的链接。
 import { tagChips } from '@nkuwiki/theme/theme/composables/chips.ts'
+
 import { withBase } from 'vitepress'
+import { computed, onMounted, ref } from 'vue'
 // activity.data.ts 读取 docs/activity/ 下的 Markdown 活动公告，
 // 首页“活动”区只从这里取数，平时维护活动只需增删 Markdown 文件。
 import { data as activities } from '../../data/activity.data.ts'
@@ -49,10 +50,20 @@ const topics = [
 // 最后 slice(0, 5) 只保留最新的 5 篇用于展示。
 const latest = data.articles.filter(article => article.lastUpdatedTime > 0).sort((a, b) => b.lastUpdatedTime - a.lastUpdatedTime || b.date.localeCompare(a.date)).slice(0, 5)
 // “活动”区：date 为活动开始日期，end 可表示跨天活动的结束日期。
-// 只展示今天及以后的活动（未填 end 时视为当天活动），按开始日期升序排列。
-const today = new Date()
-const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-const upcomingActivities = activities.filter(activity => (activity.end || activity.date) >= todayKey)
+// 只展示今天及以后的活动（未填 end 时视为当天活动）。
+//
+// 「今天」只能在客户端算：VitePress 是 SSG，构建时若把 new Date() 的结果烧进
+// 静态 HTML，用户过几天再打开，客户端按真实日期重算出的列表条数与 HTML 对不上，
+// 会触发 hydration mismatch，且首屏先看到过期活动再被改掉。
+// 所以 SSR 阶段留空（与客户端首次渲染一致，不会 mismatch），挂载后再填充。
+const todayKey = ref('')
+onMounted(() => {
+	const now = new Date()
+	todayKey.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+})
+const upcomingActivities = computed(() => (todayKey.value
+	? activities.filter(activity => (activity.end || activity.date) >= todayKey.value)
+	: []))
 function isExternal(link?: string) {
 	return link?.startsWith('http') ?? false
 }

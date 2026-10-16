@@ -13,8 +13,9 @@ import { reactive } from 'vue'
 export const twikooEnvId = import.meta.env.VITE_TWIKOO_ENV_ID || ''
 
 const RATING_RE = /\[rating:([1-5])\]/
-const PAGE_SIZE = 100
-const MAX_PAGES = 5
+/* 单次请求的评论上限。urls 过滤后再截断，所以这里的 500 是「这批店铺的评论总数」，
+   不是全站；某家店评论量异常大时才会有尾部丢失。 */
+const PAGE_SIZE = 500
 
 /**
  * 每条美食的评分聚合：{ [id]: { sum, count, avg, loaded, loading } }
@@ -126,6 +127,62 @@ export function registerAliases(map) {
 	}
 }
 
+function isHttpEndpoint(value) {
+	return typeof value === 'string' && /^https?:\/\//i.test(value)
+}
+
+/**
+ * 拉取评论列表（按 urls 过滤）。
+ *
+ * 不能直接用 twikoo 的 getRecentComments()：2.0.13 的 SDK 只把
+ * envId / funcName / pageSize / includeReply 打包进请求体，**urls 与 page 会被丢弃**
+ * （dist 里 Od() 的实现），于是「只看 /food/<id>」这条过滤根本没下发到服务端，
+ * 拿到的永远是全站最近 N 条——评论一多，早期店铺的评分就会静默归零，且无任何报错。
+ * 服务端本身是支持 urls 的（对自建后端实测：带 urls 返回 0 条、不带返回全量），
+ * 所以这里绕过 SDK 直接 POST 完整 payload；直传失败再退回 SDK（此时靠客户端过滤兜底）。
+ */
+async function fetchRecentComments(urls) {
+	if (isHttpEndpoint(twikooEnvId)) {
+		try {
+			// 请求体与 SDK 的 jo() 保持完全一致：{ accessToken, ...payload, envId }。
+			// SDK 用的是 XHR，这里用 fetch，跨域行为一致（两者默认都不带凭证）。
+			let accessToken = ''
+			try {
+				accessToken = window.localStorage.getItem('twikoo-access-token') || ''
+			}
+			catch {}
+			const response = await fetch(twikooEnvId, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					accessToken,
+					event: 'GET_RECENT_COMMENTS',
+					urls,
+					pageSize: PAGE_SIZE,
+					includeReply: false,
+					envId: twikooEnvId,
+				}),
+			})
+			if (!response.ok)
+				throw new Error(`HTTP ${response.status}`)
+			const payload = await response.json()
+			if (Array.isArray(payload?.data))
+				return payload.data
+		}
+		catch (error) {
+			console.warn('[food-rating] 直连 Twikoo 失败，退回 SDK 全量拉取：', error)
+		}
+	}
+
+	const twikoo = await getTwikoo()
+	const list = await twikoo.getRecentComments({
+		envId: twikooEnvId,
+		pageSize: PAGE_SIZE,
+		includeReply: false,
+	})
+	return Array.isArray(list) ? list : []
+}
+
 async function loadChunk(ids) {
 	/* 每个当前 id 的请求范围 = 自身路径 + 全部旧别名路径，命中后都归到当前 id */
 	const urlToId = new Map()
@@ -133,42 +190,24 @@ async function loadChunk(ids) {
 		urlToId.set(foodUrl(id), id)
 		for (const alias of primaryToAliases.get(id) || []) urlToId.set(foodUrl(alias), id)
 	}
-	const urls = [...urlToId.keys()]
 	const totals = new Map(ids.map(id => [id, { sum: 0, count: 0 }]))
 	const seen = new Set()
 
-	const twikoo = await getTwikoo()
-	for (let page = 1; page <= MAX_PAGES; page++) {
-		const list = await twikoo.getRecentComments({
-			envId: twikooEnvId,
-			urls,
-			pageSize: PAGE_SIZE,
-			includeReply: false,
-			page,
-		})
-		if (!Array.isArray(list) || !list.length)
-			break
-
-		let added = 0
-		for (const item of list) {
-			if (!item || seen.has(item.id))
-				continue
-			seen.add(item.id)
-			added++
-			const rawId = idFromUrl(item.url)
-			const id = rawId ? (aliasToPrimary.get(rawId) || rawId) : null
-			if (!id || !totals.has(id))
-				continue
-			const rating = parseRating(item.commentText || item.comment)
-			if (!rating)
-				continue
-			const total = totals.get(id)
-			total.sum += rating
-			total.count++
-		}
-
-		if (list.length < PAGE_SIZE || added === 0)
-			break
+	const list = await fetchRecentComments([...urlToId.keys()])
+	for (const item of list) {
+		if (!item || seen.has(item.id))
+			continue
+		seen.add(item.id)
+		const rawId = idFromUrl(item.url)
+		const id = rawId ? (aliasToPrimary.get(rawId) || rawId) : null
+		if (!id || !totals.has(id))
+			continue
+		const rating = parseRating(item.commentText || item.comment)
+		if (!rating)
+			continue
+		const total = totals.get(id)
+		total.sum += rating
+		total.count++
 	}
 
 	for (const [id, stats] of totals) applyStats(id, stats)
@@ -197,11 +236,10 @@ export async function loadRatings(ids, { force = false } = {}) {
 		console.error('美食评分加载失败：', error)
 		for (const id of pending) {
 			const state = ratingState[id]
-			if (state) {
+			// 只清 loading，不要置 loaded：一次网络抖动就把该 id 永久钉死在
+			// 「暂无评分」（loadRatings 的跳过条件只看 loaded），再也拉不回来。
+			if (state)
 				state.loading = false
-				if (!state.loaded)
-					state.loaded = true
-			}
 		}
 	}
 }
@@ -229,12 +267,21 @@ function findEditor(slot) {
 		|| null
 }
 
-function visibleError(slot) {
+/**
+ * 当前可见的错误文案集合。
+ *
+ * 提交前先快照一份：Twikoo 的错误卡片是列表/提交/回复共用的，评论区此前
+ * 若已残留一条可见错误（例如列表加载失败），直接按「有 .tk-error 就判失败」
+ * 会把**已经提交成功**的评分误报成失败，用户重试还会产生重复评论。
+ */
+function errorSnapshot(slot) {
+	const set = new Set()
 	for (const element of slot.querySelectorAll('.tk-error')) {
-		if (element.offsetParent !== null && element.textContent.trim())
-			return element.textContent.trim()
+		const text = element.textContent.trim()
+		if (text && element.offsetParent !== null)
+			set.add(text)
 	}
-	return ''
+	return set
 }
 
 /**
@@ -287,13 +334,17 @@ export async function submitRatingOnly(slot, getRating) {
 	if (sendButton.disabled)
 		return { ok: false, reason: 'unavailable' }
 
+	const knownErrors = errorSnapshot(slot)
 	sendButton.click()
-	// 成功后输入框会被清空；失败会出现可见的 .tk-error
+	// 成功后输入框会被清空；失败会出现新的可见 .tk-error
 	for (let i = 0; i < 40; i++) {
 		await sleep(150)
-		const error = visibleError(slot)
-		if (error)
-			return { ok: false, reason: 'submit', message: error }
+		for (const element of slot.querySelectorAll('.tk-error')) {
+			const text = element.textContent.trim()
+			// 只认提交前没有的新错误，避免把评论区原有的旧错误当成提交失败
+			if (text && element.offsetParent !== null && !knownErrors.has(text))
+				return { ok: false, reason: 'submit', message: text }
+		}
 		if (!String(editor.value).trim())
 			return { ok: true }
 	}
@@ -369,11 +420,23 @@ export function decorateRatings(element) {
 }
 
 /**
- * 清理弹窗内的 Twikoo 实例。twikoo 2.x 没有公开的销毁 API（也不再有 $destroy），
- * 清空容器并移除我们自己的监听即可；组件内部监听随节点回收。
+ * 清理弹窗内的 Twikoo 实例。
+ *
+ * twikoo 2.x 没有公开的销毁 API（也不再有 $destroy）。只做 innerHTML = '' 是
+ * 不够的：它的 v-clickoutside 指令会在 document 上注册**捕获阶段**的 click 监听，
+ * 且只在指令 unmounted 时才摘掉；截掉 DOM 不会触发 unmounted，于是 Vue app
+ * 与这个全局监听都还活着——每开关一次弹窗就多积一份孤儿实例与一个全局监听。
+ * 这里手动把 Twikoo 挂在各节点上的 __tkClickoutside 摘掉。
  */
 export function destroyTwikoo(element) {
 	if (!element)
 		return
+	for (const node of [element, ...element.querySelectorAll('*')]) {
+		const handler = node.__tkClickoutside
+		if (typeof handler === 'function') {
+			document.removeEventListener('click', handler, true)
+			delete node.__tkClickoutside
+		}
+	}
 	element.innerHTML = ''
 }

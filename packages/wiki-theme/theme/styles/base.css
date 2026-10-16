@@ -328,7 +328,9 @@ html:has(.wiki-announcement) {
 	.VPNavBar,
 	.VPSidebar,
 	.VPLocalNav,
-	.VPAside,
+	/* VitePress 的右侧大纲外层是 VPDoc.vue 里的 .aside（内含 .VPDocAside）。
+	   写 .VPAside 是无效的——dist 里根本没有这个类名，大纲会被一并印出来 */
+	.VPDoc .aside,
 	.VPFooter,
 	.VPDocFooter {
 		display: none;

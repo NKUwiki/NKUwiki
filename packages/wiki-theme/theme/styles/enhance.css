@@ -297,7 +297,8 @@
 	text-align: center;
 	color: var(--vp-c-text-1);
 	transition: color, background-color, border-color;
-	transition-duration: var(--vp-t-color);
+	/* 别写 var(--vp-t-color)：VitePress 没有这个变量，整条声明会失效、时长退回 0s */
+	transition-duration: var(--wiki-duration);
 }
 
 .wiki-steps > :where(ol, ul) > li:not(:last-of-type)::after {
@@ -501,7 +502,7 @@
 	border-radius: 50%;
 	background-color: var(--wiki-timeline-c-point);
 	transition: background-color;
-	transition-duration: var(--vp-t-color);
+	transition-duration: var(--wiki-duration);
 }
 
 .wiki-timeline-item:not(.horizontal) > .wiki-timeline-line .wiki-timeline-point {

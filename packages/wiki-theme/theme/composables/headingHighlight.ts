@@ -164,6 +164,11 @@ function onClick(event: MouseEvent): void {
 	const hash = linkHash(origin) ?? headingHash(origin)
 	if (!hash)
 		return
+	// 先确认目标存在，再 preventDefault。找不到时（标题改过名、锚点 slug 对不上）
+	// 若已经把默认行为吞掉，用户点了会毫无反应且没有任何提示；
+	// 直接返回则交回浏览器 / VitePress 自己处理。
+	if (!findTarget(hash))
+		return
 	event.preventDefault()
 	jump(hash)
 }
