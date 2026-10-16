@@ -27,6 +27,7 @@ const {
 	FILTER_LIST,
 	AMAP_KEY,
 	AMAP_SECURITY_JS_CODE,
+	MAP_DISPLAY,
 } = props.data
 
 const PIN_SIZE = 28
@@ -34,6 +35,28 @@ const PIN_SCALE = { idle: 1, hover: 1.3, selected: 1.4 }
 const FIRST_PAINT_TIMEOUT_MS = 2500
 /* 高德官方内置样式：normal 标准 / dark 夜间 */
 const MAP_STYLES = { light: 'amap://styles/normal', dark: 'amap://styles/dark' }
+
+/* ================= 标点配色 =================
+ * 每个分类一个颜色（站点侧 CATEGORY_CONFIG[category].color），标点、列表图标、
+ * 详情卡图标共用同一套色，保证「看到什么颜色就是什么分类」。
+ * 未命中的分类回落到中性灰，不至于画出一个刺眼的默认色。 */
+const FALLBACK_PIN_COLOR = '#64748B'
+/* 选中态：同一色相压暗一档靠 scale + 描边强调，避免换色后认不出是哪个分类 */
+const SELECTED_MIX_RATIO = 0.28
+
+function categoryColor(category) {
+	return (CATEGORY_CONFIG[category] || {}).color || FALLBACK_PIN_COLOR
+}
+
+/** 把 #RRGGBB 按比例压向黑色（amount 0~1），用于选中态加深 */
+function shade(hex, amount) {
+	const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim())
+	if (!m)
+		return hex
+	const num = Number.parseInt(m[1], 16)
+	const mix = v => Math.round(v * (1 - amount))
+	return `rgb(${mix((num >> 16) & 255)}, ${mix((num >> 8) & 255)}, ${mix(num & 255)})`
+}
 
 /* ================= 状态 ================= */
 const mapEl = ref(null)
@@ -398,10 +421,20 @@ watch(selected, async (building) => {
 /* ================= 地图初始化 ================= */
 function initMap() {
 	const campus = CAMPUS_CONFIG[currentCampus.value]
+	/* 底图要素：point 就是高德下发的 POI 点（某某楼、某店铺这类建筑名），
+	   与我们自己标注的点位重名且打架，默认关掉，只留底色/道路/建筑轮廓。
+	   showLabel 单独管文字标注（道路名、行政区名），关掉连路名一起没。
+	   两者都由站点侧 MAP_DISPLAY 控制，未配置时用下面的默认值。 */
+	const display = MAP_DISPLAY || {}
+	const features = display.showPoi === true
+		? ['bg', 'point', 'road', 'building']
+		: ['bg', 'road', 'building']
 	map = new AMap.Map(mapEl.value, {
 		center: campus.coord,
 		zoom: campus.zoom,
 		mapStyle: MAP_STYLES[isDark() ? 'dark' : 'light'],
+		features,
+		showLabel: display.showLabels !== false,
 		viewMode: '2D',
 		scrollWheel: true,
 	})
@@ -437,9 +470,12 @@ function renderPolygons(campusId) {
 
 /* ================= marker（缓存 + 增量更新） ================= */
 function markerPinMarkup(category) {
+	const color = categoryColor(category)
 	return (
 		`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style="display:block;filter:drop-shadow(0 1px 2px rgb(15 23 42 / .2))">`
-		+ `<path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Z" fill="var(--c-primary)" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linejoin="round" style="transition:fill 160ms ease"/></svg>`
+		/* 颜色直接写进 fill：SVG 表现属性里用 var() 在部分浏览器不生效，
+		   这里宁可多传一次真实色值；切换选中态时由 applyPinState 改 style.fill */
+		+ `<path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Z" fill="${color}" stroke="rgba(255,255,255,0.92)" stroke-width="1.3" stroke-linejoin="round" style="transition:fill 160ms ease"/></svg>`
 		+ `<span style="position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);color:#fff;display:grid;place-items:center">${
 			categoryIconMarkup(category, 11)
 		}</span>`
@@ -452,9 +488,10 @@ function applyPinState(root, selectedFlag) {
 		return
 	body.dataset.selected = selectedFlag ? 'true' : 'false'
 	body.style.transform = `scale(${selectedFlag ? PIN_SCALE.selected : PIN_SCALE.idle})`
+	const base = body.dataset.color || FALLBACK_PIN_COLOR
 	const pin = body.querySelector('svg path')
 	if (pin)
-		pin.style.fill = selectedFlag ? 'var(--c-primary-hover)' : 'var(--c-primary)'
+		pin.style.fill = selectedFlag ? shade(base, SELECTED_MIX_RATIO) : base
 }
 
 function applyPinHover(root, hovered) {
@@ -473,6 +510,8 @@ function createMarkerPin(building, selectedFlag) {
 	const body = document.createElement('div')
 	body.dataset.mapPinBody = 'true'
 	body.dataset.selected = selectedFlag ? 'true' : 'false'
+	/* 记住底色：applyPinState 选中/取消时要据此算加深值 */
+	body.dataset.color = categoryColor(building.category)
 	body.style.transform = `scale(${selectedFlag ? PIN_SCALE.selected : PIN_SCALE.idle})`
 	body.innerHTML = markerPinMarkup(building.category)
 
@@ -775,7 +814,7 @@ onUnmounted(() => {
 					:class="{ active: selected?.id === b.id }"
 					@click="onSelect(b)"
 				>
-					<span class="cat-icon" :style="{ color: (CATEGORY_CONFIG[b.category] || {}).color || '#711A5F' }" v-html="categoryIconMarkup(b.category, 14)" />
+					<span class="cat-icon" :style="{ color: categoryColor(b.category) }" v-html="categoryIconMarkup(b.category, 14)" />
 					<span class="building-info">
 						<span class="building-name">{{ b.name }}</span>
 						<span v-if="b.desc" class="building-desc">{{ b.desc }}</span>
@@ -902,7 +941,11 @@ onUnmounted(() => {
 						<img :src="selectedPhotos[0]" alt="" class="detail-photo detail-photo-front">
 						<span v-if="selectedPhotos.length > 1" class="detail-photo-count">{{ selectedPhotos.length }}</span>
 					</button>
-					<span class="detail-icon" v-html="categoryIconMarkup(selected.category, 15)" />
+					<span
+						class="detail-icon"
+						:style="{ color: categoryColor(selected.category), borderColor: categoryColor(selected.category) }"
+						v-html="categoryIconMarkup(selected.category, 15)"
+					/>
 					<div class="detail-info">
 						<h2 class="detail-name">
 							{{ selected.name }}
@@ -948,7 +991,7 @@ onUnmounted(() => {
 			<p>定位信息仅用于在地图上标记你的位置，不会被保存。</p>
 			<div class="location-legend" aria-label="地图图标说明">
 				<span><i class="legend-pin legend-pin-user" />红色图标：用户定位</span>
-				<span><i class="legend-pin legend-pin-place" />蓝色图标：可点击标点</span>
+				<span><i class="legend-pin legend-pin-place" />彩色图标：按分类着色的可点击标点</span>
 			</div>
 			<p class="location-countdown">
 				点击继续后将请求定位权限，并持续更新你的位置。
@@ -1936,7 +1979,10 @@ html.dark .map-section {
 	transform: rotate(-45deg);
 }
 .legend-pin-user { background: #E53935; }
-.legend-pin-place { background: var(--c-primary); }
+/* 图例里的「彩色」用一小段多色渐变表示，比单一色更能说明标点按分类着色 */
+.legend-pin-place {
+	background: linear-gradient(135deg, #3B82F6 0%, #10B981 45%, #F59E0B 75%, #EC4899 100%);
+}
 .location-confirm, .location-cancel {
 	width: 100%;
 	height: 36px;

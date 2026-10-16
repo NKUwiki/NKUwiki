@@ -28,6 +28,10 @@ import * as mapData from './.vitepress/data/map-data.js'
 
 - `BUILDINGS`：点位列表
 - `CAMPUS_CONFIG` / `CATEGORY_CONFIG` / `CATEGORY_ICON_PATHS` / `FILTER_LIST`：校区与分类配置
+  - `CATEGORY_CONFIG[category].color` 决定该分类标点、列表图标与详情卡图标的颜色，按分类着色；缺省回落中性灰
+- `MAP_DISPLAY`（可选）：底图显示开关，`{ showPoi: false, showLabels: true }`
+  - `showPoi: false` 关掉高德底图自带的 POI 要素（接口下发的建筑名、店铺名），只留底色 / 道路 / 建筑轮廓，避免与自有标点重名打架；`true` 恢复显示
+  - `showLabels` 控制底图文字标注（道路名等），默认 `true`
 - `AMAP_KEY` / `AMAP_SECURITY_JS_CODE`：高德 Web 端 (JS API) 密钥（[lbs.amap.com](https://lbs.amap.com) 控制台申请，需按站点域名做白名单）
 
 站点真实数据不放本包（如 NKUwiki 的在 `docs/.vitepress/data/map-data.js`）。

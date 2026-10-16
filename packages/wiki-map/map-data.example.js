@@ -18,7 +18,7 @@
  * 外链由 MapView 内部做坐标转换。
  *
  * ================= 新增分类（三处同步，key 保持一致） =================
- * 1. CATEGORY_CONFIG      分类的显示名与标点颜色；
+ * 1. CATEGORY_CONFIG      分类的显示名与标点颜色（color 决定标点/列表/详情卡的配色）；
  * 2. CATEGORY_ICON_PATHS  标点与列表上的图标（Lucide 风格 SVG path，viewBox 24×24）；
  * 3. FILTER_LIST          左侧筛选下拉的选项（icon 为 FontAwesome 类名）。
  * 不新增分类就无法在点位上使用新 category，构建不校验但标点会缺图标。
@@ -27,7 +27,18 @@
  * 每个校区一条：id（点位的 campusId 与 POLYGONS 的键都引用它）、
  * name（切换下拉显示名）、coord（初始中心坐标，GCJ02）、zoom（初始缩放级别）。
  * 校区轮廓 POLYGONS（MapView.vue 内）按 id 引用，暂为空数组，不影响使用。
+ *
+ * ================= 底图显示（MAP_DISPLAY，可选） =================
+ * showPoi: false    关掉高德底图的 POI 要素（接口下发的「某某楼/某店铺」建筑名），
+ *                   只留底色 / 道路 / 建筑轮廓；true 则恢复显示。默认 false。
+ * showLabels: true  是否保留底图文字标注（道路名、行政区名等）。默认 true。
  */
+
+/* 底图显示开关，可整个省略 */
+export const MAP_DISPLAY = {
+	showPoi: false,
+	showLabels: true,
+}
 
 export const CATEGORY_CONFIG = {
 	teaching: { label: '教学楼', color: '#4A90D9' },

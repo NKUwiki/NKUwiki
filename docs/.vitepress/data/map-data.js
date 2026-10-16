@@ -26,26 +26,37 @@
  * 见站内《贡献指南》的「校园地图数据维护」一节。
  */
 
+/* 底图显示开关（可选，不导出时用 MapView 内的默认值）：
+   showPoi: false  不显示高德底图自带的 POI 点，即「某某楼/某店铺」这类由接口下发的
+                   建筑名称——只保留我们自己标注的点位，避免两套标注互相打架。
+                   道路名、行政区名等地图文字不受影响，由 showLabels 单独控制。
+   showLabels: true 保留底图文字标注（道路名等）。改成 false 会连路名一起隐藏。 */
+export const MAP_DISPLAY = {
+  showPoi: false,
+  showLabels: true,
+}
+
 export const CATEGORY_CONFIG = {
-  /* 分类色 = 南开青莲紫（站点主色 #711A5F，hue 312）按 QUT 原版明暗层次派生的梯度，
-     保持「同类相近、异类可辨」的相对关系 */
-  teaching:   { label: '教学楼',   color: '#711A5F' },
-  dormitory:  { label: '学生宿舍', color: '#9F388A' },
-  canteen:    { label: '食堂',     color: '#B851A4' },
-  library:    { label: '图书馆',   color: '#57144A' },
-  sports:     { label: '运动场馆', color: '#C987BC' },
-  admin:      { label: '行政楼',   color: '#711A5F' },
-  gate:       { label: '校门',     color: '#9F388A' },
-  hospital:   { label: '校医院',   color: '#B851A4' },
-  theater:    { label: '剧场',     color: '#862773' },
-  busstation: { label: '校车站',   color: '#A9449A' },
-  landmark:   { label: '地标建筑', color: '#711A5F' },
-  college:    { label: '学院楼',   color: '#862773' },
-  food:       { label: '附近美食', color: '#BE63B0' },
-  shop:       { label: '商铺',     color: '#AE4A9E' },
-  express:    { label: '快递点',   color: '#A03E92' },
-  tool:       { label: '维修点',   color: '#862773' },
-  transit:    { label: '轨道交通', color: '#93317F' }
+  /* 分类色 = 标点与列表图标的填充色。按语义分组取色（学习办公冷色、餐饮生活暖色、
+     运动文化青紫、交通出行蓝绿），组内用深浅区分，做到「同类相近、异类分明」。
+     想换配色只改这里的 color 即可，MapView 会自动取用；未命中的分类回落到灰色。 */
+  teaching:   { label: '教学楼',   color: '#3B82F6' },
+  dormitory:  { label: '学生宿舍', color: '#10B981' },
+  canteen:    { label: '食堂',     color: '#F59E0B' },
+  library:    { label: '图书馆',   color: '#8B5CF6' },
+  sports:     { label: '运动场馆', color: '#06B6D4' },
+  admin:      { label: '行政楼',   color: '#64748B' },
+  gate:       { label: '校门',     color: '#14B8A6' },
+  hospital:   { label: '校医院',   color: '#DC2626' },
+  theater:    { label: '剧场',     color: '#D946EF' },
+  busstation: { label: '校车站',   color: '#0EA5E9' },
+  landmark:   { label: '地标建筑', color: '#F43F5E' },
+  college:    { label: '学院楼',   color: '#6366F1' },
+  food:       { label: '附近美食', color: '#F97316' },
+  shop:       { label: '商铺',     color: '#EC4899' },
+  express:    { label: '快递点',   color: '#EAB308' },
+  tool:       { label: '维修点',   color: '#A18063' },
+  transit:    { label: '轨道交通', color: '#4F46E5' }
 }
 
 /* 分类 SVG 图标 path 数据（Lucide 风格，抄自 CQU-openlib markerIcons.ts） */
