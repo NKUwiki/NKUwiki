@@ -86,7 +86,7 @@ const broken = reactive<Record<string, boolean>>({})
 	border-radius: var(--wiki-radius, 8px);
 	background: var(--vp-c-bg-soft);
 	text-align: center;
-	transition: border-color 0.2s ease;
+	transition: border-color var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 .member-card:hover {
@@ -131,7 +131,7 @@ const broken = reactive<Record<string, boolean>>({})
 	justify-content: center;
 	margin-top: 4px;
 	color: var(--vp-c-brand-1);
-	transition: color 0.15s ease;
+	transition: color var(--wiki-duration-fast) var(--wiki-ease-out);
 }
 
 .member-link:hover {

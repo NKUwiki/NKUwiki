@@ -675,7 +675,7 @@ onBeforeUnmount(() => {
 	background: var(--vp-c-bg-soft);
 	font-size: 13px;
 	color: var(--vp-c-text-2);
-	transition: color 0.2s, border-color 0.2s, background 0.2s;
+	transition: color var(--wiki-duration-collapse) var(--wiki-ease-out), border-color var(--wiki-duration-collapse) var(--wiki-ease-out), background var(--wiki-duration-collapse) var(--wiki-ease-out);
 	cursor: pointer;
 }
 
@@ -753,7 +753,7 @@ onBeforeUnmount(() => {
 	border: 1px solid var(--vp-c-divider);
 	border-radius: 12px;
 	background: var(--vp-c-bg-soft);
-	transition: box-shadow 0.2s, transform 0.2s;
+	transition: box-shadow var(--wiki-duration-collapse) var(--wiki-ease-out), transform var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 .nku-food-card:hover {
@@ -772,7 +772,9 @@ onBeforeUnmount(() => {
 	width: 100%;
 	height: 100%;
 	margin: 0;
-	transition: transform 0.4s ease;
+	/* 封面图 hover 放大：时长走 drawer 档。图片的 transform 缩放由 GPU 处理，
+	动画期间浏览器会自动把带过渡的元素提升到合成层，不必常驻 will-change */
+	transition: transform var(--wiki-duration-drawer) var(--wiki-ease-out);
 	object-fit: cover;
 }
 
@@ -850,7 +852,7 @@ onBeforeUnmount(() => {
 	font-size: inherit;
 	line-height: 1;
 	color: inherit;
-	transition: transform 0.15s, color 0.15s;
+	transition: transform var(--wiki-duration-fast) var(--wiki-ease-out), color var(--wiki-duration-fast) var(--wiki-ease-out);
 	cursor: pointer;
 }
 
@@ -892,7 +894,7 @@ onBeforeUnmount(() => {
 	background: transparent;
 	font-size: 12.5px;
 	color: var(--vp-c-brand-1);
-	transition: background 0.2s, color 0.2s;
+	transition: background var(--wiki-duration-collapse) var(--wiki-ease-out), color var(--wiki-duration-collapse) var(--wiki-ease-out);
 	cursor: pointer;
 }
 
