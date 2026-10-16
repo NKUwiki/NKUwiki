@@ -87,7 +87,7 @@
 
 /* 模糊效果：blur 到 0 显形 */
 .wiki-plot:where(.blur) {
-	transition: filter 0.25s;
+	transition: filter var(--wiki-duration-slow) var(--wiki-ease-out);
 	filter: blur(0.2rem);
 }
 
@@ -95,7 +95,7 @@
 .wiki-plot:where(.mask) {
 	background-color: var(--vp-c-text-1);
 	color: transparent;
-	transition: color 0.25s, background-color 0.25s;
+	transition: color var(--wiki-duration-slow) var(--wiki-ease-out), background-color var(--wiki-duration-slow) var(--wiki-ease-out);
 }
 
 .wiki-plot:where(.blur.hover):hover,
@@ -153,6 +153,9 @@
 	background-repeat: no-repeat;
 	background-size: 100% var(--wiki-mark-bg-shift);
 	color: var(--wiki-mark-text);
+	/* 长动画（铺满 + 延迟）刻意不占用微交互令牌：马克笔「刷上去」的表现力
+	   需要接近 2 秒的编排，压进 280ms 就没意义了。reduced-motion 的降级
+	   在文件尾的统一块里处理。 */
 	animation: wiki-mark-highlight 1.5s 0.5s forwards;
 }
 
@@ -569,4 +572,13 @@
 	font-size: 14px;
 	font-weight: 500;
 	color: var(--wiki-timeline-c-time);
+}
+
+/* ================= 减少动态效果 =================
+   文件里凡是没走 --wiki-duration-* 令牌的长动画，在这里单独降级：
+   马克笔铺色直接停在终态（静态 background-size 本就是 100%，不播动画即全亮） */
+@media (prefers-reduced-motion: reduce) {
+	.vp-doc mark {
+		animation: none;
+	}
 }

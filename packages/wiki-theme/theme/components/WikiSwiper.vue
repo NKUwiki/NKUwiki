@@ -79,7 +79,7 @@ function scrollByPage(direction: 1 | -1) {
 	backdrop-filter: blur(4px);
 	color: var(--vp-c-text-1);
 	transform: translateY(-50%);
-	transition: opacity 0.2s;
+	transition: opacity var(--wiki-duration-collapse) var(--wiki-ease-out);
 	cursor: pointer;
 }
 

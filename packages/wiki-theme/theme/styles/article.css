@@ -353,8 +353,7 @@
 	line-height: 20px;
 	text-decoration: none;
 	color: var(--vp-c-text-1);
-	transition: border-color ease-in-out, color ease-in-out;
-	transition-duration: 200ms;
+	transition: border-color var(--wiki-duration) var(--wiki-ease-out), color var(--wiki-duration) var(--wiki-ease-out);
 }
 
 a.article-author-pill:hover {
@@ -378,7 +377,7 @@ a.article-author-pill:hover {
 	white-space: nowrap;
 	color: #FFFFFF;
 	transform: translateX(-50%);
-	transition: opacity 150ms ease;
+	transition: opacity var(--wiki-duration-fast) var(--wiki-ease-out);
 	pointer-events: none;
 	z-index: 30;
 }

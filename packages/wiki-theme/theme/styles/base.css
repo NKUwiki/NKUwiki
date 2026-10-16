@@ -166,7 +166,7 @@ pre {
 	background-color: var(--vp-c-brand-1);
 	transform: scaleX(0);
 	transform-origin: center;
-	transition: transform var(--wiki-duration) ease-in-out;
+	transition: transform var(--wiki-duration) var(--wiki-ease-in-out);
 }
 
 .VPNavBarMenuLink:hover > span::after,
@@ -257,7 +257,8 @@ html:has(.wiki-announcement) {
 	opacity: 0;
 	top: 50%;
 	left: 50%;
-	transition: opacity 0.5s ease;
+	/* 交叉淡入淡出刻意用 slow 档：比状态切换慢半拍，百分比与箭头才有「溶接」感 */
+	transition: opacity var(--wiki-duration-slow) var(--wiki-ease-out);
 	user-select: none;
 }
 

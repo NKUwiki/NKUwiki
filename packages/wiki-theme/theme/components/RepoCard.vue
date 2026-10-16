@@ -200,7 +200,7 @@ onMounted(async () => {
 	border-radius: 10px;
 	background: var(--vp-c-bg-soft);
 	color: inherit;
-	transition: border-color 0.25s, box-shadow 0.25s;
+	transition: border-color var(--wiki-duration-slow) var(--wiki-ease-out), box-shadow var(--wiki-duration-slow) var(--wiki-ease-out);
 }
 
 .wiki-repo-card:hover {

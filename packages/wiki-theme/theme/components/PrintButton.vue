@@ -33,7 +33,7 @@ function print() {
 	background: var(--vp-c-bg);
 	font-size: 0.8rem;
 	color: var(--vp-c-text-2);
-	transition: color 0.25s, border-color 0.25s;
+	transition: color var(--wiki-duration) var(--wiki-ease-out), border-color var(--wiki-duration) var(--wiki-ease-out);
 	cursor: pointer;
 }
 

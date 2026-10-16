@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { createModalFocus } from '../composables/modalA11y'
 
 /**
  * 图片预览（lightbox）：点击正文图片全屏放大查看。
@@ -23,6 +24,16 @@ const anchorX = ref(0)
 const anchorY = ref(0)
 
 const hasGallery = computed(() => sources.value.length > 1)
+
+/** 弹层的焦点管理：打开时移入、Tab 循环、关闭时还原到触发图片 */
+const modalFocus = createModalFocus()
+const rootEl = ref<HTMLElement>()
+watch(visible, (open) => {
+	if (open)
+		modalFocus.onOpen(rootEl.value)
+	else
+		modalFocus.onClose()
+})
 
 /** 可预览的正文图片范围与排除项（头像/卡片图标/行内绘图等非内容图不参与） */
 const SCOPE = '.vp-doc'
@@ -129,6 +140,8 @@ function onKeydown(e: KeyboardEvent) {
 		return
 	if (e.key === 'Escape')
 		close()
+	else if (e.key === 'Tab')
+		modalFocus.trap(e, rootEl.value)
 	else if (e.key === 'ArrowLeft')
 		go(-1)
 	else if (e.key === 'ArrowRight')
@@ -150,6 +163,7 @@ onBeforeUnmount(() => {
 	document.removeEventListener('click', onDocumentClick)
 	document.removeEventListener('keydown', onKeydown)
 	document.body.style.overflow = ''
+	modalFocus.restoreIfOpen()
 })
 </script>
 
@@ -159,7 +173,7 @@ onBeforeUnmount(() => {
 	缩放放在 .wiki-imgviewer-stage 上而不是 img 上——
 	img 的 transform 被拖拽/缩放逻辑用 inline style 接管着，动它会打架。 -->
 	<Transition name="wiki-imgviewer" @after-leave="updateBodyOverflow">
-		<div v-if="visible" class="wiki-imgviewer" @click="close">
+		<div v-if="visible" ref="rootEl" class="wiki-imgviewer" role="dialog" aria-modal="true" aria-label="图片预览" @click="close">
 			<button class="wiki-imgviewer-close" aria-label="关闭预览" @click="close">
 				&times;
 			</button>
@@ -268,7 +282,7 @@ onBeforeUnmount(() => {
 	line-height: 1;
 	color: var(--vp-c-brand-1);
 	transform: translateY(-50%);
-	transition: background 0.2s, color 0.2s;
+	transition: background var(--wiki-duration) var(--wiki-ease-out), color var(--wiki-duration) var(--wiki-ease-out);
 	cursor: pointer;
 	z-index: 2;
 }

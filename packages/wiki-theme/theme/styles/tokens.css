@@ -24,7 +24,9 @@
 	   但仍随 reduced-motion 一起归零，否则「减少动态效果」下元素还会排队等待。 */
 	--wiki-stagger: 60ms;
 	/* 跨页转场与标题滚动：整页级运动，时长比 slow 再长一点但不过分，
-	   避免大面积动画拖长帧数（同时用于 headingHighlight 的滚动） */
+	   避免大面积动画拖长帧数（同时用于 headingHighlight 的滚动）。
+	   注意：headingHighlight 是 parseFloat 后按毫秒用的，这里的值必须带 ms
+	   单位、不能写成 0.26s——否则会被解析成 0.26 毫秒，滚动瞬间完成 */
 	--wiki-duration-page: 260ms;
 	--wiki-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 	--wiki-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);

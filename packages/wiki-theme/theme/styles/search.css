@@ -289,6 +289,8 @@
 
 .wiki-search-box .search-loading.active {
 	visibility: visible;
+	/* 转圈是「正在检索」的功能性状态指示，reduced-motion 下不掐掉
+	   （完全静止会让人以为卡死了），放慢转速把前庭刺激降到最低 */
 	animation: local-search-loading 0.8s linear infinite;
 }
 
@@ -578,5 +580,19 @@ mark.wiki-search-flash {
 
 	to {
 		background-color: transparent;
+	}
+}
+
+/* ================= 减少动态效果 =================
+   两处没走时长令牌的功能性动画单独降级：
+   - 转圈保留但放慢（完全静止会被当成卡死）；
+   - 跳转定位高亮不再渐隐，保持高亮直到脚本把它拆除 */
+@media (prefers-reduced-motion: reduce) {
+	.wiki-search-box .search-loading.active {
+		animation-duration: 2.5s;
+	}
+
+	.wiki-search-flash {
+		animation: none;
 	}
 }

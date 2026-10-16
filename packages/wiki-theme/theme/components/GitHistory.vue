@@ -174,9 +174,9 @@ function formatRelative(iso: string): string {
 	border: 1px solid var(--vp-c-divider);
 	border-radius: var(--wiki-radius);
 	background: var(--vp-c-bg-soft);
-	/* 悬停时整框描边渐变到品牌色（动效参照 Nolebase GitChangelog：color ease-in-out 200ms） */
-	transition: border-color ease-in-out, background-color ease-in-out;
-	transition-duration: 200ms;
+	/* 悬停时整框描边渐变到品牌色（动效参照 Nolebase GitChangelog：color ease-in-out 200ms，
+		收敛为常规档时长令牌） */
+	transition: border-color var(--wiki-duration-collapse) var(--wiki-ease-out), background-color var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 .git-history-details:hover {
@@ -200,8 +200,7 @@ function formatRelative(iso: string): string {
 	padding: 14px 16px;
 	font-size: 14px;
 	color: var(--vp-c-text-2);
-	transition: color ease-in-out;
-	transition-duration: 200ms;
+	transition: color var(--wiki-duration-collapse) var(--wiki-ease-out);
 	list-style: none;
 	cursor: pointer;
 	user-select: none;
@@ -221,8 +220,7 @@ function formatRelative(iso: string): string {
 .git-history-summary-main {
 	font-weight: 600;
 	color: var(--vp-c-text-1);
-	transition: color ease-in-out;
-	transition-duration: 200ms;
+	transition: color var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 .git-history-summary-action {
@@ -230,8 +228,7 @@ function formatRelative(iso: string): string {
 	font-size: 13px;
 	font-weight: 400;
 	color: var(--vp-c-text-3);
-	transition: color ease-in-out;
-	transition-duration: 200ms;
+	transition: color var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 /* 悬停时整条摘要（含图标）渐变到品牌色 */
@@ -280,7 +277,7 @@ function formatRelative(iso: string): string {
 	height: 16px;
 	color: var(--vp-c-text-3);
 	fill: currentColor;
-	transition: transform 0.2s ease, color ease-in-out 0.2s;
+	transition: transform var(--wiki-duration-collapse) var(--wiki-ease-out), color var(--wiki-duration-collapse) var(--wiki-ease-out);
 }
 
 .git-history-details[open] .git-history-chevron {
@@ -323,7 +320,7 @@ function formatRelative(iso: string): string {
 	font-size: 12px;
 	text-decoration: none;
 	color: var(--vp-c-brand-1);
-	transition: color 0.15s;
+	transition: color var(--wiki-duration-fast);
 }
 
 .git-history-hash:hover {

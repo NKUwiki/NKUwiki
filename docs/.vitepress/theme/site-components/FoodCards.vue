@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createModalFocus } from '@nkuwiki/theme/theme/composables/modalA11y.ts'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { FOOD_CAMPUS, FOOD_CATEGORIES, FOODS, getFoodPhotos } from '../../data/food-data.js'
 import {
@@ -59,6 +60,25 @@ let decorateTimer: number | undefined
 let removeInjector: (() => void) | null = null
 /** 挂在评论区容器上的 click 监听，关闭弹窗时要一并摘掉（否则每开关一次多一个） */
 let slotDecorateHandler: (() => void) | null = null
+
+/** 详情弹窗与内嵌图片查看器的无障碍外壳（role/焦点移入/Tab 循环/关闭还原） */
+const modalFocus = createModalFocus()
+const dialogEl = ref<HTMLElement>()
+const viewerEl = ref<HTMLElement>()
+watch(active, (item) => {
+	if (item)
+		modalFocus.onOpen(dialogEl.value)
+	else
+		modalFocus.onClose()
+})
+// 两级嵌套天然可用：查看器打开时记录的触发元素正是弹窗里的图片按钮，
+// 关闭查看器焦点正好回到那张图上
+watch(viewerOpen, (open) => {
+	if (open)
+		modalFocus.onOpen(viewerEl.value)
+	else
+		modalFocus.onClose()
+})
 
 const campusOptions = computed(() => {
 	const keys = [...new Set(foods.value.map(item => item.campus).filter(Boolean))] as string[]
@@ -346,6 +366,11 @@ function onKeydown(event: KeyboardEvent) {
 			viewerOpen.value = false
 		else closeDialog()
 	}
+	else if (event.key === 'Tab') {
+		// 焦点陷阱限定当前所处的弹层：查看器开着时循环查看器，否则循环详情弹窗
+		modalFocus.trap(event, viewerOpen.value ? viewerEl.value : dialogEl.value)
+		return
+	}
 	else if (viewerOpen.value && event.key === 'ArrowLeft') {
 		changeViewer(-1)
 	}
@@ -399,6 +424,7 @@ onBeforeUnmount(() => {
 	slotDecorateHandler = null
 	destroyTwikoo(commentSlot.value)
 	document.body.style.overflow = ''
+	modalFocus.restoreIfOpen()
 })
 </script>
 
@@ -490,7 +516,7 @@ onBeforeUnmount(() => {
 
 	<Teleport to="body">
 		<div v-if="active" class="nku-food-modal" @click.self="closeDialog">
-			<div class="nku-food-dialog" role="dialog" aria-modal="true" :aria-label="active.name">
+			<div ref="dialogEl" class="nku-food-dialog" role="dialog" aria-modal="true" :aria-label="active.name">
 				<button class="nku-food-dialog-close" type="button" aria-label="关闭" @click="closeDialog">
 					&times;
 				</button>
@@ -589,7 +615,7 @@ onBeforeUnmount(() => {
 				</div>
 			</div>
 
-			<div v-if="viewerOpen" class="nku-food-viewer" @click.self="viewerOpen = false">
+			<div v-if="viewerOpen" ref="viewerEl" class="nku-food-viewer" role="dialog" aria-modal="true" :aria-label="`${active.name} 图片查看`" @click.self="viewerOpen = false">
 				<button class="nku-food-viewer-close" type="button" aria-label="关闭" @click="viewerOpen = false">
 					&times;
 				</button>
