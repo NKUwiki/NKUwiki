@@ -16,7 +16,7 @@ import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
 import { fallbackAuthor, members } from './data/members.ts'
-import { repoUrl, siteUrl } from './data/site.ts'
+import { repoUrl, siteUrl, watermarkSubtitle } from './data/site.ts'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {
@@ -142,6 +142,7 @@ export default defineConfig({
 		define: {
 			__SITE_URL__: JSON.stringify(siteUrl),
 			__REPO_URL__: JSON.stringify(repoUrl),
+			__WATERMARK_SUBTITLE__: JSON.stringify(watermarkSubtitle),
 			__ANNOUNCEMENT__: JSON.stringify(JSON.stringify(announcement)),
 		},
 		base,

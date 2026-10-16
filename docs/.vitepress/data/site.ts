@@ -5,3 +5,6 @@
 // 集中在此避免散落的硬编码（尤其是改名的旧仓库 NKU_Wiki）。
 export const siteUrl = 'https://freshnkuer.wiki/'
 export const repoUrl = 'https://github.com/NKUwiki/NKUwiki'
+// 页面背景水印的尾段文案（站名与域名由主题包分别从 site.title、siteUrl 派生，
+// 这里只补主题包不该内建的部分：具体校名与定位词）
+export const watermarkSubtitle = '南开校园知识库'

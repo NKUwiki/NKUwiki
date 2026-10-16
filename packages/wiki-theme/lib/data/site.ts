@@ -13,8 +13,11 @@
 
 declare const __SITE_URL__: string
 declare const __REPO_URL__: string
+declare const __WATERMARK_SUBTITLE__: string
 
 /** 正式网址（尾带斜杠） */
 export const siteUrl: string = __SITE_URL__
 /** 仓库地址 */
 export const repoUrl: string = __REPO_URL__
+/** 页面背景水印的尾段文案（校名/定位词属站点数据，未配置时为空串） */
+export const watermarkSubtitle: string = __WATERMARK_SUBTITLE__
