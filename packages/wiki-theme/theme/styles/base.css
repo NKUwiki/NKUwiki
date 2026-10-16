@@ -118,30 +118,6 @@ pre {
 	transform: none;
 }
 
-/* ================= 深浅色切换的整页颜色过渡 =================
-   只在真正切换主题的那一小段时间内启用（WikiLayout 挂上、到时摘掉），
-   平时不挂 transition，避免影响 hover 等日常交互的响应。
-   覆盖两类元素：大面积背景（导航/侧栏/正文/页脚）与亮暗差异显著的
-   大色块（代码块、自定义容器、表格、引用）——后者若不适配，切换时会出现
-   「背景平滑变化、代码块啪地跳变」的割裂感。
-   刻意不用 * 全站选择器：那会把每个行内元素都拉进重绘，得不偿失。 */
-html.wiki-theme-fade,
-html.wiki-theme-fade body,
-html.wiki-theme-fade .VPNav,
-html.wiki-theme-fade .VPNavBar,
-html.wiki-theme-fade .VPSidebar,
-html.wiki-theme-fade .VPLocalNav,
-html.wiki-theme-fade .VPContent,
-html.wiki-theme-fade .VPDoc,
-html.wiki-theme-fade .VPDocAside,
-html.wiki-theme-fade .VPFooter,
-html.wiki-theme-fade .vp-doc div[class*="language-"],
-html.wiki-theme-fade .vp-doc .custom-block,
-html.wiki-theme-fade .vp-doc table,
-html.wiki-theme-fade .vp-doc blockquote {
-	transition: background-color var(--wiki-duration-slow) var(--wiki-ease-out), border-color var(--wiki-duration-slow) var(--wiki-ease-out);
-}
-
 ::selection {
 	background-color: var(--vp-c-brand-soft);
 }

@@ -6,6 +6,7 @@ import {
 import { useData, useRoute, withBase } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { installThemeTransition } from '../composables/themeTransition'
 import AnnouncementBar from './AnnouncementBar.vue'
 import ArticleAuthors from './ArticleAuthors.vue'
 import BackTop from './BackTop.vue'
@@ -26,41 +27,22 @@ const { frontmatter, isDark } = useData()
 const route = useRoute()
 // 按路由 key 强制重建组件，切页后文件历史随之刷新
 const changelogKey = computed(() => route.path)
-/** 整页颜色过渡的持续时间：略长于 --wiki-duration-slow(280ms)，留出收尾余量 */
-const THEME_FADE_DURATION = 320
-let themeFadeTimer: ReturnType<typeof setTimeout> | undefined
-
-/**
- * 整页颜色过渡只在用户真的点切换按钮时启用。
- *
- * 不用 watch(isDark) 判断：客户端 hydrate 时 isDark 会从初始值同步到
- * localStorage/系统偏好，那次变化同样会触发 watch，导致首次进站
- * （尤其暗色模式用户）看到颜色白淡一下。
- * 文档级点击监听排在组件自身的 @click 之后，此时 VitePress 已改好 isDark、
- * 但 Vue 还没把 .dark 写进 DOM，正好是挂上过渡类的最佳时机。
- */
-function onAppearanceClick(event: MouseEvent) {
-	const target = event.target
-	if (!(target instanceof Element) || !target.closest('.VPSwitchAppearance'))
-		return
-	const root = document.documentElement
-	root.classList.add('wiki-theme-fade')
-	if (themeFadeTimer)
-		clearTimeout(themeFadeTimer)
-	themeFadeTimer = setTimeout(() => root.classList.remove('wiki-theme-fade'), THEME_FADE_DURATION)
-}
+let removeThemeTransition: (() => void) | undefined
 
 onMounted(() => {
 	watch(isDark, (dark) => {
 		document.querySelectorAll<HTMLLinkElement>('link[data-wiki-icon]').forEach(link => link.href = withBase(dark ? '/favicon-dark.svg' : '/favicon-light.svg'))
 	}, { immediate: true })
-	document.addEventListener('click', onAppearanceClick)
+	// 深浅色切换的整页交叉淡入。切换动作必须与 VitePress 的默认实现一致
+	// （VitePress 没有提供 'toggle-appearance'，组件里用的就是这句兜底），
+	// 详见 composables/themeTransition.ts
+	removeThemeTransition = installThemeTransition(() => {
+		isDark.value = !isDark.value
+	})
 })
 
 onUnmounted(() => {
-	document.removeEventListener('click', onAppearanceClick)
-	if (themeFadeTimer)
-		clearTimeout(themeFadeTimer)
+	removeThemeTransition?.()
 })
 </script>
 
