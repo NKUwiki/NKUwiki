@@ -1581,9 +1581,10 @@ html.dark .map-section {
 	/* 颜色走自定义属性传入：内联 background 会盖掉选中态的覆盖规则 */
 	background: var(--chip-dot, var(--c-muted));
 }
-/* 选中时圆点转白：圆点的作用是在未选中时辨认分类，选中后整枚药丸已是品牌色 */
+/* 选中态保留分类原色（蓝色系在品牌深紫底上偏暗，加一圈半透明白描边
+   把色块托出来），让「当前是哪个分类」的色标在选中前后保持一致 */
 .category-chip.active .chip-dot {
-	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.72);
 }
 
 /* 列表折叠：外层 grid 容器高度 1fr ↔ 0fr（纯 CSS 里唯一能动画到「内容自适应高度」
