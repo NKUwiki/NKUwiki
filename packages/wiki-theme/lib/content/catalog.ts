@@ -188,7 +188,9 @@ export function scanArticles(root = docsRoot) {
 		const lastUpdated = parseDateField(fm.lastUpdated, source, 'lastUpdated') || date
 		const folders = source.split('/').slice(0, -1).map(label)
 		const url = fm.permalink || `/${source.replace(/\.md$/, '')}`
-		if (!url.startsWith('/') || /[?#]|\.\./.test(url) || typeof url !== 'string')
+		// 类型检查放最前：permalink 写成数字等非字符串时，先抛友好的中文错误，
+		// 而不是 url.startsWith is not a function
+		if (typeof url !== 'string' || !url.startsWith('/') || /[?#]|\.\./.test(url))
 			throw new Error(`无效 permalink: ${source}`)
 		articles.push({
 			source,

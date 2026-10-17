@@ -68,6 +68,20 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 	}
 })
 
+test('permalink 写成非字符串时抛可读错误，而不是 TypeError', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ncepu-catalog-'))
+	try {
+		mkdirSync(join(root, '01.专题'))
+		writeFileSync(join(root, '01.专题/01.坏链接.md'), '---\npermalink: 123\n---')
+		assert.throws(() => scanArticles(root), /无效 permalink/)
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
 test('side bar tree opens only the current article category path', () => {
 	const articles = scanArticles()
 	const categoryOf = (title: string) => articles.find(article => article.title === title)!.folders
