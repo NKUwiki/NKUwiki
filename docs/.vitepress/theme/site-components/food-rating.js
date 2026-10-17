@@ -32,9 +32,20 @@ export const ratingState = reactive({})
 /**
  * 当前访客自己打过的分（本地记录，用于回显与防重复提交）
  *
+ * 刻意初始化为空表、不在模块作用域读 localStorage：本模块会被 SSG 页面
+ * （美食页）在服务端求值，那时没有 window；而客户端模块求值时 localStorage
+ * 里可能有值——两边初始状态不一致会让星级按钮的 class 在 hydration 时对不上。
+ * 改由组件 onMounted 时调 hydrateMyRatings() 补齐（与 WikiHome / GitHistory
+ * 的「挂载后才读浏览器状态」做法一致）。
+ *
  * @type {Record<string, number>}
  */
-export const myRatings = reactive(readStoredRatings())
+export const myRatings = reactive({})
+
+/** 挂载后把本地评分补进 myRatings（只做增量写入，不覆盖更新的值） */
+export function hydrateMyRatings() {
+	Object.assign(myRatings, readStoredRatings())
+}
 
 /**
  * 读取本地记录的评分

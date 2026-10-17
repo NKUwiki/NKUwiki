@@ -7,6 +7,7 @@ import {
 	destroyTwikoo,
 	foodUrl,
 	getTwikoo,
+	hydrateMyRatings,
 	installRatingInjector,
 	loadRatings,
 	myRatings,
@@ -387,6 +388,9 @@ watch([currentCampus, currentCategory], () => loadRatings(filtered.value.map(ite
 
 onMounted(() => {
 	document.addEventListener('keydown', onKeydown)
+	// 本地评分记录只在此刻（客户端）补入：SSR 阶段 myRatings 恒为空，
+	// 避免服务端 0 星 / 客户端 N 星的 hydration 不匹配
+	hydrateMyRatings()
 	// 登记旧 id 别名：改过 id 的店铺，历史评分仍计入平均分
 	const aliasMap: Record<string, string[]> = {}
 	for (const item of foods.value) {
