@@ -298,9 +298,11 @@ html:has(.wiki-announcement) {
 	}
 }
 
-/* 进度环：画在球内，brand-2 色。r 取 calc(50% - 2px)（stroke-width 4 的一半），
-   周长恰为 π*直径 - 4πpx——与 Vue 侧的 dasharray 百分比公式严丝合缝，
-   36px/48px 两种尺寸自动适配，无需按断点改半径 */
+/* 进度环：画在球内，brand-2 色。半径按断点给死（16px/22px，对齐 plume 的
+   VPBackToTop），周长 = 2πr 与半径成对声明在 --wiki-backtop-circ——
+   Vue 侧的 dasharray 是 calc(周长 × 进度)，两者必须同源，
+   改球径时只改这一处就不会漏掉另一边。
+   默认 0 周长即空环：JS 尚未写入时也不会退化成「整环常亮」 */
 .wiki-backtop-ring {
 	display: block;
 	width: 100%;
@@ -309,11 +311,20 @@ html:has(.wiki-announcement) {
 }
 
 .wiki-backtop-ring circle {
-	r: calc(50% - 2px);
+	r: 16px;
+	--wiki-backtop-circ: 100.53;
 	stroke: var(--vp-c-brand-2);
 	stroke-width: 4px;
+	stroke-dasharray: 0 var(--wiki-backtop-circ);
 	transform: rotate(-90deg);
 	transform-origin: 50% 50%;
+}
+
+@media (min-width: 48rem) {
+	.wiki-backtop-ring circle {
+		r: 22px;
+		--wiki-backtop-circ: 138.23;
+	}
 }
 
 /* ================= 打印适配 =================
