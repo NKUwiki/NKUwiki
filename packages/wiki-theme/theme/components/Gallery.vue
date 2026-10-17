@@ -74,6 +74,10 @@ onMounted(() => {
 		if (Number.isInteger(index) && img.complete)
 			onImageLoad(index, { target: img } as unknown as Event)
 	})
+	// 个别环境（老浏览器、测试桩）没有 ResizeObserver：退化为只取一次宽度，
+	// 不让 onMounted 抛错把整个画廊弄死（BackTop / QrCode 同样做了守卫）
+	if (typeof ResizeObserver === 'undefined')
+		return
 	observer = new ResizeObserver(([entry]) => {
 		if (entry)
 			containerWidth.value = entry.contentRect.width
