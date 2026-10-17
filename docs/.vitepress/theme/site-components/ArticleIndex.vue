@@ -236,10 +236,12 @@ async function flipList() {
 	})
 }
 
-// 只在分类 / 标签切换与视图切换时做位置过渡；搜索词高频变化不走这里
+// 只在分类 / 标签切换与视图切换时做位置过渡；搜索词高频变化不走这里。
+// 必须用默认的 pre 触发：回调要在 DOM 更新**之前**采集旧位置，
+// flush:'post' 时列表已是新顺序，前后两次采样相同，delta 恒 0、动画永远不播
 watch([selected, view], () => {
 	flipList()
-}, { flush: 'post' })
+})
 
 onMounted(() => {
 	readQuery()
