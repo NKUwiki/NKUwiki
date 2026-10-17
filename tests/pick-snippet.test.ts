@@ -40,7 +40,8 @@ function stripTrailingZeros(text: string) {
 
 const noLastComma = (s: string) => s.replace(/\n {2}\},$/, '\n  }')
 
-test('数据条与现有条目格式一致（全量 76 条）', () => {
+// 标题里的条数随 BUILDINGS 走，避免每次补点位都要改这个数字
+test(`数据条与现有条目格式一致（全量 ${BUILDINGS.length} 条）`, () => {
 	const mismatched: string[] = []
 	for (const b of BUILDINGS) {
 		const raw = extractRaw(b.id)
@@ -54,6 +55,7 @@ test('数据条与现有条目格式一致（全量 76 条）', () => {
 			category: b.category,
 			campusId: b.campusId,
 			coord: b.coord,
+			aliases: b.aliases,
 			desc: b.desc,
 			photos: b.photos,
 			article: b.article,

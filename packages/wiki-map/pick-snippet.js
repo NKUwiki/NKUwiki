@@ -47,7 +47,7 @@ export function nextBuildingId(buildings, campusId, category) {
  * 才能和现有条目长得一模一样。
  */
 export function buildBuildingSnippet(fields) {
-	const { id, name, category, campusId, coord, desc, photos, article } = fields || {}
+	const { id, name, category, campusId, coord, aliases, desc, photos, article } = fields || {}
 	const pair = formatCoord(coord)
 	if (!id || !name || !category || !campusId || !pair)
 		return ''
@@ -65,8 +65,13 @@ export function buildBuildingSnippet(fields) {
 		'    ],',
 	]
 
-	// 可选字段按现有条目的出现顺序追加：desc → photos → article
+	// 可选字段按现有条目的出现顺序追加：aliases → desc → photos → article。
+	// aliases（别称，参与点位搜索）单行输出：别称通常只有一两个，照 photos 那样逐行展开
+	// 会让条目白长一截；也因此它是唯一「数组但单行」的可选字段。
+	const aliasList = Array.isArray(aliases) ? aliases.filter(a => typeof a === 'string' && a.trim()) : []
 	const tail = []
+	if (aliasList.length)
+		tail.push(`    "aliases": [${aliasList.map(a => q(a.trim())).join(', ')}],`)
 	if (typeof desc === 'string' && desc.trim())
 		tail.push(`    "desc": ${q(desc.trim())},`)
 	const list = Array.isArray(photos) ? photos.filter(p => typeof p === 'string' && p.trim()) : []

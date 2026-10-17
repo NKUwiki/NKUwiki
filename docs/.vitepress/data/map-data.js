@@ -592,6 +592,242 @@ export const BUILDINGS = [
     ],
     "desc": "田家炳音乐厅，演出与音乐会场地，紧邻学生活动中心。"
   },
+  /* ── 以下八里台点位按《南开大学百年校庆手绘地图》图例补齐 ──
+     坐标沿用同一套约定：GCJ02，高德 POI 检索（与站内拾取工具同一坐标系，可直接用）。
+     手绘图是艺术变形的俯瞰图，没有比例尺，坐标只能来自 POI 检索或实地拾取；
+     高德没有独立 POI 的条目（各宿舍楼、部分教学楼与校门、银行网点等）暂未收录。 */
+  {
+    "id": "n_teaching_08",
+    "name": "综合实验楼",
+    "category": "teaching",
+    "campusId": "n",
+    "coord": [
+      117.174078,
+      39.102537
+    ],
+    "desc": "校区东部的公共实验教学楼，楼内设有南大商城与校园文化产品专卖店。"
+  },
+  {
+    "id": "n_admin_02",
+    "name": "专家楼",
+    "category": "admin",
+    "campusId": "n",
+    "coord": [
+      117.17336,
+      39.102068
+    ],
+    "desc": "校内宾馆与专家楼餐厅，接待来访学者与会议宾客。"
+  },
+  {
+    "id": "n_landmark_09",
+    "name": "谊园",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.173818,
+      39.101415
+    ],
+    "desc": "校园东南部的园林式庭院，环境清幽，适合散步小坐。"
+  },
+  {
+    "id": "n_busstation_01",
+    "name": "校车区（接待服务中心客运部）",
+    "category": "busstation",
+    "campusId": "n",
+    "coord": [
+      117.178482,
+      39.10376
+    ],
+    "desc": "校区东侧的校车发车点，往返八里台与津南校区的班车在此乘坐。"
+  },
+  {
+    "id": "n_college_12",
+    "name": "生物楼（生命科学学院）",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.167545,
+      39.102098
+    ],
+    "desc": "生命科学学院教学科研楼，紧邻范孙楼与新开湖一侧。"
+  },
+  {
+    "id": "n_theater_02",
+    "name": "学生活动中心",
+    "category": "theater",
+    "campusId": "n",
+    "coord": [
+      117.170575,
+      39.103975
+    ],
+    "desc": "社团活动与学生事务办理的集中场所，门口设有快递柜。"
+  },
+  {
+    "id": "n_shop_01",
+    "name": "西南村综合购物中心",
+    "category": "shop",
+    "campusId": "n",
+    "coord": [
+      117.16325,
+      39.101704
+    ],
+    "desc": "西南村生活区里的综合购物点，日用百货与零食在此采买。"
+  },
+  {
+    "id": "n_landmark_10",
+    "name": "明珠园",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.173143,
+      39.101765
+    ],
+    "desc": "校园东南部的小园，国际学术交流处设在园内。"
+  },
+  {
+    "id": "n_landmark_11",
+    "name": "宁园",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.174692,
+      39.101831
+    ],
+    "aliases": ["陈省身故居"],
+    "desc": "毗邻谊园路的小园，园内即数学大师陈省身先生的故居。"
+  },
+  {
+    "id": "n_college_13",
+    "name": "迦陵学舍",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.175108,
+      39.10185
+    ],
+    "desc": "为叶嘉莹先生（号迦陵）修建的居所与讲学之所，中华古典文化研究所所在。"
+  },
+  {
+    "id": "n_landmark_13",
+    "name": "友谊樱花园",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.172192,
+      39.101117
+    ],
+    "desc": "校内的樱花小园，春季花开时是热门的拍照点。"
+  },
+  {
+    "id": "n_landmark_14",
+    "name": "小花园",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.175585,
+      39.10279
+    ],
+    "desc": "校区东部的小花园，紧邻综合实验楼与东方艺术大楼一带。"
+  },
+  {
+    "id": "n_landmark_15",
+    "name": "春城弦诵广场",
+    "category": "landmark",
+    "campusId": "n",
+    "coord": [
+      117.165483,
+      39.103538
+    ],
+    "desc": "图书馆西侧的广场，「春城弦诵」取自咏诵南开办学的诗句。"
+  },
+  {
+    "id": "n_sports_04",
+    "name": "网球场",
+    "category": "sports",
+    "campusId": "n",
+    "coord": [
+      117.17109,
+      39.105197
+    ],
+    "desc": "室外网球场，体育课与课余约球的主要场地。"
+  },
+  {
+    "id": "n_college_14",
+    "name": "药学院",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.175089,
+      39.105983
+    ],
+    "desc": "药学院教学科研楼，位于校区东北部。"
+  },
+  {
+    "id": "n_college_15",
+    "name": "外国语学院",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.165563,
+      39.104042
+    ],
+    "desc": "外国语学院教学科研楼，位于校区中西部。"
+  },
+  {
+    "id": "n_college_16",
+    "name": "统计与数据科学学院",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.16629,
+      39.10211
+    ],
+    "desc": "统计与数据科学学院教学科研楼，邻近文化素质教育活动中心。"
+  },
+  {
+    "id": "n_college_17",
+    "name": "化学学院分析科学研究中心",
+    "category": "college",
+    "campusId": "n",
+    "coord": [
+      117.16454,
+      39.104431
+    ],
+    "desc": "化学学院分析科学研究中心，位于校区西北部实验区。"
+  },
+  {
+    "id": "n_dormitory_01",
+    "name": "西区公寓",
+    "category": "dormitory",
+    "campusId": "n",
+    "coord": [
+      117.160293,
+      39.106834
+    ],
+    "desc": "校区西北部的学生公寓组团，邻近中心实验室与组合教学中心。"
+  },
+  {
+    "id": "n_dormitory_02",
+    "name": "学生宿舍区",
+    "category": "dormitory",
+    "campusId": "n",
+    "coord": [
+      117.169236,
+      39.104116
+    ],
+    "desc": "八里台校区中部学生宿舍组团，紧邻食堂群与体育场。"
+  },
+  {
+    "id": "n_dormitory_03",
+    "name": "东村",
+    "category": "dormitory",
+    "campusId": "n",
+    "coord": [
+      117.178422,
+      39.102926
+    ],
+    "desc": "校区东侧的教职工住宅区，邻近大中路东段。"
+  },
   {
     "id": "j_library_01",
     "name": "津南校区图书馆",
