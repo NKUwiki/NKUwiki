@@ -54,8 +54,8 @@ export const CATEGORY_ICON_PATHS = {
 }
 
 export const CAMPUS_CONFIG = {
-	/* 主校区：n */
-	n: { name: '主校区', coord: [116.397, 39.909], zoom: 16 },
+	/* 主校区：n（id 与对象的 key 保持一致，点位的 campusId 与 POLYGONS 的键都引用它） */
+	n: { id: 'n', name: '主校区', coord: [116.397, 39.909], zoom: 16 },
 }
 
 export const FILTER_LIST = [

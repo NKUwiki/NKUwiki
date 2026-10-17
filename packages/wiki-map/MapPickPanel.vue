@@ -64,7 +64,9 @@ const categoryOptions = computed(() =>
 )
 
 const campusOptions = computed(() =>
-	Object.values(props.campuses).map(c => ({ id: c.id, name: c.name || c.id })),
+	// 取对象的 key 作 value，不读数据条目里的 id 字段：该字段是可选的
+	// （示例数据就没有），MapView 与 POLYGONS 也都按 key 引用校区
+	Object.entries(props.campuses).map(([key, c]) => ({ id: key, name: c?.name || key })),
 )
 
 /** 与地图校区保持同步（用户在页面顶部切了校区时跟进） */
