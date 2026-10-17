@@ -149,4 +149,7 @@ test('可选字段按现有顺序输出，末行不留尾逗号', () => {
 		article: '',
 	})
 	assert.ok(!minimal.includes('"desc"') && !minimal.includes('"photos"') && !minimal.includes('"article"'))
+	// 只有必填项时 coord 数组行就是末行：同样不能留尾逗号（与现有条目逐字符一致）
+	assert.ok(minimal.includes('    ]\n  },'), `末行不应带尾逗号：\n${minimal}`)
+	assert.ok(!minimal.includes('    ],\n'))
 })

@@ -85,8 +85,9 @@ export function buildBuildingSnippet(fields) {
 	if (typeof article === 'string' && article.trim())
 		tail.push(`    "article": ${q(article.trim())},`)
 
-	// 末行不留尾逗号：现有条目最后一行都没有
-	if (tail.length)
-		tail[tail.length - 1] = tail[tail.length - 1].replace(/,$/, '')
-	return [...lines, ...tail, '  },'].join('\n')
+	// 末行不留尾逗号：现有条目最后一行都没有。无可选字段时要收尾的是
+	// coord 数组行（"    ],"），只处理 tail 会漏掉这种情况
+	const all = [...lines, ...tail]
+	all[all.length - 1] = all[all.length - 1].replace(/,$/, '')
+	return [...all, '  },'].join('\n')
 }
