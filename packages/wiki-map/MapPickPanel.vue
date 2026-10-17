@@ -23,7 +23,7 @@ interface PickBuilding {
 	name?: string
 	coord?: number[]
 }
-interface PickCategory { label?: string }
+interface PickCategory { label?: string, color?: string, group?: string }
 interface PickCampus { id: string, name?: string }
 
 const props = withDefaults(defineProps<{
@@ -31,8 +31,10 @@ const props = withDefaults(defineProps<{
 	coord?: number[] | null
 	/** 现有全部点位，用于推算下一个可用序号、并提示附近已有点位 */
 	buildings?: PickBuilding[]
-	/** CATEGORY_CONFIG：{ key: { label, color } } */
+	/** CATEGORY_CONFIG：{ key: { label, color, group } } */
 	categories?: Record<string, PickCategory>
+	/** CATEGORY_GROUPS：{ key: { label } }，用于把分类下拉按分组归组 */
+	groups?: Record<string, { label?: string }>
 	/** CAMPUS_CONFIG：{ id: { id, name } } */
 	campuses?: Record<string, PickCampus>
 	/** 地图当前所在校区，作为校区下拉的初始值 */
@@ -59,9 +61,18 @@ const copied = ref(false)
 const copyFailed = ref(false)
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
 
-const categoryOptions = computed(() =>
-	Object.entries(props.categories).map(([key, cfg]) => ({ key, label: cfg?.label || key })),
-)
+/** 按 CATEGORY_GROUPS 归组后的分类选项（顺序与分组声明一致，空分组不显示） */
+const groupedCategories = computed(() => {
+	const groups = props.groups || {}
+	const buckets: Record<string, { key: string, label: string }[]> = {}
+	for (const [key, cfg] of Object.entries(props.categories)) {
+		const g = (cfg && cfg.group) || 'other'
+		;(buckets[g] ||= []).push({ key, label: (cfg && cfg.label) || key })
+	}
+	return Object.keys(groups)
+		.map(gk => ({ groupKey: gk, groupLabel: groups[gk]?.label || gk, items: buckets[gk] || [] }))
+		.filter(g => g.items.length)
+})
 
 const campusOptions = computed(() =>
 	// 取对象的 key 作 value，不读数据条目里的 id 字段：该字段是可选的
@@ -223,9 +234,11 @@ onUnmounted(() => {
 				<option value="">
 					请选择
 				</option>
-				<option v-for="c in categoryOptions" :key="c.key" :value="c.key">
-					{{ c.label }}（{{ c.key }}）
-				</option>
+				<optgroup v-for="grp in groupedCategories" :key="grp.groupKey" :label="grp.groupLabel">
+					<option v-for="c in grp.items" :key="c.key" :value="c.key">
+						{{ c.label }}（{{ c.key }}）
+					</option>
+				</optgroup>
 			</select>
 		</label>
 

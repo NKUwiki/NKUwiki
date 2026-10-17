@@ -38,29 +38,45 @@ export const MAP_DISPLAY = {
 }
 
 export const CATEGORY_CONFIG = {
-  /* 分类色 = 标点与列表图标的填充色。按语义分组取色（学习办公冷色、餐饮生活暖色、
-     运动文化青紫、交通出行蓝绿），组内用深浅区分，做到「同类相近、异类分明」。
-     想换配色只改这里的 color 即可，MapView 会自动取用；未命中的分类回落到灰色。
+  /* 分类色 = 标点与列表图标的填充色。每个分类都归到一个「分组」（CATEGORY_GROUPS），
+     地图筛选先做分组、再选细类，交互结构对齐上海交大电子地图；想换配色只改这里的
+     color 即可，MapView 会自动取用；未命中的分类回落到灰色。
 
-     2026-10 精简：17 → 11 个。零星分类各自成项只会让筛选行多一排点不动的药丸——
-     theater 并入 sports（运动文体），food/shop/express/hospital 并入 service
-     （生活服务），busstation 并入 transit（交通出行），tool 从未有点位、删除。 */
-  teaching:   { label: '教学楼',   color: '#3B82F6' },
-  college:    { label: '学院楼',   color: '#6366F1' },
-  library:    { label: '图书馆',   color: '#8B5CF6' },
-  dormitory:  { label: '学生宿舍', color: '#10B981' },
-  canteen:    { label: '食堂',     color: '#F59E0B' },
-  sports:     { label: '运动文体', color: '#06B6D4' },
-  landmark:   { label: '地标建筑', color: '#F43F5E' },
-  admin:      { label: '行政楼',   color: '#64748B' },
-  gate:       { label: '校门',     color: '#14B8A6' },
-  service:    { label: '生活服务', color: '#EC4899' },
-  transit:    { label: '交通出行', color: '#0EA5E9' }
+     2026-10 两次精简：先把 17 个并成 11 个（theater→sports、food/shop/express/
+     hospital→service、busstation→transit、删 tool），再按 8 大分组归类——
+     教学楼/学院楼/图书馆/行政楼归入 academic（学院与建筑），地标建筑归入 landscape
+     （自然人文景观），校门/交通出行归入 access（大门与交通），食堂/宿舍/生活服务/
+     体育场地各自成组；group 字段即它所属的分组 key。 */
+  teaching:   { label: '教学楼',     color: '#3B82F6', group: 'academic' },
+  college:    { label: '学院楼',     color: '#6366F1', group: 'academic' },
+  library:    { label: '图书馆',     color: '#8B5CF6', group: 'academic' },
+  admin:      { label: '行政楼',     color: '#64748B', group: 'academic' },
+  landmark:   { label: '地标建筑',   color: '#F43F5E', group: 'landscape' },
+  sports:     { label: '运动文体',   color: '#06B6D4', group: 'sports' },
+  canteen:    { label: '食堂',       color: '#F59E0B', group: 'canteen' },
+  dormitory:  { label: '学生宿舍',   color: '#10B981', group: 'dormitory' },
+  service:    { label: '生活服务',   color: '#EC4899', group: 'service' },
+  gate:       { label: '校门',       color: '#14B8A6', group: 'access' },
+  transit:    { label: '交通出行',   color: '#0EA5E9', group: 'access' }
+}
+
+/* 分类分组（一级）：地图筛选的横排药丸先列这 8 个，点开后再显示该组下的细类
+   （CATEGORY_CONFIG 里 group 指向这里的 key）。label/color/icon 用于分组药丸，
+   icon 为 FontAwesome 类名（备用，当前药丸用色点而非图标）。 */
+export const CATEGORY_GROUPS = {
+  academic:  { label: '学院与建筑',   color: '#6366F1', icon: 'fa-university' },
+  landscape: { label: '自然人文景观', color: '#F43F5E', icon: 'fa-leaf' },
+  sports:    { label: '体育场地',     color: '#06B6D4', icon: 'fa-futbol-o' },
+  canteen:   { label: '食堂',         color: '#F59E0B', icon: 'fa-cutlery' },
+  dormitory: { label: '宿舍与公寓',   color: '#10B981', icon: 'fa-building' },
+  service:   { label: '生活服务',     color: '#EC4899', icon: 'fa-shopping-bag' },
+  access:    { label: '大门与交通',   color: '#0EA5E9', icon: 'fa-bus' },
+  other:     { label: '其他',         color: '#64748B', icon: 'fa-ellipsis-h' }
 }
 
 /* 分类 SVG 图标 path 数据（Lucide 风格，抄自 CQU-openlib markerIcons.ts）。
    2026-10 精简后：service 用购物袋（原 shop）、transit 用公交（原 busstation），
-   被合并分类的 path 一并删除，key 与 CATEGORY_CONFIG / FILTER_LIST 保持一致 */
+   被合并分类的 path 一并删除，key 与 CATEGORY_CONFIG / CATEGORY_GROUPS 保持一致 */
 
 export const CATEGORY_ICON_PATHS = {
   teaching:
@@ -92,21 +108,6 @@ export const CAMPUS_CONFIG = {
   n: { id: 'n', name: '八里台校区', coord: [117.171274, 39.102101], zoom: 17 },
   j: { id: 'j', name: '津南校区', coord: [117.345, 38.989], zoom: 16 }
 }
-
-export const FILTER_LIST = [
-  { key: 'all',        label: '全部',     icon: 'fa-th-large' },
-  { key: 'teaching',   label: '教学楼',   icon: 'fa-graduation-cap' },
-  { key: 'college',    label: '学院楼',   icon: 'fa-university' },
-  { key: 'library',    label: '图书馆',   icon: 'fa-book' },
-  { key: 'dormitory',  label: '学生宿舍', icon: 'fa-building' },
-  { key: 'canteen',    label: '食堂',     icon: 'fa-cutlery' },
-  { key: 'sports',     label: '运动文体', icon: 'fa-futbol-o' },
-  { key: 'landmark',   label: '地标建筑', icon: 'fa-star' },
-  { key: 'admin',      label: '行政楼',   icon: 'fa-briefcase' },
-  { key: 'gate',       label: '校门',     icon: 'fa-flag' },
-  { key: 'service',    label: '生活服务', icon: 'fa-shopping-bag' },
-  { key: 'transit',    label: '交通出行', icon: 'fa-bus' }
-]
 
 /* 南开大学建筑点位（自 CQUMAPS-1.0 转换） */
 export const BUILDINGS = [

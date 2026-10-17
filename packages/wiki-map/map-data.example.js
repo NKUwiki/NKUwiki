@@ -17,10 +17,10 @@
  * 坐标统一 GCJ02（高德坐标系），高德底图与高德导航直接使用；百度/腾讯/Apple 导航
  * 外链由 MapView 内部做坐标转换。
  *
- * ================= 新增分类（三处同步，key 保持一致） =================
- * 1. CATEGORY_CONFIG      分类的显示名与标点颜色（color 决定标点/列表/详情卡的配色）；
- * 2. CATEGORY_ICON_PATHS  标点与列表上的图标（Lucide 风格 SVG path，viewBox 24×24）；
- * 3. FILTER_LIST          左侧筛选下拉的选项（icon 为 FontAwesome 类名）。
+ * ================= 新增分类（四处同步，key 保持一致） =================
+ * 1. CATEGORY_CONFIG      分类的显示名、标点颜色（color）与所属分组（group）；
+ * 2. CATEGORY_GROUPS      一级分组（筛选药丸先列分组，点开再列细类）；
+ * 3. CATEGORY_ICON_PATHS  标点与列表上的图标（Lucide 风格 SVG path，viewBox 24×24）。
  * 不新增分类就无法在点位上使用新 category，构建不校验但标点会缺图标。
  *
  * ================= 校区配置（CAMPUS_CONFIG） =================
@@ -41,9 +41,15 @@ export const MAP_DISPLAY = {
 }
 
 export const CATEGORY_CONFIG = {
-	teaching: { label: '教学楼', color: '#4A90D9' },
-	canteen: { label: '食堂', color: '#D9772F' },
-	gate: { label: '校门', color: '#3B7A57' },
+	teaching: { label: '教学楼', color: '#4A90D9', group: 'academic' },
+	canteen: { label: '食堂', color: '#D9772F', group: 'canteen' },
+	gate: { label: '校门', color: '#3B7A57', group: 'access' },
+}
+
+export const CATEGORY_GROUPS = {
+	academic: { label: '学院与建筑', color: '#4A90D9', icon: 'fa-university' },
+	canteen: { label: '食堂', color: '#D9772F', icon: 'fa-cutlery' },
+	access: { label: '大门与交通', color: '#3B7A57', icon: 'fa-bus' },
 }
 
 export const CATEGORY_ICON_PATHS = {
@@ -57,13 +63,6 @@ export const CAMPUS_CONFIG = {
 	/* 主校区：n（id 与对象的 key 保持一致，点位的 campusId 与 POLYGONS 的键都引用它） */
 	n: { id: 'n', name: '主校区', coord: [116.397, 39.909], zoom: 16 },
 }
-
-export const FILTER_LIST = [
-	{ key: 'all', label: '全部', icon: 'fa-th-large' },
-	{ key: 'teaching', label: '教学楼', icon: 'fa-graduation-cap' },
-	{ key: 'canteen', label: '食堂', icon: 'fa-cutlery' },
-	{ key: 'gate', label: '校门', icon: 'fa-flag' },
-]
 
 export const BUILDINGS = [
 	{

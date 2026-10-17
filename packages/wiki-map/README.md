@@ -27,7 +27,8 @@ import * as mapData from './.vitepress/data/map-data.js'
 `data` 对象的必备导出与字段注释见 [map-data.example.js](./map-data.example.js)：
 
 - `BUILDINGS`：点位列表
-- `CAMPUS_CONFIG` / `CATEGORY_CONFIG` / `CATEGORY_ICON_PATHS` / `FILTER_LIST`：校区与分类配置
+- `CAMPUS_CONFIG` / `CATEGORY_CONFIG` / `CATEGORY_GROUPS` / `CATEGORY_ICON_PATHS`：校区与分类（分组 + 细类）配置
+  - 筛选为两级：先按 `CATEGORY_GROUPS` 列分组药丸，点开后再列该组下的细类（`CATEGORY_CONFIG` 里用 `group` 字段归属）；单细类分组点一下即直达细类
   - `CATEGORY_CONFIG[category].color` 决定该分类标点、列表图标与详情卡图标的颜色，按分类着色；缺省回落中性灰
 - `MAP_DISPLAY`（可选）：底图显示开关，`{ showPoi: false, showLabels: true }`
   - `showPoi: false` 关掉高德底图自带的 POI 要素（接口下发的建筑名、店铺名），只留底色 / 道路 / 建筑轮廓，避免与自有标点重名打架；`true` 恢复显示
