@@ -1569,7 +1569,7 @@ html.dark .map-section {
 	border-radius: 10px;
 	background: var(--c-panel);
 	text-align: left;
-	transition: background 0.15s, border-color 0.15s;
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 	cursor: pointer;
 }
 /* 行与行之间用间隙分格（4px），取代原来的通栏细线 —— 圆角块之间不能再夹一条直角长线 */
@@ -1816,7 +1816,7 @@ html.dark .map-section {
 	background: rgba(15, 23, 42, 0.62);
 	backdrop-filter: blur(8px);
 	color: #FFF;
-	transition: background 0.15s, transform 0.15s;
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), transform var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 	cursor: pointer;
 	z-index: 2;
 }
@@ -1991,7 +1991,7 @@ html.dark .map-section {
 	border: none;
 	background: transparent;
 	color: var(--c-icon-strong);
-	transition: background 0.15s;
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 	cursor: pointer;
 }
 .zoom-btn:hover:not(:disabled) {
@@ -2139,7 +2139,7 @@ html.dark .map-section {
 	font-weight: 500;
 	text-decoration: none;
 	color: var(--c-primary);
-	transition: background 0.15s, color 0.15s;
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .detail-article-link:hover {
 	background: var(--c-primary);
@@ -2341,7 +2341,7 @@ html.dark .map-section {
 	width: 28px;
 	height: 28px;
 	transform-origin: bottom center;
-	transition: transform 200ms ease-out;
+	transition: transform var(--wiki-duration, 0.2s) var(--wiki-ease-out, ease-out);
 	will-change: transform;
 }
 .qut-pin-root > [data-map-pin-body] > svg {
