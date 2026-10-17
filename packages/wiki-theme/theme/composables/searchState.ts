@@ -80,11 +80,16 @@ function flashInRange(root: Element, startEl: Element | null, endEl: Element | n
 		},
 	})
 	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-		const text = (node.textContent ?? '').toLocaleLowerCase()
+		const raw = node.textContent ?? ''
+		const text = raw.toLocaleLowerCase()
 		if (!text.trim())
 			continue
 		const word = words.find(word => text.includes(word))
 		if (!word)
+			continue
+		// toLocaleLowerCase 可能改变字符长度（如 İ → i̇），小写串里的下标
+		// 无法映射回原节点，直接跳过，避免 setStart 越界抛错
+		if (text.length !== raw.length)
 			continue
 		const range = document.createRange()
 		const start = text.indexOf(word)
@@ -122,8 +127,12 @@ function flashInRange(root: Element, startEl: Element | null, endEl: Element | n
 }
 
 function flashTextMatch(original: string, terms: string[], section: string): boolean {
-	// 完整查询串优先（如“向阳计划”整体），其次长词元，最后才放行单字词元
-	const words = [original, ...terms.filter(term => term.length >= 2), ...terms].filter(Boolean)
+	// 完整查询串优先（如“向阳计划”整体），其次长词元，最后才放行单字词元。
+	// 统一小写：下方与节点文本（已 toLocaleLowerCase）做 includes 比较，
+	// 原始查询里的“GPA/NKU”不大写化就永远匹配不上
+	const words = [original, ...terms.filter(term => term.length >= 2), ...terms]
+		.filter(Boolean)
+		.map(word => word.toLocaleLowerCase())
 	if (!words.length)
 		return false
 	// 页首的 ArticleMeta 容器也带 vp-doc class，用 main 下的主正文容器
