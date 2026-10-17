@@ -1,5 +1,7 @@
 import type { MarkdownRenderer } from 'vitepress'
 import { existsSync, readFileSync } from 'node:fs'
+// 显式导入而非直接用全局：ESLint 的 node/prefer-global/process 要求如此
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
@@ -12,6 +14,7 @@ import { mark } from '@nkuwiki/theme/lib/markdown/mark.ts'
 import { plot } from '@nkuwiki/theme/lib/markdown/plot.ts'
 import { steps } from '@nkuwiki/theme/lib/markdown/steps.ts'
 import { timeline } from '@nkuwiki/theme/lib/markdown/timeline.ts'
+import { replaceAssets } from '@nkuwiki/theme/lib/vite/replace-assets.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
@@ -57,6 +60,9 @@ function stripMarkmapInjection() {
 
 const articles = scanArticles()
 const base = ''
+/* 拼资源地址：base 可能是 ''（当前自定义域名根部署），将来若改成 '/xxx/' 带尾斜杠，
+   直接写 `${base}/a.png` 会拼成双斜杠。这里统一剥掉尾斜杠。 */
+const assetUrl = (path: string) => `${base.replace(/\/+$/, '')}/${path}`
 const description = 'NKUwiki（南开校园 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
 
 /** 把一段块内容插到 frontmatter（若在）之后、正文最前面。 */
@@ -78,6 +84,14 @@ const sidebar = Object.fromEntries(articles.map(article => [article.url, [
 	...buildTree(articles, 0, article.folders),
 ]]))
 
+// 资源外链替换（构建期）：设置 WIKI_ASSETS_BASE 后，产物里的本地资源路径会改写到该域名。
+// 未设置时两个入口都是恒等操作，产物逐字节不变。详见 lib/vite/replace-assets.ts。
+const assets = replaceAssets({
+	siteBase: base,
+	image: process.env.WIKI_ASSETS_BASE || '',
+	media: process.env.WIKI_ASSETS_BASE || '',
+})
+
 export default defineConfig({
 	base,
 	lang: 'zh-CN',
@@ -90,8 +104,10 @@ export default defineConfig({
 	srcExclude: ['activity/**'],
 	rewrites: source => rewrites.get(source) || source,
 	head: [
-		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-light.svg`, 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
-		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': `${base}favicon-dark.svg`, 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
+		// favicon 写成绝对路径：相对路径（favicon-light.svg）在资源外链替换时匹配不到
+		// （插件只认以 / 开头的站内路径），加一个斜杠即可被正确改写
+		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-light.svg'), 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
+		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-dark.svg'), 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
 		['link', { rel: 'manifest', href: `${base}manifest.webmanifest` }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
 		['meta', { name: 'author', content: 'NKUwiki-Group' }],
@@ -149,6 +165,11 @@ export default defineConfig({
 		plugins: [
 			markmapPlugin({ containerHeight: 500 }),
 			stripMarkmapInjection(),
+			// 资源外链替换：把产物里的本地资源路径（/img/foo.png、/favicon-light.svg 等）改写到
+			// 网络存储地址。未设置 WIKI_ASSETS_BASE 时插件空转，产物逐字节不变，可放心常驻；
+			// 迁移时把 docs/public 整个目录上传到对象存储，再带上该变量重新构建即可，
+			// 内容里的本地路径无需改动（详见 lib/vite/replace-assets.ts 顶部说明）。
+			assets.plugin,
 		],
 		build: {
 			// 剩余超 500KB 的 chunk 都已核实无害：chunks/metadata 是站点数据
@@ -207,6 +228,9 @@ export default defineConfig({
 		math: true,
 		container: { tipLabel: '提示', warningLabel: '注意', dangerLabel: '警告', infoLabel: '信息', detailsLabel: '详细信息' },
 	},
+	// 最终 HTML 的 <head>（favicon、字体 preload）是 VitePress 在 bundle 之后拼出来的，
+	// Vite 插件的 generateBundle 够不到，靠这个钩子补上，与 assets.plugin 配合使用
+	transformHtml: code => assets.transformHtml(code),
 	// 按页注入 SEO 元数据：canonical、og/twitter 卡片、文章页 Article 结构化数据。
 	// 站点级 head 只保留 og:site_name 与 WebSite JSON-LD，页级数据在这里生成，
 	// 否则分享出去的都是首页标题与首页地址。
