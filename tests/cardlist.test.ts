@@ -17,6 +17,17 @@ test('card lists preserve rich cells, omit empty fields, and leave ordinary tabl
 	assert.equal((html.match(/<table\b/g) || []).length, 1)
 })
 
+test('群卡片按表头名取 QQ 列，且群名不做二次转义', async () => {
+	const md = await createMarkdownRenderer(process.cwd(), { config: cardlist })
+	// 头像列插在中间：写死「第 2 列」会拿头像单元格去找号码
+	const table = '| 名称 | 头像 | 群号 |\n| --- | --- | --- |\n| A & B | /img/a.png | 987654321 |'
+	const html = md.render(`::: cardlist\n\n${table}\n\n:::`)
+	assert.match(html, /qq="987654321"/)
+	// 群名经 renderInline 已转义，属性里应是单层实体；二次 escapeAttr 会变成 &amp;amp;
+	assert.match(html, /name="A &amp; B"/)
+	assert.doesNotMatch(html, /&amp;amp;/)
+})
+
 test('all group and food rows reach the cards with no hidden overflow columns', async () => {
 	const md = await createMarkdownRenderer(process.cwd(), { config: cardlist })
 	for (const file of ['03.群汇总/01.兴趣群.md', '03.群汇总/02.老乡群.md', '03.群汇总/03.学生组织与社团.md', '03.群汇总/04.实验室.md']) {

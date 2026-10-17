@@ -93,6 +93,7 @@ export function cardlist(md: MarkdownRenderer) {
 		let inTable = false
 		let avatarIndex = -1
 		let articleIndex = -1
+		let qqIndex = -1
 		for (const token of tokens) {
 			switch (token.type) {
 				case 'table_open':
@@ -118,6 +119,9 @@ export function cardlist(md: MarkdownRenderer) {
 						headers = cells
 						isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
 						avatarIndex = headers.findIndex(header => /头像/.test(header))
+						// QQ 号列也按表头名定位：写死第 2 列的话，列序不同的表格
+						// （名称 | 头像 | 群号 …）会拿头像单元格去匹配号码
+						qqIndex = headers.findIndex(header => /群号|加入方式|QQ/i.test(header))
 						// “文章/详情”列存放整卡跳转链接（与标题解耦，标题只作展示）。
 						articleIndex = headers.findIndex(header => /文章|详情/.test(header))
 						html[html.length - 1] = `<div class="campus-card-grid ${isGroup ? 'group-cards' : 'food-cards'}" role="list">`
@@ -130,10 +134,13 @@ export function cardlist(md: MarkdownRenderer) {
 					if (titleHref)
 						html.push(`<a class="card-overlay-link" href="${escapeAttr(titleHref)}" aria-hidden="true" tabindex="-1"></a>`)
 					if (isGroup) {
-						const qq = cells[1]?.replace(/<[^>]*>/g, '').match(/\b\d{5,12}\b/)?.[0] || ''
+						const qq = plainText(qqIndex > -1 ? cells[qqIndex] : cells[1]).match(/\b\d{5,12}\b/)?.[0] || ''
 						const avatar = avatarIndex > -1 ? pickImageSrc(cells[avatarIndex]) : ''
-						// 群名传给 GroupAvatar 作头像 alt（群头像是内容图，不是装饰）
-						const nameAttr = escapeAttr(cells[0].replace(/<[^>]*>/g, '').trim())
+						// 群名传给 GroupAvatar 作头像 alt（群头像是内容图，不是装饰）。
+						// cells[0] 是 renderInline 的输出，markdown-it 已转义（& < > " 均为
+						// 实体），不能再整体 escapeAttr——那会把 &amp; 变成 &amp;amp;，
+						// 页面上显示成字面量实体；剥掉标签后直接进属性就是安全的
+						const nameAttr = plainText(cells[0])
 						html.push(avatar
 							? `<GroupAvatar qq="${qq}" avatar="${avatar}" name="${nameAttr}" />`
 							: `<GroupAvatar qq="${qq}" name="${nameAttr}" />`)
