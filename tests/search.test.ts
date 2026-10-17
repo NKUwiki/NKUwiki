@@ -73,6 +73,35 @@ git log --oneline
 		assert.equal(text.slice(section.o, section.o + section.t.length), section.t)
 })
 
+test('extractBody 不把围栏代码块里的 # 行当标题，但代码内容仍可检索', () => {
+	const { text, sections } = extractBody(`## 真章节
+
+\`\`\`md
+# 假标题一
+## 假标题二
+\`\`\`
+
+\`\`\`sh
+# 这是注释不是标题
+\`\`\`
+
+~~~js
+// 波浪线围栏同样算代码块
+# 也不是标题
+~~~
+
+正文内容
+`)
+	// 只有围栏外的真标题进章节索引
+	assert.deepEqual(sections.map(section => section.t), ['真章节'])
+	// 代码内容本身仍参与检索（命令、示例都是可搜内容）
+	assert.ok(text.includes('假标题一'))
+	assert.ok(text.includes('这是注释不是标题'))
+	assert.ok(text.includes('也不是标题'))
+	for (const section of sections)
+		assert.equal(text.slice(section.o, section.o + section.t.length), section.t)
+})
+
 test('buildExcerpt centers on the first match and names the section', () => {
 	const { text, sections } = extractBody('## 电费\n\n宿舍电费可以在网上营业厅缴纳，欠费前会短信提醒。\n\n## 洗浴\n\n浴室在每层楼两侧。')
 	const excerpt = buildExcerpt(text, ['电费'], sections)
@@ -83,6 +112,14 @@ test('buildExcerpt centers on the first match and names the section', () => {
 	const plain = buildExcerpt('开头一段正文', [])
 	assert.equal(plain.html, '<p>开头一段正文</p>')
 	assert.equal(plain.section, '')
+})
+
+test('buildExcerpt：命中位于第一个标题之前时不贴错章节', () => {
+	const { text, sections } = extractBody('引言正文里提到电费。\n\n## 正文章\n\n正文内容。')
+	assert.equal(sections[0].t, '正文章')
+	// 命中在第一个标题之前：没有归属章节，不能错贴成第一个章节的名
+	const excerpt = buildExcerpt(text, ['电费'], sections)
+	assert.equal(excerpt.section, '')
 })
 
 test('buildExcerpt merges adjacent query tokens into one mark run', () => {

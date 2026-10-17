@@ -11,9 +11,6 @@ import { docsRoot, getArticleContent, scanArticles } from '../content/catalog.ts
  */
 const MAX_BODY_LENGTH = 6000
 
-/** 去掉围栏代码块的标记行（保留代码内容本身，命令等也是可搜内容）。 */
-const FENCE_LINE = /^[ \t]*(?:```|~~~)[^\n]*$/gm
-
 /** 行内元素清理：链接取文字、图片与裸链接丢弃、HTML 标签剥离、强调与行内代码去标记。 */
 function stripInline(line: string): string {
 	return line
@@ -40,18 +37,32 @@ function stripTableRow(line: string): string {
 /**
  * markdown → 纯正文 + 章节目录。
  * markmap 块整体跳过；::: 容器只去标记、保留内部内容（cardlist 表格里的群名、备注因此可搜）。
+ * 围栏代码块保留内容（命令等也是可搜内容），但块内行不当标题：shell/yaml/c 的
+ * `# 注释`、md 教程页示例的 `# 标题` 会冒充真标题，污染章节索引与跳转定位。
  * sections 记录每个标题在最终纯文本中的偏移，供结果摘要标注所在章节与跳转定位。
  */
 export function extractBody(content: string): { text: string, sections: SearchSection[] } {
 	const prepared = content
 		.replace(/^:::markmap[^\S\n]*\n[\s\S]*?^:::[^\S\n]*$/gm, '')
 		.replace(/^[ \t]*:::.*$/gm, '')
-		.replace(FENCE_LINE, '')
 	const lines = prepared.split(/\r?\n/)
 	const sections: SearchSection[] = []
 	let text = ''
+	/** 当前所在的围栏标记（``` 或 ~~~）；null 表示不在围栏内 */
+	let fence: string | null = null
 	for (const line of lines) {
-		const heading = line.match(/^[ \t]{0,3}(#{1,6})[ \t]+(\S.*)$/)
+		const fenceMarker = line.match(/^[ \t]*(```|~~~)/)
+		if (fenceMarker) {
+			// 同种标记视为闭合；围栏内出现的另一种标记只是内容
+			if (fence === null)
+				fence = fenceMarker[1]!
+			else if (fenceMarker[1] === fence)
+				fence = null
+			continue
+		}
+		const heading = fence === null
+			? line.match(/^[ \t]{0,3}(#{1,6})[ \t]+(\S.*)$/)
+			: null
 		if (heading) {
 			// 行尾的闭合 # 序列不属于标题文字
 			const title = stripInline(heading[2].replace(/[ \t]+#+$/, ''))

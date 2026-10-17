@@ -270,7 +270,9 @@ export function buildExcerpt(text: string, terms: string[], sections: SearchSect
 	const suffix = end < text.length ? '…' : ''
 	const html = `${prefix}${renderExcerptBlocks(text, start, end, ranges)}${suffix}`
 	const anchor = ranges.length ? ranges[0].start : start
-	let section = sections.length ? sections[0].t : ''
+	// 摘要窗口整体位于第一个标题之前时没有归属章节：初值必须为空，
+	// 取 sections[0].t 会把「无章节」错贴成第一个章节的名
+	let section = ''
 	for (const item of sections) {
 		if (item.o <= anchor)
 			section = item.t
