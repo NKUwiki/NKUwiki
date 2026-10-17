@@ -49,6 +49,11 @@ function isMobileViewport() {
 	return typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches
 }
 
+/** 窗口跨 1024px 断点（缩放 / 平板旋转）：小屏收起、桌面展开 */
+function onMobileQueryChange(event) {
+	sidebarCollapsed.value = event.matches
+}
+
 /* ================= 标点配色 =================
  * 每个分类一个颜色（站点侧 CATEGORY_CONFIG[category].color），标点、列表图标、
  * 详情卡图标共用同一套色，保证「看到什么颜色就是什么分类」。
@@ -113,6 +118,8 @@ let hoverCloseTimer = null
 let destroyFlag = false
 let visualViewport = null
 let detailResizeObserver = null
+/** 移动端断点监听：挂载时定一次初值，之后跟随窗口跨断点变化（旋屏 / 缩放） */
+let mobileQuery = null
 
 /* ================= 派生数据 ================= */
 /* 点位搜索引擎：覆盖全部 BUILDINGS，一次构建；校区/分类过滤在其结果上继续 */
@@ -441,7 +448,9 @@ function initMap() {
 	/* 高德地图点击：拾取模式下取坐标。注意与点位标点的 click 不冲突——
 	   标点自带 click 监听（选中），点标点时事件不会冒泡到地图 click */
 	map.on('click', onMapPickClick)
-	renderPolygons(campus.id)
+	/* 传 currentCampus 的 key 而不是 campus.id：数据条目里的 id 字段是可选的
+	   （示例数据就没有），POLYGONS 与 campusId 都按对象的 key 引用 */
+	renderPolygons(currentCampus.value)
 	mapReady.value = true
 }
 
@@ -561,23 +570,30 @@ function renderMarkers() {
 			applyPinState(markerCache.get(b.id).root, b.id === selected.value?.id)
 			continue
 		}
-		const root = createMarkerPin(b, b.id === selected.value?.id)
-		const marker = new AMap.Marker({
-			position: b.coord,
-			content: root,
-			offset: new AMap.Pixel(-PIN_SIZE / 2, -PIN_SIZE),
-			zIndex: b.id === selected.value?.id ? 120 : 10,
-		})
-		const listeners = {
-			click: () => onSelect(b),
-			mouseover: () => showHoverTip(b, root),
-			mouseout: () => hideHoverTip(root),
+		try {
+			const root = createMarkerPin(b, b.id === selected.value?.id)
+			const marker = new AMap.Marker({
+				position: b.coord,
+				content: root,
+				offset: new AMap.Pixel(-PIN_SIZE / 2, -PIN_SIZE),
+				zIndex: b.id === selected.value?.id ? 120 : 10,
+			})
+			const listeners = {
+				click: () => onSelect(b),
+				mouseover: () => showHoverTip(b, root),
+				mouseout: () => hideHoverTip(root),
+			}
+			marker.on('click', listeners.click)
+			marker.on('mouseover', listeners.mouseover)
+			marker.on('mouseout', listeners.mouseout)
+			map.add(marker)
+			markerCache.set(b.id, { marker, root, listeners })
 		}
-		marker.on('click', listeners.click)
-		marker.on('mouseover', listeners.mouseover)
-		marker.on('mouseout', listeners.mouseout)
-		map.add(marker)
-		markerCache.set(b.id, { marker, root, listeners })
+		catch (e) {
+			// 单条数据有问题（coord 缺失 / 非法等）只跳过它：不能中断整轮渲染，
+			// 更不能被 bootstrap 的 catch 升级成全局「地图不可用」
+			console.warn('[MapView] 点位渲染失败，已跳过：', b.id, e)
+		}
 	}
 }
 
@@ -673,6 +689,10 @@ function selectCampus(next) {
 	selected.value = null
 	currentCategory.value = 'all'
 	searchKeyword.value = ''
+	/* 悬浮提示也要清：指针不动（键盘切校区）时不会触发 marker mouseout，
+	   残留的提示会按旧校区坐标继续定位、还跟着地图飘 */
+	clearHoverCloseTimer()
+	hoverTip.value = null
 	if (map) {
 		const c = CAMPUS_CONFIG[next]
 		map.setZoomAndCenter(c.zoom, c.coord)
@@ -838,10 +858,41 @@ function startThemeObserver() {
 }
 
 /* ================= 生命周期 ================= */
+/**
+ * 销毁当前地图实例与全部 marker / 轮廓，回到未初始化状态。
+ * retry 前必须调用：上次尝试可能已走过 initMap() 才失败，旧实例还活着，
+ * 直接再建会把第二个地图叠进同一容器（双层画布 + 旧监听永久泄漏）。
+ */
+function resetMap() {
+	if (themeObserver) {
+		themeObserver.disconnect()
+		themeObserver = null
+	}
+	clearMarkerCache()
+	if (polygonsRef && map) {
+		try { map.remove(polygonsRef) }
+		catch (e) { /* noop */ }
+		polygonsRef = null
+	}
+	if (map) {
+		try { map.destroy() }
+		catch (e) { /* noop */ }
+		map = null
+	}
+	mapReady.value = false
+}
+
 async function bootstrap() {
 	try {
 		AMap = await loadAMap()
+		/* SDK 加载期间用户可能已切走页面：mapEl 此时已被置空，
+		   继续初始化只会 new AMap.Map(null)，或在容错实现下留下一个
+		   永不 destroy 的地图实例与一只永不 disconnect 的 MutationObserver */
+		if (destroyFlag)
+			return
 		await nextTick()
+		if (destroyFlag)
+			return
 		initMap()
 		renderMarkers()
 		startThemeObserver()
@@ -855,6 +906,7 @@ async function bootstrap() {
 
 function retry() {
 	mapError.value = ''
+	resetMap()
 	bootstrap()
 }
 
@@ -862,8 +914,14 @@ onMounted(() => {
 	// 地图初始化放最前：后面的辅助初始化若抛错，绝不能拖累地图加载
 	//（上一轮 categoryChipsEl 未声明时，整个 mounted 中断，地图与拖拽一起失效）
 	bootstrap()
-	/* 小屏默认收起：卡片浮在地图左上角，展开态会盖住大半个地图 */
-	sidebarCollapsed.value = isMobileViewport()
+	/* 小屏默认收起：卡片浮在地图左上角，展开态会盖住大半个地图。
+	   断点值只取一次是不够的：窗口跨 1024px 缩放、平板旋转后状态会与断点
+	   脱节（小屏停在展开盖住地图 / 桌面停在收看不到列表），必须跟随变化 */
+	if (typeof window !== 'undefined' && window.matchMedia) {
+		mobileQuery = window.matchMedia(MOBILE_QUERY)
+		sidebarCollapsed.value = mobileQuery.matches
+		mobileQuery.addEventListener('change', onMobileQueryChange)
+	}
 	document.addEventListener('keydown', onViewerKeydown)
 	document.addEventListener('keydown', onPickHotkey)
 	bindCategoryChips()
@@ -874,6 +932,9 @@ onMounted(() => {
 onUnmounted(() => {
 	document.removeEventListener('keydown', onViewerKeydown)
 	document.removeEventListener('keydown', onPickHotkey)
+	if (mobileQuery)
+		mobileQuery.removeEventListener('change', onMobileQueryChange)
+	mobileQuery = null
 	unbindCategoryChips()
 	destroyFlag = true
 	if (themeObserver) {
