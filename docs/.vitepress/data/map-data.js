@@ -20,11 +20,17 @@
  * ================= 校区配置（CAMPUS_CONFIG） =================
  * 每个校区一条：id（n 八里台 / j 津南，点位的 campusId 与 POLYGONS 的键都引用它）、
  * name（切换下拉显示名）、coord（初始中心坐标，GCJ02）、zoom（初始缩放级别）。
- * 校区轮廓 POLYGONS（MapView.vue 内）按 id 引用，暂为空数组，不影响使用。
+ * 校区轮廓 POLYGONS 从 ./campus-boundary.js 注入（脚本生成，勿手改），按 id 引用。
  *
  * 各字段的详细说明与「点位关联文章（article）」用法，
  * 见站内《贡献指南》的「校园地图数据维护」一节。
  */
+
+/* 校区边界（GCJ02）：{ 校区 key: [环, 环...] }，由 scripts/gen-boundary.mjs
+   从 OSM 生成后落在 campus-boundary.js。MapView 读 data.POLYGONS 画轮廓，
+   缺这个导出时只是不画边界，不影响其余功能。
+   来源 © OpenStreetMap contributors，ODbL 1.0。 */
+export { CAMPUS_BOUNDARIES as POLYGONS } from './campus-boundary.js'
 
 /* 底图显示开关（可选，不导出时用 MapView 内的默认值）：
    showPoi: false  不显示高德底图自带的 POI 点，即「某某楼/某店铺」这类由接口下发的

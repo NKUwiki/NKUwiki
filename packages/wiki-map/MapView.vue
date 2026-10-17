@@ -15,11 +15,18 @@ import MapPickPanel from './MapPickPanel.vue'
 import { createChipsScroll } from './chips-scroll.js'
 import { clampTipCenterX } from './hover-tip.js'
 import { createBuildingSearch } from './search.js'
+import { campusAnchor, normalizeZoom, tierForZoom, tierOf } from './lod.js'
 
 const props = defineProps({
 	/** 地图数据对象，导出字段与 map-data.example.js 一致 */
 	data: { type: Object, required: true },
 })
+
+/* lod-change：档位（或标点数量）变了才抛，供站点侧做调试面板 / 提示条；
+   zoom-change：每一帧缩放都抛（0.1 精度去重），只想看数值的地方用它 ——
+   lod-change 只在跨档时来一次，拿它显示 zoom 会一直卡在跨档那一刻的值。
+   组件自身都不消费这两个事件，缺了也不影响渲染 */
+const emit = defineEmits(['lod-change', 'zoom-change'])
 
 /* 与数据文件的导出同名解构：正文代码与「数据内联在包里」的旧版完全一致 */
 const {
@@ -33,8 +40,17 @@ const {
 	MAP_DISPLAY,
 } = props.data
 
+/* 校区边界：{ 校区 key: [环, 环...] }，环是 [[经度, 纬度], ...]（GCJ02）。
+   数据放在站点侧（NKUwiki 是 campus-boundary.js，由 OSM 生成），
+   组件只负责画。缺失时退化为「不画边界」，不影响其余功能。 */
+const POLYGONS = props.data.POLYGONS || {}
+
 const PIN_SIZE = 28
 const PIN_SCALE = { idle: 1, hover: 1.3, selected: 1.4 }
+/* 档位 1（远景）不画分类标点，只画一个代表整个校区的标点：它比分类标点
+   大一圈，字号也提一档。尺寸写在这里而不是 CSS，是因为 AMap.Marker 的
+   offset 要按它算锚点（见 createMarkerPin 的注释） */
+const CAMPUS_PIN_SIZE = 44
 /* 高德官方内置样式：normal 标准 / dark 夜间 */
 const MAP_STYLES = { light: 'amap://styles/normal', dark: 'amap://styles/dark' }
 
@@ -66,6 +82,17 @@ function categoryColor(category) {
 	return (CATEGORY_CONFIG[category] || {}).color || FALLBACK_PIN_COLOR
 }
 
+/* 详情卡上的两个「归属」标签：校区名与分类名。
+   都从各自配置里取显示名（与标点、列表、筛选药丸同一份数据源），
+   未命中时分别回落「其他」与空串（校区声明缺失就整枚标签不渲染）。 */
+function categoryLabel(category) {
+	return (CATEGORY_CONFIG[category] || {}).label || '其他'
+}
+
+function campusLabel(campusId) {
+	return CAMPUS_CONFIG[campusId]?.name || ''
+}
+
 /** 把 #RRGGBB 按比例压向黑色（amount 0~1），用于选中态加深 */
 function shade(hex, amount) {
 	const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim())
@@ -78,13 +105,25 @@ function shade(hex, amount) {
 
 /* ================= 状态 ================= */
 const mapEl = ref(null)
+/* 衬底层容器：同一块区域上的第二个地图实例 */
+const poiMapEl = ref(null)
+/* 衬底的跟随层（高德容器的父节点）。交互期间这里会被写 transform，
+   把整层贴到主地图的视野上——见「校外 POI 衬底的跟随」一节 */
+const poiLayerEl = ref(null)
 let map = null
+/* 校外 POI 衬底（高德自己的 POI 点）。它是「同一套底图 + 多一个 point 要素」，
+   铺在主地图下面，主地图再用 setMask 把校区外遮成透明，POI 就从这层透出来。
+   实测 setMask 遮掉的区域是透明的（不是白色），这招才成立。 */
+let poiMap = null
 let AMap = null
 const mapReady = ref(false)
 const mapError = ref('')
 
 const currentCampus = ref('n')
 const currentCategory = ref('all')
+/* 当前生效的缩放档位。初值取中间档：各校区 CAMPUS_CONFIG 的默认 zoom
+   代进 tierForZoom 恒等于 2，与 initMap 后的实际渲染一致，不会闪一下 */
+const currentTier = ref(2)
 const searchKeyword = ref('')
 /** 左侧卡片收起成小卡片：只留校区 / 搜索 / 分类三行，隐藏点位列表。
  *  初始值固定为 false（SSR 产物与首帧一致，避免水合不匹配），
@@ -110,7 +149,15 @@ const photoViewer = ref(false)
 const photoViewerIndex = ref(0)
 
 const markerCache = new Map()
+/* 档位 1 的校区标点：「八里台校区 / 津南校区」，代表整个校区范围。
+ * 两个校区各一个（两校区同时在图上，低缩放时能一起看到），按 campusId 存。
+ * 单独立一个 Map 而不是塞进 markerCache：它们不是数据里的点位，没有 id、
+ * 不参与筛选与搜索，也不该被「选中某个点位」那套逻辑改状态。 */
+let campusPinCache = new Map()
 let polygonsRef = null
+/* 遮罩用的原始路径：换校区时由 renderPolygons 一并更新（遮罩只认 paths，
+   不认 Polygon 对象，见 MASK_OUTSIDE 的注释） */
+let lastBoundaryPaths = []
 let locationMarker = null
 let locationWatchId = null
 let searchTimer = null
@@ -125,6 +172,7 @@ let mobileQuery = null
 /* 点位搜索引擎：覆盖全部 BUILDINGS，一次构建；校区/分类过滤在其结果上继续 */
 const buildingSearch = createBuildingSearch(BUILDINGS)
 
+/** 左侧列表的数据源：只罗列当前校区（切校区 = 换一份列表） */
 const campusBuildings = computed(() =>
 	BUILDINGS.filter(b => b.campusId === currentCampus.value),
 )
@@ -141,9 +189,30 @@ const filteredBuildings = computed(() => {
 	})
 })
 
-/* 筛选后仍保留选中的建筑 */
+/**
+ * 地图标点的数据源：两个校区同时显示，所以**不按校区筛**。
+ *
+ * 只有「列表」是按校区切的 —— 切校区不改变图上有什么，只改变看哪儿、
+ * 以及左边那份清单。搜索与分类仍然作用于地图：不然搜出来只剩列表一条、
+ * 图上还杵着 97 个，两边对不上。
+ */
+const searchedBuildings = computed(() => {
+	const kw = searchKeyword.value.trim().toLowerCase()
+	const matched = kw ? buildingSearch(kw) : null
+	return BUILDINGS.filter((b) => {
+		if (currentCategory.value !== 'all' && b.category !== currentCategory.value)
+			return false
+		if (matched && !matched.has(b.id))
+			return false
+		return true
+	})
+})
+
+/* 筛选 + 缩放分级后仍保留选中的建筑 */
 const markerBuildings = computed(() => {
-	const list = filteredBuildings.value
+	/* 分级只作用于地图标点，左侧列表始终是全集：
+	   否则「搜到一个点、列表里看得到、地图上却没有」，用户会当成 bug */
+	const list = searchedBuildings.value.filter(b => tierOf(b) <= currentTier.value)
 	if (!selected.value || list.some(b => b.id === selected.value.id))
 		return list
 	return [...list, selected.value]
@@ -181,28 +250,117 @@ function changeViewerPhoto(step) {
 	photoViewerIndex.value = (photoViewerIndex.value + step + count) % count
 }
 
-function onViewerKeydown(event) {
-	if (!photoViewer.value)
+/** 焦点在可编辑控件里时，Esc 与单键快捷键都归控件自己：那是「取消输入」的语义 */
+function isEditingTarget(target) {
+	return target instanceof HTMLElement
+		&& (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+}
+
+/**
+ * 全局键盘：按「一层一层退」的顺序处理，最上面那层先吃事件。
+ *
+ * 1. 全屏图片查看器：Esc 关，方向键翻
+ * 2. 定位权限弹窗（`aria-modal` 的模态框）：Esc 等价于「暂不定位」
+ * 3. 详情卡：Esc 关闭
+ *
+ * 之前只处理了查看器那一层，结果是「图能 Esc 关、卡片和弹窗不能」——三个
+ * 同源的关闭动作有三种行为。卡片与弹窗这层都要判可编辑目标：搜索框里按
+ * Esc 是取消输入，顺手把卡片关掉会像「打字把面板打没了」。
+ */
+function onGlobalKeydown(event) {
+	if (photoViewer.value) {
+		if (event.key === 'Escape')
+			closePhotoViewer()
+		else if (event.key === 'ArrowLeft')
+			changeViewerPhoto(-1)
+		else if (event.key === 'ArrowRight')
+			changeViewerPhoto(1)
+		else return
+		event.preventDefault()
 		return
-	if (event.key === 'Escape')
-		closePhotoViewer()
-	else if (event.key === 'ArrowLeft')
-		changeViewerPhoto(-1)
-	else if (event.key === 'ArrowRight')
-		changeViewerPhoto(1)
-	else return
+	}
+	if (event.key !== 'Escape')
+		return
+	if (locationDialogOpen.value) {
+		cancelLocationRequest()
+		event.preventDefault()
+		return
+	}
+	if (!selected.value || isEditingTarget(event.target))
+		return
+	clearSelection()
 	event.preventDefault()
 }
 
-/* ================= 校区建筑边界多边形（GCJ02，可选）
- * 用高德坐标拾取器描出校区范围轮廓后填入，如：
- * POLYGONS.h = [[[120.20, 35.97], [120.21, 35.97], ...]]
+/* ================= 校区边界多边形（GCJ02，可选）
+ * 数据从 data.POLYGONS 注入（见上方解构处的说明）。
  * 暂无数据时留空，不影响地图使用。
  * ================= */
-const POLYGONS = {
-	n: [],
-	j: [],
+/* 边界配色取站点主色（南开紫），与分类色区分开：它不是「一个地点」，是范围。
+   两套皮肤各配一版——深色底上 27% 明度的紫几乎看不见，得换成提亮档；
+   描边衬底同理（浅色底用白衬底，深色底用黑衬底），否则白线在夜间图里
+   会反过来盖住紫线，看起来像一条白色虚线。 */
+function boundaryStyles() {
+	const dark = isDark()
+	return {
+		line: {
+			fillColor: dark ? '#D8A8C8' : '#711A5F',
+			fillOpacity: dark ? 0.06 : 0.07,
+			strokeColor: dark ? '#E9C7DE' : '#711A5F',
+			strokeOpacity: 0.9,
+			strokeStyle: 'dashed',
+			strokeWeight: 2,
+		},
+		/* 描边衬底（casing）：底图上有深色水系、也有浅色楼块，单画一条虚线
+		   在暗底或彩色底上都会糊掉。铺一条更粗的实线垫在下面，等于给线加
+		   一圈对比底；衬底不填色（fillOpacity 0），否则校内那层淡紫会被
+		   叠成两倍。 */
+		halo: {
+			fillColor: dark ? '#000000' : '#FFFFFF',
+			fillOpacity: 0,
+			strokeColor: dark ? '#000000' : '#FFFFFF',
+			strokeOpacity: dark ? 0.45 : 0.75,
+			strokeWeight: 5,
+			strokeStyle: 'solid',
+		},
+	}
 }
+
+/* 非当前校区的边界：要让「另一个校区也在图上」，但不能抢主角。
+   只画一条细虚线，不填色、不铺衬底 —— 那圈白/黑衬底是给遮罩洞沿遮丑用的，
+   另一个校区不在洞沿上，铺了只会变成两条并行线。 */
+function boundaryStylesDim() {
+	const dark = isDark()
+	return {
+		fillOpacity: 0,
+		strokeColor: dark ? '#E9C7DE' : '#711A5F',
+		strokeOpacity: dark ? 0.4 : 0.3,
+		strokeStyle: 'dashed',
+		strokeWeight: 1.5,
+	}
+}
+
+/* 校区外遮成透明（给「校外显示高德 POI、校内保持现状」这件事打底）。
+ *
+ * 为什么是透明而不是压暗：主地图（这一层）用 setMask 把校区以外挖掉、露出
+ * 垫在下面的 poiMap（同一套底图，只是多了高德的 point 要素）。所以校外的
+ * 高德 POI 是**原生渲染**的，不是我们拿接口一条条画的。实测两点：
+ *   - 必须传原始路径数组（map.setMask(paths)）。传 AMap.Polygon 对象数组时，
+ *     整张图连校内一起被盖住，洞没挖出来；
+ *   - 遮掉的区域是**透明**的（容器背景能透出来），不是白色。早先以为它盖白，
+ *     是因为当时的容器底色本来就是白的。
+ * 边界用粗虚线 + 衬底压在洞沿上，正好把两层的接缝盖住。 */
+const MASK_OUTSIDE = true
+
+/* ================= 缩放分级（LOD） =================
+ * 97 个点位全量常显，在默认缩放（八里台 17 / 津南 16）下密集处会糊成一片，
+ * 也盖住了校区轮廓。按缩放分三档：
+ *   1 远景：地标 / 校门 / 图书馆 —— 回答「这个校区有什么」
+ *   2 默认：再加食堂、行政、教学、交通 —— 回答「日常去哪」
+ *   3 近景：全部，含学院楼、宿舍、运动场
+ * 规则本身（分类映射、阈值换算）放在 ./lod.js：它是纯函数，能被 Node
+ * 直接验算，也能单测；组件这边只留「读状态、重渲染」。
+ */
 
 /* ================= 高德地图加载 ================= */
 function loadAMap() {
@@ -445,37 +603,419 @@ function initMap() {
 		viewMode: '2D',
 		scrollWheel: true,
 	})
+	/* 衬底层建不出来时宁可退化回单层地图：下面 applyMask 会因为 !poiMap 而不挖空，
+	   否则校外会变成一片透明（看到页面底色），比没有 POI 更糟 */
+	try { initPoiMap(campus, features, display) }
+	catch (e) { console.warn('[MapView] 校外 POI 衬底初始化失败，退化为单层地图：', e) }
+	/* 衬底跟随：视野一动就开逐帧循环（见「校外 POI 衬底的跟随」），
+	   停手后再归位一次。这里只挂开关，重活都在循环里 */
+	map.on('mapmove', onViewChanged)
+	map.on('zoomchange', onViewChanged)
+	map.on('moveend', armFollowStop)
+	map.on('zoomend', armFollowStop)
+	/* 基准点要在衬底建好之后取：ensureProbe 用主图的投影取量尺 */
+	ensureProbe()
 	/* 高德地图点击：拾取模式下取坐标。注意与点位标点的 click 不冲突——
 	   标点自带 click 监听（选中），点标点时事件不会冒泡到地图 click */
 	map.on('click', onMapPickClick)
+	/* 缩放分级：zoomchange 在滚轮里一次能连发十几回，真正的降噪在 syncTier
+	   里做（只跨档才写响应式状态），这里只管接上。zoomend 再补一次：
+	   惯性/动画的最后一帧不一定落成干净的目标值，收尾时以官方终值为准 */
+	map.on('zoomchange', onZoomChange)
+	map.on('zoomend', onZoomChange)
 	/* 传 currentCampus 的 key 而不是 campus.id：数据条目里的 id 字段是可选的
 	   （示例数据就没有），POLYGONS 与 campusId 都按对象的 key 引用 */
-	renderPolygons(currentCampus.value)
+	renderPolygons()
 	mapReady.value = true
+	/* 首帧同步一次：initMap 用的 zoom 就是校区默认值，正常落在 2 档，
+	   但数据侧若把默认 zoom 调过、或落地时带了别的缩放，这里能纠回来 */
+	syncTier(true)
+	/* 再校一次衬底：两个实例各自初始化，容器尺寸取整可能差零头，
+	   这里按真实投影量一遍，差多少补多少（对齐时不会写 transform） */
+	applyPoiFollow()
 }
 
-function renderPolygons(campusId) {
+/**
+ * 校外 POI 衬底：与主地图同一个中心、缩放、样式，唯一区别是要素里多了 point。
+ *
+ * 手势全部关掉、容器也 pointer-events: none —— 它只是「校外那半张图」的底，
+ * 手势必须始终落在主地图上，否则拖动会在两层之间来回切换。
+ *
+ * 但 `zoomEnable` **必须留 true**：高德连程序化缩放也一起拦。设成 false 时
+ * `setZoomAndCenter` 只挪中心、不换 zoom（实测 z 卡在初始值），于是
+ * settlePoiView 永远归不了位，CSS 补间越补越离谱（实测缩到 0.32 倍还在缩小）。
+ * 用户手势进不来靠的是 `scrollWheel` / `touchZoom` / `doubleClickZoom` 与
+ * `pointer-events: none`，不必靠 zoomEnable 兜。
+ */
+function initPoiMap(campus, baseFeatures, display) {
+	if (!poiMapEl.value)
+		return
+	poiMap = new AMap.Map(poiMapEl.value, {
+		center: campus.coord,
+		zoom: campus.zoom,
+		mapStyle: MAP_STYLES[isDark() ? 'dark' : 'light'],
+		/* 用 Set 去重：站点侧把 showPoi 打开时 features 里已经有 point 了 */
+		features: [...new Set([...baseFeatures, 'point'])],
+		showLabel: display.showLabels !== false,
+		viewMode: '2D',
+		dragEnable: false,
+		doubleClickZoom: false,
+		scrollWheel: false,
+		rotateEnable: false,
+		pitchEnable: false,
+		keyboardEnable: false,
+		touchZoom: false,
+	})
+}
+
+/* ================= 校外 POI 衬底的跟随 =================
+ *
+ * 衬底与主图是两个独立的 AMap 实例：各自一套 canvas、各自调度重绘。
+ * 早先靠 mapmove / zoomchange 逐次调用 poiMap.setZoomAndCenter 去追，
+ * 有两个治不好的毛病：
+ *
+ *   1. 滚轮一次能派发十几个事件，每次都排一次重排，调用会积压，衬底越拖
+ *      越落后 —— 肉眼就是「两层分离、卡顿」；
+ *   2. 缩放的过渡动画在两层里是两条独立时间线，中间帧必然错位。
+ *
+ * 现在改成：交互期间衬底**一次地图 API 都不调**，整层套一个 CSS transform
+ * （平移 + 等比缩放）贴到主图视野上。纯合成层操作，不重排不重绘、跟主图
+ * 同一帧出画，天生不会错位。
+ *
+ * 缩放比与平移量都不读 getZoom()/getCenter()，而是取两个固定地理点，分别算
+ * 它们**在主图**和**在衬底**里的像素位置 —— 那是两层这一帧真正画出来的位置，
+ * 缩放动画跑到一半也是准的，衬底自己的视野滞后多少都不影响。设两点 A、B
+ * （ma/pa 分别表示在主图、衬底里的像素）：
+ *
+ *     s  = |mB - mA| / |pB - pA|
+ *     dx = mAx - pAx * s    dy = mAy - pAy * s
+ *
+ * 也就是「绕容器原点缩放 s 倍，再平移 (dx,dy)」，正好是 CSS 的
+ * translate(dx,dy) scale(s)（配 transform-origin: 0 0）。AB 相距约 1km，
+ * Mercator 的纬度非线性在这个尺度只有 1e-4 量级，可以忽略。
+ *
+ * 每帧从**两层的真实投影**重算，而不是「假设衬底已经跟上了」：归位时
+ * 衬底调完 setZoomAndCenter 是异步落位的（实测有明显延迟），只要按它当下的
+ * 真实视野补间，画面就纹丝不动地等它追上来，不会闪。
+ *
+ * 纯 CSS 只能拉伸已有瓦片，看不到新区域。所以跑远了要「归位」
+ * （settlePoiView）：把衬底真实视野设成主图当前视野，让瓦片跟上。阈值取
+ * 0.6 屏 / 半级缩放 —— 高德会预取视野外一圈瓦片，这个范围内拉伸不会露白。
+ */
+
+/* 两点采样：取同一纬度上相距约 1km 的两点。它们只是量尺，位置不参与运算，
+   只有两段像素距离的比值有意义，所以初始化后不用再动 */
+let poiProbe = null
+/* 逐帧循环的句柄（0 表示没在跑） */
+let followRaf = 0
+/* 停手后的归位定时器 */
+let followStopTimer = 0
+/* 上次归位的时间戳：归位后衬底要追一会儿，这段时间别再重复归位 */
+let lastSettleAt = 0
+
+/** 像素对象取值：AMap.Pixel 有 getX()，不同版本也可能只给 x */
+function pixelX(p) { return typeof p.getX === 'function' ? p.getX() : p.x }
+function pixelY(p) { return typeof p.getY === 'function' ? p.getY() : p.y }
+
+/** 取量尺两点。用当前视野中心向东西各 0.006 经度（约 1km） */
+function ensureProbe() {
+	if (poiProbe || !map)
+		return
+	const center = map.getCenter()
+	if (!center)
+		return
+	poiProbe = {
+		a: new AMap.LngLat(center.lng - 0.006, center.lat),
+		b: new AMap.LngLat(center.lng + 0.006, center.lat),
+	}
+}
+
+/**
+ * 按两层**各自当下的真实投影**，把衬底层贴到主图上。
+ * 返回是否已经贴合（两层视野一致）——跟随循环据此决定能不能收工。
+ */
+function applyPoiFollow() {
+	if (!map || !poiMap || !poiLayerEl.value)
+		return false
+	ensureProbe()
+	if (!poiProbe)
+		return false
+	const mAx = map.lngLatToContainer(poiProbe.a)
+	const mBx = map.lngLatToContainer(poiProbe.b)
+	const pAx = poiMap.lngLatToContainer(poiProbe.a)
+	const pBx = poiMap.lngLatToContainer(poiProbe.b)
+	if (!mAx || !mBx || !pAx || !pBx)
+		return false
+	const dMain = Math.hypot(pixelX(mBx) - pixelX(mAx), pixelY(mBx) - pixelY(mAx))
+	const dPoi = Math.hypot(pixelX(pBx) - pixelX(pAx), pixelY(pBx) - pixelY(pAx))
+	if (!dMain || !dPoi)
+		return false
+	const s = dMain / dPoi
+	const dx = pixelX(mAx) - pixelX(pAx) * s
+	const dy = pixelY(mAx) - pixelY(pAx) * s
+	const el = poiLayerEl.value
+	/* 已经贴合（两层视野一致）就别再挂一个 scale(1) 的合成层：
+	   那会让文字走一遍重采样，边缘发虚。容差取 0.3px / 2e-4 —— 再小就是
+	   两个实例容器尺寸取整的固有零头，追它反而要一直挂着一层合成 */
+	const aligned = Math.abs(s - 1) < 2e-4 && Math.abs(dx) < 0.3 && Math.abs(dy) < 0.3
+	if (aligned) {
+		if (el.style.transform)
+			el.style.transform = ''
+	}
+	else {
+		el.style.transform =
+			`translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${s.toFixed(6)})`
+	}
+	/* 拉太远：要么露出没加载过的区域，要么糊得明显，该让衬底的瓦片跟上了。
+	   归位后它会异步落位，这里给 260ms 冷却，免得连环触发 */
+	const size = map.getSize()
+	const w = size ? (size.width ?? size.getWidth?.() ?? 0) : 0
+	const h = size ? (size.height ?? size.getHeight?.() ?? 0) : 0
+	const limit = Math.max(w, h, 1) * 0.6
+	const now = performance.now()
+	if (now - lastSettleAt > 260
+		&& (Math.abs(dx) > limit || Math.abs(dy) > limit || Math.abs(Math.log2(s)) > 0.5)) {
+		settlePoiView()
+	}
+	return aligned
+}
+
+/**
+ * 归位：把衬底的真实视野设成主图当前视野，让它的瓦片跟上。
+ * 刻意**不清 transform** —— setZoomAndCenter 不是同步生效的，清早了画面会
+ * 回跳一下；保持不动，下一帧 applyPoiFollow 会按衬底的真实投影重算，
+ * 等它自己追上，transform 自然归零。
+ */
+function settlePoiView() {
+	if (!map || !poiMap)
+		return
+	const center = map.getCenter()
+	const zoom = map.getZoom()
+	if (!center || zoom == null)
+		return
+	try { poiMap.setZoomAndCenter(zoom, center, true) }
+	catch (e) { try { poiMap.setZoomAndCenter(zoom, center) } catch (e2) { /* noop */ } }
+	lastSettleAt = performance.now()
+}
+
+/* 视野停了之后的收尾状态：先归位，再等两层贴合了才退出循环。
+   归位是异步生效的，这期间循环必须继续跑——否则那几帧没人补间，会闪 */
+let followDraining = false
+/* 兜底：衬底万一一直追不上，也不能让逐帧循环常驻 */
+let followDeadline = 0
+
+function stopFollowLoop() {
+	if (followRaf) {
+		cancelAnimationFrame(followRaf)
+		followRaf = 0
+	}
+}
+
+function startFollowLoop() {
+	if (followRaf)
+		return
+	const step = () => {
+		const aligned = applyPoiFollow()
+		if (followDraining && (aligned || performance.now() > followDeadline)) {
+			followRaf = 0
+			return
+		}
+		followRaf = requestAnimationFrame(step)
+	}
+	followRaf = requestAnimationFrame(step)
+}
+
+/** 停手（moveend / zoomend）后延迟收尾：连续滚轮会被下一次视野变化取消 */
+function armFollowStop() {
+	if (followStopTimer)
+		clearTimeout(followStopTimer)
+	followStopTimer = setTimeout(() => {
+		followStopTimer = 0
+		followDraining = true
+		followDeadline = performance.now() + 1500
+		settlePoiView()
+	}, 140)
+}
+
+/** 视野变了：立刻补一次（与视野更新同一刻，别等下一帧），再开逐帧循环兜底 */
+function onViewChanged() {
+	followDraining = false
+	if (followStopTimer) {
+		clearTimeout(followStopTimer)
+		followStopTimer = 0
+	}
+	/* 同步这一下很关键：mapmove 派发时视野刚更新、canvas 还没重绘，
+	   此刻写进去的 transform 会和主图这一帧的画面一起合成 */
+	applyPoiFollow()
+	startFollowLoop()
+	armFollowStop()
+}
+
+/** 清干净跟随状态（销毁 / 重建地图前调用） */
+function resetPoiFollow() {
+	if (followStopTimer) {
+		clearTimeout(followStopTimer)
+		followStopTimer = 0
+	}
+	stopFollowLoop()
+	followDraining = false
+	followDeadline = 0
+	lastSettleAt = 0
+	poiProbe = null
+	if (poiLayerEl.value)
+		poiLayerEl.value.style.transform = ''
+}
+
+/**
+ * 画全部校区的边界。当前校区是主角（填淡紫 + 粗虚线 + 白色衬底），
+ * 另一个校区只留一条细虚线，表示「它也在这张图上」。
+ *
+ * 遮罩只挖**当前校区**的洞：两个校区相距二十多公里，正常缩放下一屏只
+ * 看得见一个；实测 `setMask` 也做不到两个互不相交的洞（第二个环会被当成
+ * 第一个环的内环，切出一块碎三角）。真要同时挖两个，只能拿一个大外框把
+ * 两地都圈进去，那样连中间的市区都不再透出高德 POI，得不偿失。
+ */
+function renderPolygons() {
 	if (polygonsRef) {
 		try { map.remove(polygonsRef) }
 		catch (e) { /* noop */ }
 		polygonsRef = null
 	}
-	const paths = (POLYGONS[campusId] || [])
-	if (!paths.length || !map)
+	if (!map) {
+		resetMask()
 		return
-	polygonsRef = paths.map(path =>
-		new AMap.Polygon({
-			path,
-			fillColor: '#4069B2',
-			fillOpacity: 0.08,
-			strokeColor: '#4069B2',
-			strokeOpacity: 0.8,
-			strokeStyle: 'dashed',
-			strokeWeight: 2,
-			zIndex: 2,
-		}),
-	)
-	map.add(polygonsRef)
+	}
+	const shapes = []
+	/* 遮罩要的是「当前校区」的原始路径，不是 Polygon 对象（见 MASK_OUTSIDE） */
+	let maskPaths = []
+	for (const campusId of Object.keys(CAMPUS_CONFIG)) {
+		/* 只认「至少 3 个点」的环：一两个点的残环画出来是一条线，
+		   多半是数据生成时被截断了，静默跳过比在图上画根乱线好 */
+		const paths = (POLYGONS[campusId] || [])
+			.filter(path => Array.isArray(path) && path.length >= 3)
+		if (!paths.length)
+			continue
+		if (campusId === currentCampus.value) {
+			maskPaths = paths
+			/* 先铺衬底、再压主色线：数组顺序就是绘制顺序，同一 zIndex 下后者在上 */
+			const { line: lineStyle, halo: haloStyle } = boundaryStyles()
+			shapes.push(...paths.map(path => new AMap.Polygon({
+				path,
+				...haloStyle,
+				zIndex: 1,
+				bubble: true,
+			})))
+			shapes.push(...paths.map(path => new AMap.Polygon({
+				path,
+				...lineStyle,
+				zIndex: 2,
+				/* bubble: true 让点击穿透到地图：轮廓不是可点对象，
+				   拾取模式下点到边界不能把取坐标这件事拦下来 */
+				bubble: true,
+			})))
+		}
+		else {
+			const dimStyle = boundaryStylesDim()
+			shapes.push(...paths.map(path => new AMap.Polygon({
+				path,
+				...dimStyle,
+				/* 压在主角之下：两条线万一在低缩放时挨近，也是当前校区在上 */
+				zIndex: 0,
+				bubble: true,
+			})))
+		}
+	}
+	if (!shapes.length) {
+		resetMask()
+		return
+	}
+	polygonsRef = shapes
+	map.add(shapes)
+	lastBoundaryPaths = maskPaths
+	/* 没有衬底层就不挖空：挖空后外面是透明的，会露出页面底色 */
+	if (MASK_OUTSIDE && poiMap && maskPaths.length)
+		applyMask()
+	else
+		resetMask()
+}
+
+/* 遮罩相关的两个动作都要容错：setMask 在 2.0 的不同小版本里行为有差异，
+   失败也只该退化成「没有遮罩」，不能把整轮渲染打断 */
+function applyMask() {
+	if (!map || !map.setMask || !lastBoundaryPaths.length)
+		return
+	try {
+		map.setMask(lastBoundaryPaths)
+	}
+	catch (e) {
+		console.warn('[MapView] setMask 失败，已回退为无遮罩：', e)
+	}
+}
+
+function resetMask() {
+	if (!map || !map.setMask)
+		return
+	try { map.setMask([]) }
+	catch (e) { /* noop */ }
+}
+
+/* ================= 缩放分级：状态同步 ================= */
+/* 上一次抛出的实时 zoom（已折到 0.1）。滚轮缩放一档会来十几帧，
+   值没变就别惊动页面 —— 但这个 0.1 的粒度足够让读数跟着动画走 */
+let lastZoomShown = null
+
+/**
+ * 上报实时 zoom，返回归一到 0.1 的值供调用方继续用。
+ *
+ * 归一交给 lod.js 的 normalizeZoom（浮点尾巴、档位边界都靠它），这里只做
+ * 去重：滚轮缩放一档会来十几帧，值没变就别惊动页面。
+ */
+function emitZoom(zoom) {
+	const v = normalizeZoom(zoom)
+	if (v == null)
+		return null
+	if (v !== lastZoomShown) {
+		lastZoomShown = v
+		emit('zoom-change', v)
+	}
+	return v
+}
+
+function onZoomChange() {
+	syncTier()
+}
+
+/**
+ * 把「当前 zoom」折算成档位并落状态。
+ *
+ * force=false 时只有跨档才做标点重排（renderMarkers）：zoomchange 在滚轮
+ * 缩放中会被触发十几次，每次都改 currentTier 会让 markerBuildings 白算、
+ * renderMarkers 白跑（97 个标点的比对），滚一次滚轮就浪费掉十几轮。
+ * 但**实时 zoom 要每帧上报**（emitZoom 自己做去重），否则读数只在跨档时跳。
+ *
+ * 这里刻意不碰底图要素（map.setFeatures）。试过「远景去掉 building」：
+ * 高德 features 只有 bg / point / road / building 四项，没有 landuse、水系
+ * 这类面要素，去掉 building 之后整张底图近乎空白，比灰块糊成一片更难看。
+ */
+function syncTier(force = false) {
+	if (!map)
+		return
+	const zoom = emitZoom(map.getZoom()) ?? map.getZoom()
+	const tier = tierForZoom(zoom, CAMPUS_CONFIG[currentCampus.value]?.zoom)
+	const changed = tier !== currentTier.value
+	currentTier.value = tier
+	if (!changed && !force)
+		return
+	renderMarkers()
+	emit('lod-change', {
+		/* 跨档那一刻的 zoom。实时读数请订阅 zoom-change，别用这个字段 */
+		zoom,
+		tier,
+		/* 1 档图上是「校区标点」，各校区一个 */
+		markers: tier <= 1 ? campusPinCache.size : markerBuildings.value.length,
+		/* 两校区同时在图上，分母是全部点位，不是当前校区的 */
+		total: BUILDINGS.length,
+	})
 }
 
 /* ================= marker（缓存 + 增量更新） ================= */
@@ -547,10 +1087,155 @@ function createMarkerPin(building, selectedFlag) {
 	return root
 }
 
+/* ================= 档位 1 的校区标点 =================
+ * 远景（≤ 默认 zoom - 2）下整块校区在屏幕上只有几百像素，几十个分类标点
+ * 会糊成一团、名字互相压住。这一档改成**每个校区一个**标点代表「被框住的
+ * 这块区域」，点它才进校区看细节（见 enterCampus）。
+ *
+ * 两校区同时显示之后，低缩放下这两个标点会一起出现：当前那个实色、
+ * 另一个降一档透明度，点另一个等于切校区。
+ *
+ * 落点由 campusAnchor 按边界多边形的面积加权重心算，不用 CAMPUS_CONFIG
+ * 的 coord —— 那是打开地图时的视野中心，八里台那个点偏东三百多米。
+ */
+function campusPinColor() {
+	/* 深色底图上 27% 明度的紫几乎沉底，提亮一档——与边界线的两套配色同理 */
+	return isDark() ? '#C68AB7' : '#711A5F'
+}
+
+/* 校区图标（Lucide 的 school）。写死在这里而不走 CATEGORY_ICON_PATHS：
+   数据侧的图标表是「分类 → 图标」，没有「校区」这个分类，借某个分类的
+   图标会随数据改动而变样 */
+function campusIconMarkup(size) {
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 22v-4a2 2 0 1 0-4 0v4"/><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"/><path d="M18 5v17"/><path d="m4 6 8-4 8 4"/><path d="M6 5v17"/><circle cx="12" cy="9" r="2"/></svg>`
+}
+
+function campusPinMarkup() {
+	const color = campusPinColor()
+	return (
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${CAMPUS_PIN_SIZE}" height="${CAMPUS_PIN_SIZE}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;filter:drop-shadow(0 2px 4px rgb(15 23 42 / .28))">`
+		/* 与分类标点同一个水滴形，只是放大：一眼能看出「这是同一套标点体系里
+		   更高一层的东西」，而不是另一个图层冒出来的徽章 */
+		+ `<path d="M12 2c-3.87 0-7 3.13-7 7 0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Z" fill="${color}" stroke="rgba(255,255,255,0.94)" stroke-width="1.1" stroke-linejoin="round"/></svg>`
+		+ `<span style="position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);color:#fff;display:grid;place-items:center">${
+			campusIconMarkup(17)
+		}</span>`
+	)
+}
+
+function createCampusPin(campusId, isCurrent) {
+	const root = document.createElement('div')
+	root.className = isCurrent
+		? 'qut-pin-root qut-campus-pin is-current'
+		: 'qut-pin-root qut-campus-pin'
+	root.dataset.campusId = campusId
+
+	const body = document.createElement('div')
+	body.dataset.mapPinBody = 'true'
+	body.dataset.color = campusPinColor()
+	/* 这里刻意不写 inline transform：分类标点那套 applyPinState 靠改 inline
+	   transform 做缩放，校区标点没有选中态，把它留给 CSS 的 :hover */
+	body.innerHTML = campusPinMarkup()
+	root.appendChild(body)
+
+	const label = document.createElement('span')
+	label.className = 'qut-pin-label qut-campus-pin-label'
+	label.textContent = CAMPUS_CONFIG[campusId]?.name || ''
+	root.appendChild(label)
+
+	return root
+}
+
+/**
+ * 显示 / 收起校区标点（两个校区各一个）。
+ *
+ * visible=false 就全部拆掉：2 档以后图上一簇分类标点已经能认出是哪个校区，
+ * 再压大标点只会把它们挡住。
+ * force=true 用于换皮肤（紫的深浅两套）与换校区（主次要互换）——此时缓存
+ * 虽然还在，但已经过期。
+ */
+function renderCampusPins(visible, force = false) {
+	if (!map || !AMap)
+		return
+	if (!visible || force) {
+		for (const [, entry] of campusPinCache) {
+			try { map.remove(entry.marker) }
+			catch (e) { /* noop */ }
+		}
+		campusPinCache = new Map()
+		if (!visible)
+			return
+	}
+	for (const campusId of Object.keys(CAMPUS_CONFIG)) {
+		const isCurrent = campusId === currentCampus.value
+		const cached = campusPinCache.get(campusId)
+		/* 主次变了要重建：is-current 是建标点时写进 class 的，还带着
+		   zIndex 的差别，就地改不如拆了重来（切校区时就是这条在生效） */
+		if (cached && cached.current === isCurrent)
+			continue
+		if (cached) {
+			try { map.remove(cached.marker) }
+			catch (e) { /* noop */ }
+			campusPinCache.delete(campusId)
+		}
+		const center = campusAnchor(POLYGONS[campusId], CAMPUS_CONFIG[campusId]?.coord)
+		if (!center)
+			continue
+		try {
+			const root = createCampusPin(campusId, isCurrent)
+			const marker = new AMap.Marker({
+				position: center,
+				content: root,
+				/* 与分类标点同一套锚点：水滴的尖对准坐标 */
+				offset: new AMap.Pixel(-CAMPUS_PIN_SIZE / 2, -CAMPUS_PIN_SIZE),
+				/* 比分类标点（10）高一点；当前校区再压过另一个校区一头，
+				   低缩放时两个都看得见，要有主次 */
+				zIndex: isCurrent ? 15 : 14,
+			})
+			marker.on('click', () => enterCampus(campusId))
+			map.add(marker)
+			campusPinCache.set(campusId, { marker, root, campusId, current: isCurrent })
+		}
+		catch (e) {
+			// 单条渲染失败不该中断整轮；退化成「1 档没有标点」也不影响用地图
+			console.warn('[MapView] 校区标点渲染失败：', campusId, e)
+		}
+	}
+}
+
+/**
+ * 点校区标点 = 「打开这块区域」：拉到校区默认 zoom，正好从 1 档落回 2 档，
+ * 标点从 1 个变回一簇。
+ *
+ * 点的是**另一个校区**时，先切校区（左侧列表跟着换），再落视野 —— 这正是
+ * 「切换校区只移动视角和换列表」这条约定在 1 档下的入口。
+ *
+ * 同一校区内用动画：只跨两三级 zoom，动画能把「刚才那个大标点被放大成了
+ * 一片点位」讲清楚。跨二十多公里的换校区必须瞬时（否则整张校外图会飞出去），
+ * 那条路径由 selectCampus 负责。
+ */
+function enterCampus(campusId = currentCampus.value) {
+	if (!map)
+		return
+	const config = CAMPUS_CONFIG[campusId]
+	const center = campusAnchor(POLYGONS[campusId], config?.coord)
+	if (!config || !center)
+		return
+	if (campusId !== currentCampus.value) {
+		selectCampus(campusId, { center, zoom: config.zoom })
+		return
+	}
+	try { map.setZoomAndCenter(config.zoom, center) }
+	catch (e) { map.setZoomAndCenter(config.zoom, center, true) }
+}
+
 function renderMarkers() {
 	if (!map || !AMap)
 		return
-	const list = markerBuildings.value
+	/* 1 档只留校区标点：分类标点全部收起。注意 markerBuildings 仍照常按
+	   档位过滤（列表、计数都还在用它），这里只是不往图上放 */
+	const collapsed = currentTier.value <= 1
+	const list = collapsed ? [] : markerBuildings.value
 	const visibleIds = new Set(list.map(b => b.id))
 
 	for (const [id, entry] of markerCache) {
@@ -595,6 +1280,10 @@ function renderMarkers() {
 			console.warn('[MapView] 点位渲染失败，已跳过：', b.id, e)
 		}
 	}
+
+	/* 收尾再切校区标点：放在这里而不是 syncTier 里，是因为「选中某个点位」
+	   也会走一遍 renderMarkers，两处都改容易出现一边显示一边没显示 */
+	renderCampusPins(collapsed)
 }
 
 /* ================= hover 提示（跟随地图移动） ================= */
@@ -659,13 +1348,26 @@ function onSelect(b) {
 	selected.value = b
 	photoViewerIndex.value = 0
 	if (map) {
+		/* 从左侧列表选到的点位可能属于更高档位、此刻地图上没有标点：
+		   markerBuildings 会把选中项补回列表，但真正建标点是在这里 */
+		renderMarkers()
 		for (const [id, entry] of markerCache) {
 			const isSelected = id === b.id
 			applyPinState(entry.root, isSelected)
 			entry.marker.setzIndex(isSelected ? 120 : 10)
 		}
 		hoverTip.value = null
-		map.panTo(b.coord)
+		/* 1 档图上没有分类标点：先放大到校区默认 zoom（2 档），
+		   否则「从列表选了一个点，地图上却什么都没有」。
+		   缩放会经 zoomchange → syncTier 把标点放回来，这里不用手动渲染 */
+		const base = CAMPUS_CONFIG[currentCampus.value]?.zoom
+		if (currentTier.value <= 1 && base) {
+			try { map.setZoomAndCenter(base, b.coord) }
+			catch (e) { map.setZoomAndCenter(base, b.coord, true) }
+		}
+		else {
+			map.panTo(b.coord)
+		}
 	}
 	/* 小屏选完点位就收起列表：卡片给地图让位，底部详情卡才露得出来 */
 	if (isMobileViewport())
@@ -675,18 +1377,32 @@ function onSelect(b) {
 function clearSelection() {
 	closePhotoViewer()
 	selected.value = null
+	/* 取消选中后，原本因「被选中」而强制显示的高档位标点要收回去 */
+	renderMarkers()
 	for (const [, entry] of markerCache) {
 		applyPinState(entry.root, false)
 		entry.marker.setzIndex(10)
 	}
 }
 
-/** 切换校区（接校区 id，不是事件对象——拾取面板也要复用） */
-function selectCampus(next) {
+/**
+ * 切换校区 = 移动视角 + 换一份左侧列表。
+ *
+ * 图上的东西**不跟着变**：两个校区的边界、标点始终都在。跟着变的只有三样：
+ * 视野、左侧列表、遮罩挖哪个校区的洞。
+ *
+ * opts.center / opts.zoom 给「1 档点另一个校区的标点」用 —— 那种场合要落到
+ * 边界重心，而不是校区配置里那个视野中心。
+ */
+function selectCampus(next, opts = {}) {
 	if (next === currentCampus.value)
 		return
 	currentCampus.value = next
 	selected.value = null
+	/* 选中被清掉，全屏查看器必须一起关：只清 selected 的话 photoViewer 还是 true，
+	   下一次选中带图的点位会「自己弹出全屏图」（v-if 是 photoViewer && currentViewerPhoto）。
+	   clearSelection() 里已有同样一行，这里补上是为了不依赖「用户点不到」这个巧合 */
+	closePhotoViewer()
 	currentCategory.value = 'all'
 	searchKeyword.value = ''
 	/* 悬浮提示也要清：指针不动（键盘切校区）时不会触发 marker mouseout，
@@ -695,10 +1411,21 @@ function selectCampus(next) {
 	hoverTip.value = null
 	if (map) {
 		const c = CAMPUS_CONFIG[next]
-		map.setZoomAndCenter(c.zoom, c.coord)
-		clearMarkerCache()
-		renderPolygons(next)
-		renderMarkers()
+		const center = opts.center || c.coord
+		const zoom = opts.zoom ?? c.zoom
+		/* 换校区是跨城跳转（八里台 ↔ 津南二十多公里），这里刻意不用动画：
+		   衬底靠 CSS 补间贴主图，横跨这个距离会看到整张校外图从旧校区
+		   飞出去。瞬时落位，再起一轮跟随循环等衬底异步追上 */
+		map.setZoomAndCenter(zoom, center, true)
+		settlePoiView()
+		onViewChanged()
+		/* 边界要重画：主次要互换（当前校区填色 + 粗虚线，另一个细虚线），
+		   遮罩也要改挖新校区 —— 两件事都在 renderPolygons 里 */
+		renderPolygons()
+		/* 换校区后档位要跟着重算：两个校区的默认 zoom 不同（17 / 16），
+		   而 zoomchange 是异步派发的，等它回来前这一帧会按旧档位渲染。
+		   syncTier(true) 顺带把 1 档校区标点的主次换过来 */
+		syncTier(true)
 	}
 }
 
@@ -746,9 +1473,7 @@ function togglePickMode(on) {
 function onPickHotkey(e) {
 	if (e.key !== 'P' || !e.shiftKey || e.ctrlKey || e.metaKey || e.altKey)
 		return
-	const t = e.target
-	const editing = t instanceof HTMLElement
-		&& (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')
+	const editing = isEditingTarget(e.target)
 	if (editing)
 		return
 	e.preventDefault()
@@ -797,6 +1522,12 @@ function clearMarkerCache() {
 		catch (e) { /* noop */ }
 	}
 	markerCache.clear()
+	/* 校区标点也要一起清：换皮肤要重画（紫有明暗两套），换校区要重排主次 */
+	for (const [, entry] of campusPinCache) {
+		try { map.remove(entry.marker) }
+		catch (e) { /* noop */ }
+	}
+	campusPinCache = new Map()
 }
 
 /** 切换分类筛选（接分类 key，供横排药丸调用） */
@@ -846,6 +1577,14 @@ function applyMapTheme() {
 	const style = MAP_STYLES[dark ? 'dark' : 'light']
 	if (map.getMapStyle && map.getMapStyle() !== style) {
 		map.setMapStyle(style)
+		/* 衬底必须同步换肤，否则校区内是夜间底、校区外还是白天的 */
+		if (poiMap && poiMap.setMapStyle)
+			poiMap.setMapStyle(style)
+		/* 边界的两套配色是跟着皮肤走的（深色底要用提亮紫 + 黑衬底），
+		   换皮肤必须重画，否则会留在上一套里 */
+		renderPolygons()
+		/* 校区标点的紫也分两套（暗底提亮），同样要重画 */
+		renderCampusPins(currentTier.value <= 1, true)
 	}
 }
 
@@ -873,6 +1612,14 @@ function resetMap() {
 		try { map.remove(polygonsRef) }
 		catch (e) { /* noop */ }
 		polygonsRef = null
+	}
+	lastBoundaryPaths = []
+	resetMask()
+	resetPoiFollow()
+	if (poiMap) {
+		try { poiMap.destroy() }
+		catch (e) { /* noop */ }
+		poiMap = null
 	}
 	if (map) {
 		try { map.destroy() }
@@ -922,7 +1669,7 @@ onMounted(() => {
 		sidebarCollapsed.value = mobileQuery.matches
 		mobileQuery.addEventListener('change', onMobileQueryChange)
 	}
-	document.addEventListener('keydown', onViewerKeydown)
+	document.addEventListener('keydown', onGlobalKeydown)
 	document.addEventListener('keydown', onPickHotkey)
 	bindCategoryChips()
 	startVisualViewportObserver()
@@ -930,7 +1677,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-	document.removeEventListener('keydown', onViewerKeydown)
+	document.removeEventListener('keydown', onGlobalKeydown)
 	document.removeEventListener('keydown', onPickHotkey)
 	if (mobileQuery)
 		mobileQuery.removeEventListener('change', onMobileQueryChange)
@@ -964,6 +1711,7 @@ onUnmounted(() => {
 		map = null
 	}
 	markerCache.clear()
+	campusPinCache = new Map()
 })
 </script>
 
@@ -1084,6 +1832,11 @@ onUnmounted(() => {
 
 		<!-- 右侧地图 -->
 		<div class="map-canvas">
+			<!-- 校外 POI 衬底：垫在主地图下面，只在主地图被遮成透明的地方露出来。
+			     外层是跟随层（交互期间由 JS 写 transform），内层才是高德容器 -->
+			<div ref="poiLayerEl" class="map-el map-el-poi">
+				<div ref="poiMapEl" class="map-el-poi-stage" />
+			</div>
 			<div ref="mapEl" class="map-el" />
 
 			<!-- 坐标拾取面板：URL 带 ?pick=1 时出现，用于维护 map-data.js -->
@@ -1199,58 +1952,83 @@ onUnmounted(() => {
 				</div>
 			</div>
 
-			<!-- 选中地点详情卡片（右下角） -->
-			<section v-if="selected" ref="detailCardEl" class="map-detail-card">
-				<div class="detail-head">
-					<button
-						v-if="selectedPhotos.length"
-						type="button"
-						class="detail-photo-stack"
-						:class="{ 'detail-photo-stack-multiple': selectedPhotos.length > 1 }"
-						:aria-label="selectedPhotos.length > 1 ? `查看 ${selectedPhotos.length} 张地点图片` : '查看地点图片'"
-						@click.stop="openPhotoViewer()"
-					>
-						<img v-if="selectedPhotos.length > 1" :src="selectedPhotos[1]" alt="" class="detail-photo detail-photo-back">
-						<img :src="selectedPhotos[0]" alt="" class="detail-photo detail-photo-front">
-						<span v-if="selectedPhotos.length > 1" class="detail-photo-count">{{ selectedPhotos.length }}</span>
-					</button>
-					<span
-						class="detail-icon"
-						:style="{ color: categoryColor(selected.category), borderColor: categoryColor(selected.category) }"
-						v-html="categoryIconMarkup(selected.category, 15)"
-					/>
-					<div class="detail-info">
-						<h2 class="detail-name">
-							{{ selected.name }}
-						</h2>
-						<p v-if="selected.desc" class="detail-desc">
-							{{ selected.desc }}
-						</p>
+			<!-- 选中地点详情卡片（右下角）。
+			     v-if 直接摘节点会让卡片「啪」地消失，与进场的上浮完全不对称；
+			     所以交给 <Transition>：进场 220ms 上浮淡入、出场 140ms 快速淡出
+			     （出场比进场短一档，关卡片时不会有拖泥带水的黏滞感） -->
+			<Transition name="detail-card">
+				<section v-if="selected" ref="detailCardEl" class="map-detail-card">
+					<div class="detail-head">
+						<button
+							v-if="selectedPhotos.length"
+							type="button"
+							class="detail-photo-stack"
+							:class="{ 'detail-photo-stack-multiple': selectedPhotos.length > 1 }"
+							:aria-label="selectedPhotos.length > 1 ? `查看 ${selectedPhotos.length} 张地点图片` : '查看地点图片'"
+							@click.stop="openPhotoViewer()"
+						>
+							<img v-if="selectedPhotos.length > 1" :src="selectedPhotos[1]" alt="" class="detail-photo detail-photo-back">
+							<img :src="selectedPhotos[0]" alt="" class="detail-photo detail-photo-front">
+							<span v-if="selectedPhotos.length > 1" class="detail-photo-count">{{ selectedPhotos.length }}</span>
+						</button>
+						<span
+							class="detail-icon"
+							:style="{ color: categoryColor(selected.category), borderColor: categoryColor(selected.category) }"
+							v-html="categoryIconMarkup(selected.category, 15)"
+						/>
+						<!-- :key 让「换点位」时这段文字重新挂载、重播一次淡入：
+						     卡片本身不重建（照片与按钮保持原位），只有文字列轻换，
+						     否则从主楼点到食堂，标题/标签/描述是「啪」地整块跳变 -->
+						<div :key="selected.id" class="detail-info">
+							<h2 class="detail-name">
+								{{ selected.name }}
+							</h2>
+							<!-- 归属标签：校区（中性药丸）+ 分类（圆点取分类色）。
+							     两校区同屏后，点位可能不在当前正在浏览的校区，
+							     所以校区取点位自己的 campusId，而不是左侧卡片的当前校区 -->
+							<div v-if="campusLabel(selected.campusId) || selected.category" class="detail-meta">
+								<span v-if="campusLabel(selected.campusId)" class="detail-meta-chip">
+									<svg class="detail-meta-icon" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></svg>
+									<span class="detail-meta-text">{{ campusLabel(selected.campusId) }}</span>
+								</span>
+								<span
+									v-if="selected.category"
+									class="detail-meta-chip"
+									:style="{ '--meta-dot': categoryColor(selected.category) }"
+								>
+									<i class="detail-meta-dot" aria-hidden="true" />
+									<span class="detail-meta-text">{{ categoryLabel(selected.category) }}</span>
+								</span>
+							</div>
+							<p v-if="selected.desc" class="detail-desc">
+								{{ selected.desc }}
+							</p>
+						</div>
+						<button class="icon-btn" aria-label="关闭地点详情" @click="clearSelection">
+							<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+						</button>
 					</div>
-					<button class="icon-btn" aria-label="关闭地点详情" @click="clearSelection">
-						<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-					</button>
-				</div>
-				<p v-if="locationError" class="location-error">
-					{{ locationError }}
-				</p>
-				<!-- 点位关联文章入口（在 map-data.js 点位上声明 article 字段即可启用） -->
-				<a v-if="selected.article" class="detail-article-link" :href="selected.article">
-					查看相关文章 <span aria-hidden="true">→</span>
-				</a>
-				<div class="nav-btns">
-					<a
-						v-for="link in navigationLinksFor(selected)"
-						:key="link.id"
-						:href="link.href"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="nav-btn"
-					>
-						{{ link.label }}
+					<p v-if="locationError" class="location-error">
+						{{ locationError }}
+					</p>
+					<!-- 点位关联文章入口（在 map-data.js 点位上声明 article 字段即可启用） -->
+					<a v-if="selected.article" class="detail-article-link" :href="selected.article">
+						查看相关文章 <span aria-hidden="true">→</span>
 					</a>
-				</div>
-			</section>
+					<div class="nav-btns">
+						<a
+							v-for="link in navigationLinksFor(selected)"
+							:key="link.id"
+							:href="link.href"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="nav-btn"
+						>
+							{{ link.label }}
+						</a>
+					</div>
+				</section>
+			</Transition>
 		</div>
 	</div>
 	<div v-if="locationDialogOpen" ref="locationDialogBackdrop" class="location-dialog-backdrop" role="presentation">
@@ -1279,28 +2057,32 @@ onUnmounted(() => {
 	</div>
 
 	<Teleport to="body">
-		<div
-			v-if="photoViewer && currentViewerPhoto"
-			class="map-photo-viewer"
-			role="dialog"
-			aria-modal="true"
-			:aria-label="`${selected?.name || '地点'}图片查看器`"
-			@click="closePhotoViewer"
-		>
-			<button class="map-photo-viewer-close" type="button" aria-label="关闭图片查看器" @click.stop="closePhotoViewer">
-				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-			</button>
-			<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-prev" type="button" aria-label="上一张图片" @click.stop="changeViewerPhoto(-1)">
-				<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
-			</button>
-			<img :src="currentViewerPhoto" :alt="`${selected?.name || '地点'}第 ${photoViewerIndex + 1} 张图片`" class="map-photo-viewer-img" @click.stop>
-			<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-next" type="button" aria-label="下一张图片" @click.stop="changeViewerPhoto(1)">
-				<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-			</button>
-			<p v-if="selected?.name" class="map-photo-viewer-caption">
-				{{ selected.name }}<span v-if="selectedPhotos.length > 1"> · {{ photoViewerIndex + 1 }} / {{ selectedPhotos.length }}</span>
-			</p>
-		</div>
+		<!-- 点详情卡的照片才进来的全屏查看器：直接出现/消失像「闪黑一下」，
+		     补 180ms 淡入淡出，图片本身再缩一档收进来 -->
+		<Transition name="viewer">
+			<div
+				v-if="photoViewer && currentViewerPhoto"
+				class="map-photo-viewer"
+				role="dialog"
+				aria-modal="true"
+				:aria-label="`${selected?.name || '地点'}图片查看器`"
+				@click="closePhotoViewer"
+			>
+				<button class="map-photo-viewer-close" type="button" aria-label="关闭图片查看器" @click.stop="closePhotoViewer">
+					<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+				</button>
+				<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-prev" type="button" aria-label="上一张图片" @click.stop="changeViewerPhoto(-1)">
+					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+				</button>
+				<img :src="currentViewerPhoto" :alt="`${selected?.name || '地点'}第 ${photoViewerIndex + 1} 张图片`" class="map-photo-viewer-img" @click.stop>
+				<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-next" type="button" aria-label="下一张图片" @click.stop="changeViewerPhoto(1)">
+					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+				</button>
+				<p v-if="selected?.name" class="map-photo-viewer-caption">
+					{{ selected.name }}<span v-if="selectedPhotos.length > 1"> · {{ photoViewerIndex + 1 }} / {{ selectedPhotos.length }}</span>
+				</p>
+			</div>
+		</Transition>
 	</Teleport>
 </section>
 </template>
@@ -1453,8 +2235,10 @@ html.dark .map-section {
 	max-width: calc(100% - 24px);
 	/* 用 max-height 而不是 bottom: 12px 撑满：收起时卡片要能缩成小卡片，
      而 bottom 在 12px 与 auto 之间没法过渡——高度随内容才收得动。
-     展开时内容比上限高，实际高度仍等于 max-height，与原来一致 */
-	max-height: calc(100% - 24px);
+     展开时内容比上限高，实际高度仍等于 max-height，与原来一致。
+     底部留 28px 而不是 12px：高德 logo/版权固定在地图左下角（不再随卡片
+     收展平移），卡片铺到底会把它压掉一半，留出这一条正好让它整块露出来 */
+	max-height: calc(100% - 40px);
 	border: 1px solid var(--c-line);
 	border-radius: 14px;
 	box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
@@ -1472,9 +2256,14 @@ html.dark .map-section {
 	background: transparent;
 	color: var(--c-icon-strong);
 	cursor: pointer;
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), transform var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .icon-btn:hover {
 	background: var(--c-mist);
+}
+/* 关闭按钮没有任何按下反馈时，点完只能靠卡片消失确认；缩一档比改背景更容易被察觉 */
+.icon-btn:active {
+	transform: scale(0.9);
 }
 
 .sidebar-search {
@@ -1703,8 +2492,27 @@ html.dark .map-section {
 	position: relative;
 	min-width: 0;
 	min-height: 0;
+	/* 衬底跟随时会整层缩放（zoom 差一级就是 2 倍），不裁会溢出到侧栏和页面上 */
+	overflow: hidden;
 }
 .map-el {
+	position: absolute;
+	inset: 0;
+	/* 主地图压住衬底：它是唯一可交互的层，标点、边界、拾取都在它身上 */
+	z-index: 1;
+}
+/* 校外 POI 衬底：只在主地图被 setMask 挖空的地方可见。
+   不吃指针事件——否则点在「校外的地图」上会落进这层、拖不动主地图。
+   transform-origin 放左上角：跟随用的 translate+scale 是按容器坐标系推的，
+   绕中心缩放的话式子要再多绕一层中心点 */
+.map-el-poi {
+	z-index: 0;
+	pointer-events: none;
+	transform-origin: 0 0;
+	will-change: transform;
+}
+/* 高德容器：跟随层的尺寸不能受 transform 影响，这里吃满父级 */
+.map-el-poi-stage {
 	position: absolute;
 	inset: 0;
 }
@@ -1868,6 +2676,22 @@ html.dark .map-section {
 	padding: 24px;
 	background: rgba(0, 0, 0, 0.85);
 	z-index: 9999;
+}
+/* 查看器进出场：整体淡，图片单独从 0.955 收回原位（只补进场这一程，
+   离场时点遮罩的人希望它立刻让开，缩回去会多拖 0.24s） */
+.viewer-enter-active,
+.viewer-leave-active {
+	transition: opacity 0.18s var(--wiki-ease-out, ease-out);
+}
+.viewer-enter-active .map-photo-viewer-img {
+	transition: transform 0.24s var(--wiki-ease-out, ease-out);
+}
+.viewer-enter-from,
+.viewer-leave-to {
+	opacity: 0;
+}
+.viewer-enter-from .map-photo-viewer-img {
+	transform: scale(0.955);
 }
 .map-photo-viewer-close,
 .map-photo-viewer-nav {
@@ -2086,8 +2910,29 @@ html.dark .map-section {
 	border-radius: 8px;
 	box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
 	background: var(--c-elev);
-	animation: detail-in var(--wiki-duration-collapse, 0.2s) var(--wiki-ease-out, ease-out);
+	/* 上浮放大从左下角长出来：卡片贴着底边，从中心缩放会在底部露出空隙 */
+	transform-origin: left bottom;
 	z-index: 10;
+}
+/* 详情卡进出场（配合模板里的 <Transition name="detail-card">）。
+   进场 220ms 上浮 + 轻微放大，出场 140ms 淡出下沉 —— 出场必须比进场短，
+   读起来才像「被收走」；反过来（出场更慢）会显得拖沓、挡着地图。
+   时长刻意写死而不取 --wiki-duration-collapse：这里需要一进一出两个不同值 */
+.detail-card-enter-active {
+	transition: opacity 0.22s var(--wiki-ease-out, ease-out), transform 0.22s var(--wiki-ease-out, ease-out);
+}
+.detail-card-leave-active {
+	transition: opacity 0.14s ease-in, transform 0.14s ease-in;
+}
+.detail-card-enter-from,
+.detail-card-leave-to {
+	opacity: 0;
+}
+.detail-card-enter-from {
+	transform: translateY(12px) scale(0.98);
+}
+.detail-card-leave-to {
+	transform: translateY(6px) scale(0.99);
 }
 .location-error {
 	margin: 8px 0 0;
@@ -2110,16 +2955,6 @@ html.dark .map-section {
 	transform: translateX(-50%);
 	z-index: 12;
 }
-@keyframes detail-in {
-	from {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
 .detail-head {
 	display: flex;
 	align-items: flex-start;
@@ -2139,6 +2974,20 @@ html.dark .map-section {
 .detail-info {
 	flex: 1;
 	min-width: 0;
+	/* 换点位（:key 变了、节点重新挂载）时轻淡入一次。
+	   只给 2px 位移：卡片本体没动，文字若跟着滑一大截，看起来像整张卡重开了一遍。
+	   首次打开时这段动画被卡片的进出场淡入盖住，不会出现两层叠影 */
+	animation: detail-swap 0.18s var(--wiki-ease-out, ease-out);
+}
+@keyframes detail-swap {
+	from {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
 }
 .detail-name {
 	margin: 0;
@@ -2146,6 +2995,52 @@ html.dark .map-section {
 	font-weight: 600;
 	line-height: 1.3;
 	color: var(--c-ink);
+}
+/* 归属标签（校区 / 分类）：小号中性药丸，与筛选区的药丸同一套圆角语言，
+   但尺寸压一档、不加交互态——它们是信息，不是可点的筛选器。
+   分类色只落在 6px 圆点上，避免整枚药丸被 17 种分类色染得过于抢眼 */
+.detail-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 5px;
+	margin-top: 6px;
+}
+.detail-meta-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	max-width: 100%;
+	padding: 1px 8px;
+	overflow: hidden;
+	border: 1px solid var(--c-line);
+	border-radius: 999px;
+	background: var(--c-paper);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 17px;
+	white-space: nowrap;
+	color: var(--c-muted);
+}
+/* 省略号必须挂在文字这一层：`text-overflow` 只对「自己包含文字」的块生效，
+   挂在 inline-flex 的药丸上（文字其实是匿名 flex 项）只会硬裁、不出省略号。
+   校区/分类名现在都很短，但新增长名分类时这里不该变成「莫名被切掉半截」 */
+.detail-meta-text {
+	overflow: hidden;
+	min-width: 0;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.detail-meta-icon {
+	flex-shrink: 0;
+	opacity: 0.8;
+}
+.detail-meta-dot {
+	flex-shrink: 0;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--meta-dot, var(--c-muted));
 }
 .detail-desc {
 	display: -webkit-box;
@@ -2179,11 +3074,15 @@ html.dark .map-section {
 	color: var(--c-ink);
 	/* 不写 transition: all —— 那会让浏览器监听该元素全部可动画属性，
      这里只需要背景 / 文字 / 描边三样；时长走令牌，reduced-motion 下自动归零 */
-	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
+	transition: background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), transform var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .nav-btn:hover {
 	border-color: var(--c-primary);
 	color: var(--c-primary);
+}
+/* 按下时整体缩一档：四个按钮并排，缺这点反馈会让人怀疑「点到了吗」 */
+.nav-btn:active {
+	transform: scale(0.97);
 }
 
 /* 点位关联文章入口：品牌色描边按钮，悬停实底 */
@@ -2201,11 +3100,14 @@ html.dark .map-section {
 	font-weight: 500;
 	text-decoration: none;
 	color: var(--c-primary);
-	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
+	transition: background var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), transform var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
 }
 .detail-article-link:hover {
 	background: var(--c-primary);
 	color: #FFF;
+}
+.detail-article-link:active {
+	transform: scale(0.985);
 }
 
 .sr-only {
@@ -2365,6 +3267,31 @@ html.dark .map-section {
 	background: transparent;
 	color: var(--c-muted);
 }
+
+/* ===== 减少动态偏好 =====
+   组件里绝大多数过渡 / 动画的时长都走 --wiki-duration* 令牌（站点主题已在
+   reduced-motion 下把它归零，这里再就地补一份，组件被单独引用时也成立）：
+   令牌一改，药丸、折叠、标点缩放、卡片进场会一起停。
+   高德自己的缩放 / 平移是 JS 驱动的，不受这里影响 —— 那是地图的语义动作，
+   不该由我们擅自关掉（关掉会让人以为地图卡住） */
+@media (prefers-reduced-motion: reduce) {
+	.map-section {
+		--wiki-duration-fast: 0.01ms;
+		--wiki-duration: 0.01ms;
+		--wiki-duration-collapse: 0.01ms;
+		--wiki-duration-slow: 0.01ms;
+	}
+	/* 详情卡与图片查看器的时长按「进慢出快」写死，没走令牌，单独收 */
+	.detail-card-enter-active,
+	.detail-card-leave-active,
+	.viewer-enter-active,
+	.viewer-leave-active,
+	.viewer-enter-active .map-photo-viewer-img,
+	.detail-info {
+		animation: none;
+		transition: none;
+	}
+}
 </style>
 
 <style>
@@ -2375,17 +3302,28 @@ html.dark .map-section {
 	z-index: 5 !important;
 }
 
-/* 高德 logo 与版权信息默认贴地图左下角，而左下角现在被悬浮卡片占着——
-   卡片把整块压住、只在左侧露出一条边，看着像被裁了一半。
-   桌面端把两者整体右移到卡片外侧（用 translateX 平移，两者之间的相对位置
-   原样保留，不去猜高德各版本的 left 值）；卡片收起时左下角是空的，就不用让。
-   小屏卡片更窄、且默认收起，同样保持原位。 */
-@media (min-width: 1025px) {
-	.map-section:not(.map-section-collapsed) .amap-logo,
-	.map-section:not(.map-section-collapsed) .amap-copyright {
-		transform: translateX(calc(22rem + 24px));
-	}
+/* ===== 双层底图（校外 POI 衬底）=====
+   这一段必须放在非 scoped 样式里：.amap-container / .amap-logo /
+   .amap-copyright 都是高德 SDK 自己创建的节点，身上没有本组件的 data-v
+   属性，写成 scoped 会匹配不到（踩过：改了没反应，像素完全没变）。 */
+
+/* 主地图这层要透明：setMask 挖掉的区域看到的是它自己的底色，
+   不透掉的话衬底层永远露不出来 */
+.map-el:not(.map-el-poi),
+.map-el:not(.map-el-poi) .amap-container {
+	background: transparent !important;
 }
+/* 衬底层也会画一份 logo 与版权，两层叠在同一位置就是重影。
+   只留主地图那一份——它固定在左下角，不随侧栏收展移动 */
+.map-el-poi .amap-logo,
+.map-el-poi .amap-copyright {
+	display: none !important;
+}
+
+/* 高德 logo 与版权信息保持高德自己的位置（地图左下角）：
+   不给它们加任何位移。曾经按侧栏展开状态把两者整体右移到卡片外侧，
+   结果是收/展一次水印就跳一次，反而更闹眼。 */
+
 
 .qut-pin-root {
 	display: flex;
@@ -2450,6 +3388,46 @@ html.dark .map-section {
 /* 标点放大时标签不变形，只把字重提一档，避免选中后标签被忽略 */
 .qut-pin-root > [data-map-pin-body][data-selected="true"] ~ .qut-pin-label {
 	font-weight: 600;
+}
+
+/* ===== 档位 1 的校区标点 =====
+   尺寸（44px）与脚本里的 CAMPUS_PIN_SIZE 是对应关系：marker 的 offset 按
+   那个常量算锚点，只改这里的宽高会让水滴的尖不再对准坐标。 */
+.qut-campus-pin,
+.qut-campus-pin > [data-map-pin-body] {
+	width: 44px;
+	height: 44px;
+}
+.qut-campus-pin > [data-map-pin-body] > svg {
+	width: 44px;
+	height: 44px;
+}
+/* 它没有选中态（不参与点位选择），缩放只交给 :hover —— 脚本里千万别给它
+   写 inline transform，那会把这条规则盖掉 */
+.qut-campus-pin > [data-map-pin-body]:hover {
+	transform: scale(1.06);
+}
+
+/* 校区名要顶替「一片标点的名字」，字号与字重都比普通标签高一档；
+   位置比普通标签再低 3px，让水滴的尖露出来（它是区域，不是某个点） */
+.qut-campus-pin .qut-campus-pin-label {
+	top: calc(100% + 6px);
+	padding: 3px 10px;
+	border-color: rgb(113 26 95 / 0.32);
+	box-shadow: 0 2px 6px rgb(15 23 42 / 0.22);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+/* 两个校区同时在图上：当前校区是主角，另一个轻一档。
+   缩得很小的时候两个都能看到，光靠 zIndex 分不出主次（那是叠放顺序，
+   不挨着就看不出差别），得让颜色也退半步。 */
+.qut-campus-pin:not(.is-current) > [data-map-pin-body] {
+	opacity: 0.62;
+}
+.qut-campus-pin:not(.is-current) .qut-campus-pin-label {
+	font-weight: 500;
+	opacity: 0.86;
 }
 
 /* 窄屏地图本身拥挤，标签收窄一档，尽量少盖住相邻标点 */

@@ -10,7 +10,8 @@ export default antfu({
 	// Historical articles contain teaching examples, not executable project code.
 	// MapView.vue 自 QUT-WiKi 移植（保持上游原样便于同步），
 	// map-data.js 为站点地图数据（自上游转换生成，保持书写风格），
-	// 两者均不参与本项目的 lint。
+	// campus-boundary.js 由 scripts/gen-boundary.mjs 生成（几千个坐标点，格式由脚本决定），
+	// 以上均不参与本项目的 lint。
 	ignores: [
 		'docs/public/**',
 		'docs/**/*.md',
@@ -19,6 +20,7 @@ export default antfu({
 		'.npm-cache/**',
 		'packages/wiki-map/MapView.vue',
 		'docs/.vitepress/data/map-data.js',
+		'docs/.vitepress/data/campus-boundary.js',
 	],
 	rules: {
 		'jsonc/indent': ['error', 2],
