@@ -74,7 +74,10 @@ const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
  */
 function toRegExp(find: RegExp | string): RegExp {
 	if (find instanceof RegExp)
-		return find
+		// 去掉 g / y 标志：replace() 里对每条路径做 test()，带全局标志时
+		// lastIndex 会跨调用漂移，同一条规则对相同 URL 交替命中/不命中，
+		// 表现为外链随机漏换且难以复现
+		return new RegExp(find.source, find.flags.replace(/[gy]/g, ''))
 	if (find.startsWith('^'))
 		return new RegExp(`^${escapeRe(find.slice(1))}`)
 	if (find.endsWith('$'))
@@ -151,9 +154,12 @@ export function replaceAssets(options: ReplaceAssetsOptions = {}): ReplaceAssets
 		return url
 	}
 
-	// 匹配 ["'(] 后面的站内资源路径，用 lookahead 结束以便连续替换
+	// 匹配 ["'(] 后面的站内资源路径，用 lookahead 结束以便连续替换。
+	// 路径长度设 512 上限：惰性量 + 三十余个扩展名分支，不设上限时遇到
+	// 不含资源扩展名的超长引号串（打包进 JS 的长 SVG path、JSON 串）会退化成
+	// O(长度² × 扩展名数) 的回溯扫描
 	const pattern = new RegExp(
-		`(["'(])(/(?:[^"'()\\s]+?)\\.(?:${[...imageExt, ...mediaExt].join('|')})(?:\\?[^"'()\\s]*)?)(?=["')])`,
+		`(["'(])(/(?:[^"'()\\s]{1,512}?)\\.(?:${[...imageExt, ...mediaExt].join('|')})(?:\\?[^"'()\\s]*)?)(?=["')])`,
 		'gi',
 	)
 	const apply = (code: string) => code.replace(pattern, (_m, open: string, url: string) => open + replace(url))
