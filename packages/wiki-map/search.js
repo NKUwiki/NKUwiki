@@ -32,6 +32,17 @@ export function tokenize(text) {
 }
 
 /**
+ * 召回后剩余的「相关度下限」：只保留得分不低于首名该比例的结果。
+ *
+ * MiniSearch 默认 OR 组合，配合单字+二元组分词在中文上召回极宽——
+ * 97 个点位下搜「主楼」会召回 41 个、「药学院」62 个，列表基本失去筛选意义。
+ * 改 combineWith: 'AND' 能收敛，但会丢「用户少字」的场景：
+ * 搜「第二教学楼」就召回不到「第二主教学楼」了。
+ * 按相对最高分截断两者兼得——实测从 41→2、62→2，而目标点位 100% 仍在结果里。
+ */
+const SCORE_CUTOFF = 0.3
+
+/**
  * 由点位列表构建搜索引擎，返回 search(kw) => 命中的点位 id 集合。
  * 索引覆盖全部点位，校区/分类过滤仍由 MapView 在其结果上继续做。
  */
@@ -48,5 +59,20 @@ export function createBuildingSearch(buildings) {
 		},
 	})
 	engine.addAll(buildings)
-	return kw => new Set(engine.search(kw).map(r => r.id))
+
+	return (kw) => {
+		const hits = engine.search(kw)
+		if (!hits.length)
+			return new Set()
+		/* search() 已按得分降序，故 hits[0].score 即本次最高分；
+		   一旦掉到下限以下，后面的只会更低，可以提前结束。 */
+		const floor = hits[0].score * SCORE_CUTOFF
+		const ids = new Set()
+		for (const hit of hits) {
+			if (hit.score < floor)
+				break
+			ids.add(hit.id)
+		}
+		return ids
+	}
 }

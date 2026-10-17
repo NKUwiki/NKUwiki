@@ -59,3 +59,29 @@ test('空列表构建的引擎不抛错且恒返回空集', () => {
 	const search = createBuildingSearch([])
 	assert.equal(search('图书馆').size, 0)
 })
+
+// MiniSearch 默认 OR 组合，点位一多召回就失控（97 个点位下搜「主楼」能召回 40+）。
+// 这条锁定「按相对最高分截断」的行为，防止改回全召回把噪声灌进列表。
+const noisy = [
+	{ id: 'lib', name: '图书馆', desc: '藏书与自习' },
+	{ id: 'gym', name: '体育馆', desc: '篮球游泳' },
+	{ id: 'main', name: '南开大学主楼', desc: '行政与教学' },
+	// 仅因描述里蹭到部分字，相关度远低于名称精确命中
+	{ id: 'far', name: '游泳馆', desc: '图书阅览室旁' },
+	{ id: 'noise', name: '校医院', desc: '楼内设图书角' },
+]
+
+test('名称精确命中显著优于描述蹭字，后者不进结果集', () => {
+	const search = createBuildingSearch(noisy)
+	const hits = search('图书')
+	assert.ok(hits.has('lib'))
+	// 描述蹭到「图书」但名称不相关的，相关度不足、应被截断掉
+	assert.ok(!hits.has('far'), '低相关度的描述命中不应留在结果里')
+	assert.ok(!hits.has('noise'))
+})
+
+test('结果集规模受控，不随库内点位数量线性膨胀', () => {
+	const search = createBuildingSearch(noisy)
+	assert.ok(search('图书馆').size <= 3, '单个关键词不应召回大量弱相关点位')
+	assert.equal(search('游泳').size >= 1, true)
+})
