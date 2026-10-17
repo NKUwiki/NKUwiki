@@ -8,7 +8,12 @@
  *   用原生 value setter + input 事件驱动 v-model，再触发 Twikoo 自己的发送按钮，
  *   因此昵称 / 邮箱 / 反垃圾校验全部沿用 Twikoo 原有链路
  */
+import { destroyTwikoo } from '@nkuwiki/theme/theme/composables/twikoo.ts'
 import { reactive } from 'vue'
+
+// 销毁实现与主题侧文章评论区共用一份（主题包 composables/twikoo.ts），
+// 这里转出去，保持既有 import 路径不变
+export { destroyTwikoo }
 
 export const twikooEnvId = import.meta.env.VITE_TWIKOO_ENV_ID || ''
 
@@ -420,23 +425,6 @@ export function decorateRatings(element) {
 }
 
 /**
- * 清理弹窗内的 Twikoo 实例。
- *
- * twikoo 2.x 没有公开的销毁 API（也不再有 $destroy）。只做 innerHTML = '' 是
- * 不够的：它的 v-clickoutside 指令会在 document 上注册**捕获阶段**的 click 监听，
- * 且只在指令 unmounted 时才摘掉；截掉 DOM 不会触发 unmounted，于是 Vue app
- * 与这个全局监听都还活着——每开关一次弹窗就多积一份孤儿实例与一个全局监听。
- * 这里手动把 Twikoo 挂在各节点上的 __tkClickoutside 摘掉。
+ * 清理弹窗内的 Twikoo 实例：见主题包 composables/twikoo.ts（与本文件顶部
+ * 的转出导出同一实现），这里不再重复一份。
  */
-export function destroyTwikoo(element) {
-	if (!element)
-		return
-	for (const node of [element, ...element.querySelectorAll('*')]) {
-		const handler = node.__tkClickoutside
-		if (typeof handler === 'function') {
-			document.removeEventListener('click', handler, true)
-			delete node.__tkClickoutside
-		}
-	}
-	element.innerHTML = ''
-}

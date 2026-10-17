@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useData } from 'vitepress'
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { destroyTwikoo } from '../composables/twikoo.ts'
 
 /**
  * Twikoo 评论区：挂在 doc-after，位于正文之后、页面历史之前。
@@ -43,6 +44,14 @@ onMounted(async () => {
 		failed.value = true
 		console.error('Twikoo 初始化失败：', error)
 	}
+})
+
+// WikiLayout 用 :key="route.path" 挂本组件：每进一篇新文章都会卸载重建。
+// twikoo.init 挂上的 Vue app 及其 document 捕获级 click 监听不会随 DOM 移除
+// 而消失（见 composables/twikoo.ts 的说明），不手动销毁就会逐篇泄漏。
+// 放在 onBeforeUnmount：此时模板 ref 尚未被置空。
+onBeforeUnmount(() => {
+	destroyTwikoo(container.value)
 })
 </script>
 
