@@ -26,8 +26,8 @@ const {
 	BUILDINGS,
 	CAMPUS_CONFIG,
 	CATEGORY_CONFIG,
-	CATEGORY_GROUPS,
 	CATEGORY_ICON_PATHS,
+	FILTER_LIST,
 	AMAP_KEY,
 	AMAP_SECURITY_JS_CODE,
 	MAP_DISPLAY,
@@ -85,8 +85,6 @@ const mapError = ref('')
 
 const currentCampus = ref('n')
 const currentCategory = ref('all')
-/** 当前展开细类行的分组 key（null = 不展开细类行） */
-const activeGroup = ref(null)
 const searchKeyword = ref('')
 /** 左侧卡片收起成小卡片：只留校区 / 搜索 / 分类三行，隐藏点位列表。
  *  初始值固定为 false（SSR 产物与首帧一致，避免水合不匹配），
@@ -134,19 +132,9 @@ const campusBuildings = computed(() =>
 const filteredBuildings = computed(() => {
 	const kw = searchKeyword.value.trim().toLowerCase()
 	const matched = kw ? buildingSearch(kw) : null
-	/* currentCategory 可为 'all' / 分组 key / 细类 key：
-	   分组 → 该组下所有细类的并集；细类 → 精确匹配；全部 → 不过滤 */
-	const cat = currentCategory.value
-	const isGroup = !!CATEGORY_GROUPS[cat]
 	return campusBuildings.value.filter((b) => {
-		if (cat !== 'all') {
-			if (isGroup) {
-				if ((CATEGORY_CONFIG[b.category] || {}).group !== cat)
-					return false
-			} else if (b.category !== cat) {
-				return false
-			}
-		}
+		if (currentCategory.value !== 'all' && b.category !== currentCategory.value)
+			return false
 		if (matched && !matched.has(b.id))
 			return false
 		return true
@@ -700,7 +688,6 @@ function selectCampus(next) {
 	currentCampus.value = next
 	selected.value = null
 	currentCategory.value = 'all'
-	activeGroup.value = null
 	searchKeyword.value = ''
 	/* 悬浮提示也要清：指针不动（键盘切校区）时不会触发 marker mouseout，
 	   残留的提示会按旧校区坐标继续定位、还跟着地图飘 */
@@ -812,49 +799,9 @@ function clearMarkerCache() {
 	markerCache.clear()
 }
 
-/* 分类筛选：两级（分组 → 细类）。currentCategory 可为 'all' / 分组 key / 细类 key，
-   activeGroup 记录当前展开细类行的分组；分组与细类共用 CATEGORY_CONFIG 的配色。 */
-
-/** 全部：清空分组与细类筛选 */
-function selectAll() {
-	currentCategory.value = 'all'
-	activeGroup.value = null
-	renderMarkers()
-}
-
-/** 取某分组下的细类列表（按 CATEGORY_CONFIG 声明顺序） */
-function leavesOf(groupKey) {
-	return Object.entries(CATEGORY_CONFIG)
-		.filter(([, cfg]) => cfg.group === groupKey)
-		.map(([key, cfg]) => ({ key, label: cfg.label }))
-}
-
-/** 分组标题文字（无障碍标签用） */
-function groupLabel(key) {
-	return (CATEGORY_GROUPS[key] || {}).label || ''
-}
-
-/** 点分组药丸：展开它的细类行并筛选到该组并集；单细类分组直接选中细类；
-    再次点已激活的分组则收起回全部 */
-function toggleGroup(key) {
-	if (currentCategory.value === key) {
-		selectAll()
-		return
-	}
-	const leaves = leavesOf(key)
-	if (leaves.length === 1) {
-		selectLeaf(leaves[0].key)
-		return
-	}
+/** 切换分类筛选（接分类 key，供横排药丸调用） */
+function selectCategory(key) {
 	currentCategory.value = key
-	activeGroup.value = key
-	renderMarkers()
-}
-
-/** 点细类药丸：精确筛选到该细类，并保持其所属分组展开 */
-function selectLeaf(key) {
-	currentCategory.value = key
-	activeGroup.value = (CATEGORY_CONFIG[key] || {}).group || null
 	renderMarkers()
 }
 
@@ -1082,57 +1029,25 @@ onUnmounted(() => {
 				</label>
 			</div>
 
-			<!-- 分类筛选：两级（分组 → 细类），交互结构参考上海交大电子地图。
-			     第一行是 8 个分组药丸（带色点），点开后在第二行展开该组的细类药丸；
-			     单细类分组（食堂/宿舍/体育/生活服务/景观）点一下即直达细类。 -->
-			<div class="category-filter">
-				<div
-					ref="categoryChipsEl"
-					class="category-chips group-row"
-					role="group"
-					aria-label="地点分类（分组）"
+			<!-- 分类筛选：横排彩色药丸，圆点色与标点/列表图标同源（CATEGORY_CONFIG.color）。
+			     分类有 17 个，卡片放不下就横向滚动；「全部」不带圆点（它没有对应色） -->
+			<div ref="categoryChipsEl" class="category-chips" role="group" aria-label="地点分类">
+				<button
+					v-for="item in FILTER_LIST"
+					:key="item.key"
+					type="button"
+					class="category-chip"
+					:class="{ active: currentCategory === item.key }"
+					:aria-pressed="currentCategory === item.key"
+					@click="selectCategory(item.key)"
 				>
-					<button
-						type="button"
-						class="category-chip group-chip"
-						:class="{ active: currentCategory === 'all' }"
-						:aria-pressed="currentCategory === 'all'"
-						@click="selectAll"
-					>
-						全部
-					</button>
-					<button
-						v-for="(g, gk) in CATEGORY_GROUPS"
-						:key="gk"
-						type="button"
-						class="category-chip group-chip"
-						:class="{ active: currentCategory === gk }"
-						:aria-pressed="currentCategory === gk"
-						@click="toggleGroup(gk)"
-					>
-						<span class="chip-dot" :style="{ '--chip-dot': g.color }" />
-						{{ g.label }}
-					</button>
-				</div>
-				<div
-					v-if="activeGroup && leavesOf(activeGroup).length > 1"
-					class="category-chips leaf-row"
-					role="group"
-					:aria-label="`${groupLabel(activeGroup)}的子分类`"
-				>
-					<button
-						v-for="leaf in leavesOf(activeGroup)"
-						:key="leaf.key"
-						type="button"
-						class="category-chip leaf-chip"
-						:class="{ active: currentCategory === leaf.key }"
-						:aria-pressed="currentCategory === leaf.key"
-						@click="selectLeaf(leaf.key)"
-					>
-						<span class="chip-dot" :style="{ '--chip-dot': categoryColor(leaf.key) }" />
-						{{ leaf.label }}
-					</button>
-				</div>
+					<span
+						v-if="item.key !== 'all'"
+						class="chip-dot"
+						:style="{ '--chip-dot': categoryColor(item.key) }"
+					/>
+					{{ item.label }}
+				</button>
 			</div>
 			</div>
 
@@ -1177,7 +1092,6 @@ onUnmounted(() => {
 				:coord="pickedCoord"
 				:buildings="BUILDINGS"
 				:categories="CATEGORY_CONFIG"
-				:groups="CATEGORY_GROUPS"
 				:campuses="CAMPUS_CONFIG"
 				:default-campus="currentCampus"
 				@campus-change="onPickCampusChange"
@@ -1671,24 +1585,6 @@ html.dark .map-section {
    把色块托出来），让「当前是哪个分类」的色标在选中前后保持一致 */
 .category-chip.active .chip-dot {
 	box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.72);
-}
-
-/* 两级筛选容器：分组行在上，可选的细类行在下（参考上海交大电子地图） */
-.category-filter {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
-}
-/* 细类行：点位少，换行即可，不必横向滚动/拖动 */
-.category-chips.leaf-row {
-	flex-wrap: wrap;
-	overflow: visible;
-	cursor: default;
-}
-.category-chip.leaf-chip {
-	height: 24px;
-	padding: 0 10px;
-	font-size: 12px;
 }
 
 /* 列表折叠：外层 grid 容器高度 1fr ↔ 0fr（纯 CSS 里唯一能动画到「内容自适应高度」
