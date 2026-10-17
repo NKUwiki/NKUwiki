@@ -149,6 +149,24 @@ test('拖动：过阈值后按位移平移，并吞掉随后那次 click', () =>
 	assert.equal(nextClick.stopped, false)
 })
 
+test('拖动标记及时复位：漏收 click 不会吞掉下一次正常点击', () => {
+	const el = fakeElement({ scrollLeft: 100 })
+	const win = fakeWindow()
+	createChipsScroll(el, win).bind()
+
+	// 在药丸行按下、拖出容器外松手：补发的 click 派发给最近公共祖先，
+	// 不经过本容器，onClickCapture 不执行——标记会残留
+	el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 200 })
+	win.fire('pointermove', { clientX: 140 })
+	win.fire('pointerup', {})
+
+	// 下一次正常点击（按下即松开，无位移）必须放行，否则分类筛选静默失效
+	el.fire('pointerdown', { pointerType: 'mouse', button: 0, clientX: 210 })
+	win.fire('pointerup', {})
+	const click = fireWithFlags(el, 'click')
+	assert.equal(click.stopped, false, '残留的拖动标记不应吞掉下一次正常点击')
+})
+
 test('触摸与触控笔不接管，且未溢出时不启动拖动', () => {
 	const el = fakeElement()
 	const win = fakeWindow()

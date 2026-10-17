@@ -89,6 +89,10 @@ export function createChipsScroll(el, win) {
 			return
 		if (maxScroll() <= 0)
 			return
+		/* 先复位上一次拖动的吞点击标记：按下后拖到容器外松手时，补发的 click
+		   不经过本容器（派发给最近公共祖先），onClickCapture 不会执行，
+		   标记会残留成 true，把下一次正常点击静默吞掉 */
+		draggedMoved = false
 		drag = { startX: event.clientX, startScroll: el.scrollLeft, moved: false }
 		// 监听挂 win 而不是用 setPointerCapture：捕获会把 pointerup 的目标改成捕获元素，
 		// 浏览器据此把 click 派发给容器，药丸反而点不动了
