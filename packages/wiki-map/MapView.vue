@@ -147,6 +147,9 @@ const detailCardEl = ref(null)
 const detailCardHeight = ref(0)
 const photoViewer = ref(false)
 const photoViewerIndex = ref(0)
+/* 两个模态面板的根元素：焦点陷阱与「关闭后归还焦点」都要用（见下面的模态焦点管理） */
+const viewerEl = ref(null)
+const locationDialogEl = ref(null)
 
 const markerCache = new Map()
 /* 档位 1 的校区标点：「八里台校区 / 津南校区」，代表整个校区范围。
@@ -256,6 +259,116 @@ function isEditingTarget(target) {
 		&& (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
 }
 
+/* ================= 模态面板的焦点管理 =================
+ * 图片查看器与定位说明都写着 role="dialog" aria-modal="true"，但此前只有视觉
+ * 上的「模态」：焦点仍能 Tab 到背后的侧栏与导航条，读屏用户听到的也还是整页。
+ * 这里补三件事：打开时把焦点移进面板、面板内 Tab 循环、关闭时把焦点还回去。
+ *
+ * 不用 <dialog>.showModal()：它会新建一层 top-layer 并改变布局与层叠上下文，
+ * 而这两个面板的定位、Teleport 与 Transition 都是按普通元素写的，换过去等于
+ * 把样式重做一遍，收益只有焦点管理这一项 —— 自己写反而更容易控制。
+ */
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+/** 打开面板前的焦点落点，关闭时归还（可能是列表项，也可能已因换校区被卸载） */
+let focusBeforeDialog = null
+
+/** 当前打开的面板：查看器盖在定位说明之上，先认它 */
+function activeDialogEl() {
+	if (photoViewer.value && currentViewerPhoto.value)
+		return viewerEl.value
+	if (locationDialogOpen.value)
+		return locationDialogEl.value
+	return null
+}
+
+/**
+ * 面板内可聚焦的元素。
+ * 不能按 offsetParent 判可见：查看器是 position: fixed，其子元素的 offsetParent
+ * 恒为 null，那样会把所有按钮都当成隐藏的。getClientRects 只看行盒，才准。
+ */
+function focusableIn(el) {
+	return [...el.querySelectorAll(FOCUSABLE_SELECTOR)]
+		.filter(node => node.getClientRects().length > 0)
+}
+
+function openDialogFocus(el) {
+	if (!el)
+		return
+	focusBeforeDialog = document.activeElement instanceof HTMLElement ? document.activeElement : null
+	/* 面板自身 tabindex="-1"：焦点落在容器上，读屏会先念 aria-label / 标题，
+	   比直接跳到「关闭」按钮更完整 */
+	el.focus({ preventScroll: true })
+}
+
+function restoreDialogFocus() {
+	const target = focusBeforeDialog
+	focusBeforeDialog = null
+	if (!target)
+		return
+	/* 检查放到 DOM 更新之后：关闭面板的那一刻，打开它的元素可能正被卸载
+	   （例如切校区连着清掉选中），此时把焦点还过去只会落到 body 上 */
+	nextTick(() => {
+		if (target.isConnected)
+			target.focus({ preventScroll: true })
+	})
+}
+
+/** Tab / Shift+Tab 在面板内首尾相接；返回 true 表示已接管 */
+function trapDialogTab(event) {
+	const el = activeDialogEl()
+	if (!el)
+		return false
+	const items = focusableIn(el)
+	if (!items.length) {
+		event.preventDefault()
+		el.focus({ preventScroll: true })
+		return true
+	}
+	const first = items[0]
+	const last = items[items.length - 1]
+	const current = document.activeElement
+	if (current === el) {
+		event.preventDefault()
+		const next = event.shiftKey ? last : first
+		next.focus({ preventScroll: true })
+		return true
+	}
+	if (!el.contains(current)) {
+		event.preventDefault()
+		first.focus({ preventScroll: true })
+		return true
+	}
+	if (event.shiftKey && current === first) {
+		event.preventDefault()
+		last.focus({ preventScroll: true })
+		return true
+	}
+	if (!event.shiftKey && current === last) {
+		event.preventDefault()
+		first.focus({ preventScroll: true })
+		return true
+	}
+	return false
+}
+
+/* 进出场各管一次焦点。两个面板不会同时开（定位说明铺满整屏），
+   所以共用一份 focusBeforeDialog 是安全的。
+   两个面板都是 v-if 渲染，watch 回调里 ref 还是 null —— 必须等一个 tick
+   再取，否则焦点永远移不进去（这是这套逻辑最容易写错的地方） */
+watch(photoViewer, (open) => {
+	if (open)
+		nextTick(() => openDialogFocus(viewerEl.value))
+	else
+		restoreDialogFocus()
+})
+
+watch(locationDialogOpen, (open) => {
+	if (open)
+		nextTick(() => openDialogFocus(locationDialogEl.value))
+	else
+		restoreDialogFocus()
+})
+
 /**
  * 全局键盘：按「一层一层退」的顺序处理，最上面那层先吃事件。
  *
@@ -268,6 +381,10 @@ function isEditingTarget(target) {
  * Esc 是取消输入，顺手把卡片关掉会像「打字把面板打没了」。
  */
 function onGlobalKeydown(event) {
+	/* Tab 先交给焦点陷阱：面板开着时「焦点出不去」是整块屏幕的约束，
+	   比下面那几层「由内向外退」更靠前 */
+	if (event.key === 'Tab' && trapDialogTab(event))
+		return
 	if (photoViewer.value) {
 		if (event.key === 'Escape')
 			closePhotoViewer()
@@ -584,14 +701,38 @@ watch(selected, async (building) => {
 })
 
 /* ================= 地图初始化 ================= */
+/**
+ * 是否再开一个地图实例做「校外 POI 衬底」。
+ *
+ * 两个 AMap 实例 = 两套瓦片请求 + 两块 canvas，代价是实打实的；而这层提供的
+ * 只是「校外也显示高德原生 POI」这件锦上添花的事。小屏（≤1024px，手机上还会
+ * 叠加地址栏伸缩引发的高频 resize）与低内存设备上不值得，直接退化成单层：
+ * 底图自己带 point 要素，校外照样有 POI 名称，只是不再由我们这层单独控制。
+ *
+ * navigator.deviceMemory 只有 Chromium 系有（Firefox / Safari 返回 undefined），
+ * 认不出来就按「够用」处理，别把桌面误判成低端机。
+ */
+function usePoiBackdrop() {
+	if (typeof window === 'undefined')
+		return false
+	if (isMobileViewport())
+		return false
+	const memory = navigator.deviceMemory
+	return !(typeof memory === 'number' && memory < 4)
+}
+
 function initMap() {
 	const campus = CAMPUS_CONFIG[currentCampus.value]
 	/* 底图要素：point 就是高德下发的 POI 点（某某楼、某店铺这类建筑名），
 	   与我们自己标注的点位重名且打架，默认关掉，只留底色/道路/建筑轮廓。
 	   showLabel 单独管文字标注（道路名、行政区名），关掉连路名一起没。
-	   两者都由站点侧 MAP_DISPLAY 控制，未配置时用下面的默认值。 */
+	   两者都由站点侧 MAP_DISPLAY 控制，未配置时用下面的默认值。
+
+	   唯一例外是不建衬底（小屏 / 低内存）：这时校外的 POI 只能由底图自己提供，
+	   于是把 point 加回来 —— 重名打架是「城内有重复标注」，总比校外一片空白好。 */
 	const display = MAP_DISPLAY || {}
-	const features = display.showPoi === true
+	const poiBackdrop = usePoiBackdrop()
+	const features = (display.showPoi === true || !poiBackdrop)
 		? ['bg', 'point', 'road', 'building']
 		: ['bg', 'road', 'building']
 	map = new AMap.Map(mapEl.value, {
@@ -603,10 +744,13 @@ function initMap() {
 		viewMode: '2D',
 		scrollWheel: true,
 	})
-	/* 衬底层建不出来时宁可退化回单层地图：下面 applyMask 会因为 !poiMap 而不挖空，
-	   否则校外会变成一片透明（看到页面底色），比没有 POI 更糟 */
-	try { initPoiMap(campus, features, display) }
-	catch (e) { console.warn('[MapView] 校外 POI 衬底初始化失败，退化为单层地图：', e) }
+	/* 衬底层建不出来（或按上面的规则不建）时宁可退化回单层地图：下面 applyMask
+	   会因为 !poiMap 而不挖空，否则校外会变成一片透明（看到页面底色），
+	   比没有 POI 更糟 */
+	if (poiBackdrop) {
+		try { initPoiMap(campus, features, display) }
+		catch (e) { console.warn('[MapView] 校外 POI 衬底初始化失败，退化为单层地图：', e) }
+	}
 	/* 衬底跟随：视野一动就开逐帧循环（见「校外 POI 衬底的跟随」），
 	   停手后再归位一次。这里只挂开关，重活都在循环里 */
 	map.on('mapmove', onViewChanged)
@@ -812,7 +956,10 @@ function stopFollowLoop() {
 }
 
 function startFollowLoop() {
-	if (followRaf)
+	/* 没有衬底就别开循环：applyPoiFollow 会一直返回 false，而 followDraining
+	   平时也是 false —— 循环会以 60fps 空转，直到页面被关掉。小屏降级后
+	   这是常态路径，不能再靠「反正 poiMap 一定存在」这个假设 */
+	if (followRaf || !map || !poiMap)
 		return
 	const step = () => {
 		const aligned = applyPoiFollow()
@@ -941,11 +1088,16 @@ function renderPolygons() {
 
 /* 遮罩相关的两个动作都要容错：setMask 在 2.0 的不同小版本里行为有差异，
    失败也只该退化成「没有遮罩」，不能把整轮渲染打断 */
+/** 遮罩此刻是否真的生效：只有设过才需要清，否则单层下每次切校区都会
+ *  白调一次 setMask(null)（那是一次整图重绘，会闪一下） */
+let maskApplied = false
+
 function applyMask() {
 	if (!map || !map.setMask || !lastBoundaryPaths.length)
 		return
 	try {
 		map.setMask(lastBoundaryPaths)
+		maskApplied = true
 	}
 	catch (e) {
 		console.warn('[MapView] setMask 失败，已回退为无遮罩：', e)
@@ -953,9 +1105,15 @@ function applyMask() {
 }
 
 function resetMask() {
-	if (!map || !map.setMask)
+	if (!map || !map.setMask || !maskApplied)
 		return
-	try { map.setMask([]) }
+	/* 清除遮罩要传 null，**不能传 []**：高德 2.0 把空数组当成「一个空的
+	   多边形」去遮，整张图直接变透明 —— 有衬底时看不出来（衬底从下面顶上来），
+	   一旦退化成单层（小屏 / 衬底初始化失败）就是一片白，只剩 DOM 层的标点 */
+	try {
+		map.setMask(null)
+		maskApplied = false
+	}
 	catch (e) { /* noop */ }
 }
 
@@ -1372,10 +1530,49 @@ function onSelect(b) {
 	/* 小屏选完点位就收起列表：卡片给地图让位，底部详情卡才露得出来 */
 	if (isMobileViewport())
 		sidebarCollapsed.value = true
+	/* 地址栏跟着走：此时复制链接就是「这栋楼」的直达地址 */
+	syncDeepLink(b)
+	/* 换点位时复位「已复制」：上一栋楼的反馈不该跟着留在新卡片上 */
+	resetCopyState()
+}
+
+/**
+ * 详情卡关掉后，把焦点送到一个「还在、且看得见」的地方。
+ *
+ * 顺序：同一点位在左侧列表里的按钮 → 搜索框。
+ * 小屏选完点位列表会自动收起（`grid-template-rows: 0fr` + overflow hidden），
+ * 折叠区里的按钮**仍有布局盒**（`getClientRects()` 不为空，只是被裁掉了），
+ * 所以可见性不能按行盒判，得看 `sidebarCollapsed` —— 否则焦点会被送进看不见的
+ * 区域，读屏念了名字、屏幕上却没有焦点框。
+ */
+function focusAfterCardClose(buildingId) {
+	let target = null
+	if (!sidebarCollapsed.value) {
+		for (const item of document.querySelectorAll('#map-building-list .building-item')) {
+			if (!(item instanceof HTMLElement) || item.dataset.id !== buildingId)
+				continue
+			target = item
+			break
+		}
+	}
+	/* 列表项不传 preventScroll：列表自身可滚动，选中项在视口外时让浏览器带进来 */
+	if (target) {
+		target.focus()
+		return
+	}
+	const input = document.querySelector('.sidebar-search input')
+	if (input instanceof HTMLElement)
+		input.focus({ preventScroll: true })
 }
 
 function clearSelection() {
+	/* 焦点若在详情卡里（按 Esc 或点关闭按钮），卡片一卸载焦点就掉到 body ——
+	   键盘用户会「失去落点」，接着按 Tab 是从整页开头重新走一遍。
+	   先把这件事记下来，DOM 更新后交给列表或搜索框（见 focusAfterCardClose） */
+	const closingId = selected.value?.id
+	const fromCard = !!(detailCardEl.value && detailCardEl.value.contains(document.activeElement))
 	closePhotoViewer()
+	resetCopyState()
 	selected.value = null
 	/* 取消选中后，原本因「被选中」而强制显示的高档位标点要收回去 */
 	renderMarkers()
@@ -1383,6 +1580,10 @@ function clearSelection() {
 		applyPinState(entry.root, false)
 		entry.marker.setzIndex(10)
 	}
+	/* 链接也要退回去：留着 id 会让「已关闭」与「地址里还指着一个点」对不上 */
+	syncDeepLink(null)
+	if (fromCard)
+		nextTick(() => focusAfterCardClose(closingId))
 }
 
 /**
@@ -1403,6 +1604,9 @@ function selectCampus(next, opts = {}) {
 	   下一次选中带图的点位会「自己弹出全屏图」（v-if 是 photoViewer && currentViewerPhoto）。
 	   clearSelection() 里已有同样一行，这里补上是为了不依赖「用户点不到」这个巧合 */
 	closePhotoViewer()
+	/* 选中被清掉，深链也要退：新校区里原来那个 id 已经不代表此刻的视野了。
+	   注意 applyDeepLink 会在随后选中点位时把 id 再写回来 */
+	syncDeepLink(null)
 	currentCategory.value = 'all'
 	searchKeyword.value = ''
 	/* 悬浮提示也要清：指针不动（键盘切校区）时不会触发 marker mouseout，
@@ -1428,6 +1632,131 @@ function selectCampus(next, opts = {}) {
 		syncTier(true)
 	}
 }
+
+/* ================= 点位深链（?id=xxx） =================
+ * 在这之前，想把某栋楼发给同学只能发地图首页、让对方自己在列表里找。
+ * 这里把「选中的点位」同步进地址栏：复制 URL 就是一条直达链接。
+ *
+ * 两个方向：
+ *   落地时读 ?id → 切到它所属校区并选中它；
+ *   选中时写 ?id → replaceState（不占用「后退」，否则每点一个点都多一步历史）。
+ *
+ * 用 id 而不是坐标：坐标会随数据微调失效，而 id 是可读的 slug
+ * （main-building 这种），在聊天里被截断也还能认出是哪栋楼。
+ */
+const DEEP_LINK_KEY = 'id'
+
+function readDeepLinkId() {
+	if (typeof window === 'undefined')
+		return ''
+	return (new URLSearchParams(window.location.search).get(DEEP_LINK_KEY) || '').trim()
+}
+
+/** 把当前选中同步进地址栏；传空表示清掉这个参数 */
+function syncDeepLink(building) {
+	if (typeof window === 'undefined')
+		return
+	const url = new URL(window.location.href)
+	if (building?.id)
+		url.searchParams.set(DEEP_LINK_KEY, building.id)
+	else
+		url.searchParams.delete(DEEP_LINK_KEY)
+	if (url.href === window.location.href)
+		return
+	/* 被嵌在 sandbox iframe 里（预览面板、站内嵌页）时 replaceState 可能抛
+	   SecurityError；地址栏同步是锦上添花，不能让它把「选中点位」这件事带崩 */
+	try { window.history.replaceState(window.history.state, '', url) }
+	catch (e) { /* noop */ }
+}
+
+/** 地图就绪后应用链接里的点位；id 对不上就当没写，顺手清掉脏参数 */
+function applyDeepLink() {
+	const id = readDeepLinkId()
+	if (!id)
+		return
+	const target = BUILDINGS.find(b => b.id === id)
+	if (!target) {
+		syncDeepLink(null)
+		return
+	}
+	/* 先切校区（换视野 + 换左侧列表）并直接把视野落到点位上：跨城跳转不需要
+	   动画，让它从旧校区滑过去反而像卡住了 */
+	if (target.campusId && target.campusId !== currentCampus.value && CAMPUS_CONFIG[target.campusId])
+		selectCampus(target.campusId, { center: target.coord })
+	onSelect(target)
+}
+
+/* ---------- 复制链接：让深链「看得见」 ----------
+ * 深链做好之后，界面上没有任何一处告诉用户「地址栏就是这栋楼的链接」，
+ * 这个功能等于只有知道的人在用。卡片底部补一枚按钮，点一下拿走。
+ */
+/** idle 原样 / done 已复制 / fail 复制失败（非安全上下文常见） */
+const copyState = ref('idle')
+let copyStateTimer = null
+
+function resetCopyState() {
+	if (copyStateTimer) {
+		clearTimeout(copyStateTimer)
+		copyStateTimer = null
+	}
+	copyState.value = 'idle'
+}
+
+/** 兜底：http 内网预览 / 老浏览器没有 Clipboard API，走临时 textarea */
+function copyByExecCommand(text) {
+	try {
+		const area = document.createElement('textarea')
+		area.value = text
+		area.setAttribute('readonly', '')
+		/* 必须留在文档流里才选得中，所以挪到视口外、透明，而不是 display: none */
+		area.style.cssText = 'position:fixed;top:-1000px;left:0;opacity:0'
+		document.body.appendChild(area)
+		area.select()
+		const ok = document.execCommand('copy')
+		document.body.removeChild(area)
+		return ok
+	}
+	catch (e) {
+		return false
+	}
+}
+
+/**
+ * 复制当前点位的直达链接。
+ *
+ * 地址栏里本该已经有了（onSelect → syncDeepLink），但这里仍按 selected 现算：
+ * 嵌在 iframe 里时 replaceState 会被拒（上面那个 try/catch 吃了异常），
+ * 地址栏可能并没同步上；而用户点的就是这张卡，按卡片算出来的才一定对。
+ */
+async function copyDeepLink() {
+	if (!selected.value)
+		return
+	const url = new URL(window.location.href)
+	url.searchParams.set(DEEP_LINK_KEY, selected.value.id)
+	const text = url.href
+	let ok = false
+	try {
+		if (navigator.clipboard?.writeText) {
+			await navigator.clipboard.writeText(text)
+			ok = true
+		}
+	}
+	catch (e) { ok = false }
+	if (!ok)
+		ok = copyByExecCommand(text)
+	resetCopyState()
+	copyState.value = ok ? 'done' : 'fail'
+	/* 失败留久一点让人看清，成功后 1.6s 复位即可 */
+	copyStateTimer = setTimeout(resetCopyState, ok ? 1600 : 2400)
+}
+
+const copyLabel = computed(() => {
+	if (copyState.value === 'done')
+		return '链接已复制'
+	if (copyState.value === 'fail')
+		return '复制失败'
+	return '复制链接'
+})
 
 /* ================= 坐标拾取模式 =================
    维护 map-data.js 用的小工具：?pick=1 打开，点地图取坐标、填信息、
@@ -1615,6 +1944,9 @@ function resetMap() {
 	}
 	lastBoundaryPaths = []
 	resetMask()
+	/* 实例马上要销毁：标志跟着归零，否则重建后第一次单层渲染会去清一个
+	   已经不存在的遮罩 */
+	maskApplied = false
 	resetPoiFollow()
 	if (poiMap) {
 		try { poiMap.destroy() }
@@ -1642,6 +1974,9 @@ async function bootstrap() {
 			return
 		initMap()
 		renderMarkers()
+		/* 深链放在标点渲染之后：onSelect 里要改已有标点的选中态，
+		   先有标点才有「选中态落到哪一个」可言 */
+		applyDeepLink()
 		startThemeObserver()
 		applyMapTheme()
 	}
@@ -1679,6 +2014,7 @@ onMounted(() => {
 onUnmounted(() => {
 	document.removeEventListener('keydown', onGlobalKeydown)
 	document.removeEventListener('keydown', onPickHotkey)
+	resetCopyState()
 	if (mobileQuery)
 		mobileQuery.removeEventListener('change', onMobileQueryChange)
 	mobileQuery = null
@@ -1809,6 +2145,8 @@ onUnmounted(() => {
 						type="button"
 						class="building-item"
 						:class="{ active: selected?.id === b.id }"
+						:data-id="b.id"
+						:aria-current="selected?.id === b.id ? 'true' : undefined"
 						@click="onSelect(b)"
 					>
 						<span class="cat-icon" :style="{ color: categoryColor(b.category) }" v-html="categoryIconMarkup(b.category, 14)" />
@@ -1876,7 +2214,7 @@ onUnmounted(() => {
 				class="map-hover-tip"
 				:style="{ left: `${hoverTip.x}px`, top: `${hoverTip.y}px` }"
 			>
-				<img v-if="buildingPhotos(hoverTip.building)[0]" :src="buildingPhotos(hoverTip.building)[0]" alt="" class="hover-img">
+				<img v-if="buildingPhotos(hoverTip.building)[0]" :src="buildingPhotos(hoverTip.building)[0]" alt="" class="hover-img" loading="lazy" decoding="async">
 				<p class="hover-name">
 					{{ hoverTip.building.name }}
 				</p>
@@ -1967,8 +2305,8 @@ onUnmounted(() => {
 							:aria-label="selectedPhotos.length > 1 ? `查看 ${selectedPhotos.length} 张地点图片` : '查看地点图片'"
 							@click.stop="openPhotoViewer()"
 						>
-							<img v-if="selectedPhotos.length > 1" :src="selectedPhotos[1]" alt="" class="detail-photo detail-photo-back">
-							<img :src="selectedPhotos[0]" alt="" class="detail-photo detail-photo-front">
+							<img v-if="selectedPhotos.length > 1" :src="selectedPhotos[1]" alt="" class="detail-photo detail-photo-back" loading="lazy" decoding="async">
+							<img :src="selectedPhotos[0]" alt="" class="detail-photo detail-photo-front" loading="lazy" decoding="async">
 							<span v-if="selectedPhotos.length > 1" class="detail-photo-count">{{ selectedPhotos.length }}</span>
 						</button>
 						<span
@@ -2027,12 +2365,27 @@ onUnmounted(() => {
 							{{ link.label }}
 						</a>
 					</div>
+					<!-- 分享入口。深链做好之后界面上没有任何一处告诉用户「地址栏就是
+					     这栋楼的链接」，这个功能等于只有知道的人在用，这里补一枚按钮。
+					     复制成功 / 失败就地改字改色，不弹 toast —— 卡片本身就在眼前，
+					     再飘一层提示反而是噪音；aria-live 让读屏也能听到结果 -->
+					<button
+						type="button"
+						class="detail-copy-link"
+						:class="{ 'is-done': copyState === 'done', 'is-fail': copyState === 'fail' }"
+						aria-live="polite"
+						@click.stop="copyDeepLink"
+					>
+						<svg v-if="copyState === 'done'" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+						<svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+						{{ copyLabel }}
+					</button>
 				</section>
 			</Transition>
 		</div>
 	</div>
 	<div v-if="locationDialogOpen" ref="locationDialogBackdrop" class="location-dialog-backdrop" role="presentation">
-		<section class="location-dialog" role="dialog" aria-modal="true" aria-labelledby="location-dialog-title">
+		<section ref="locationDialogEl" class="location-dialog" role="dialog" aria-modal="true" aria-labelledby="location-dialog-title" tabindex="-1">
 			<div class="location-dialog-icon">
 				<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
 			</div>
@@ -2062,10 +2415,12 @@ onUnmounted(() => {
 		<Transition name="viewer">
 			<div
 				v-if="photoViewer && currentViewerPhoto"
+				ref="viewerEl"
 				class="map-photo-viewer"
 				role="dialog"
 				aria-modal="true"
 				:aria-label="`${selected?.name || '地点'}图片查看器`"
+				tabindex="-1"
 				@click="closePhotoViewer"
 			>
 				<button class="map-photo-viewer-close" type="button" aria-label="关闭图片查看器" @click.stop="closePhotoViewer">
@@ -2074,7 +2429,7 @@ onUnmounted(() => {
 				<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-prev" type="button" aria-label="上一张图片" @click.stop="changeViewerPhoto(-1)">
 					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></svg>
 				</button>
-				<img :src="currentViewerPhoto" :alt="`${selected?.name || '地点'}第 ${photoViewerIndex + 1} 张图片`" class="map-photo-viewer-img" @click.stop>
+				<img :src="currentViewerPhoto" :alt="`${selected?.name || '地点'}第 ${photoViewerIndex + 1} 张图片`" class="map-photo-viewer-img" decoding="async" @click.stop>
 				<button v-if="selectedPhotos.length > 1" class="map-photo-viewer-nav map-photo-viewer-next" type="button" aria-label="下一张图片" @click.stop="changeViewerPhoto(1)">
 					<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
 				</button>
@@ -2677,6 +3032,12 @@ html.dark .map-section {
 	background: rgba(0, 0, 0, 0.85);
 	z-index: 9999;
 }
+/* 两个模态容器只当「焦点落点」（tabindex="-1"），不给它们画焦点环：
+   焦点随即随 Tab 进入内部按钮，容器上多一圈框反而像里面有什么被选中了 */
+.map-photo-viewer:focus,
+.location-dialog:focus {
+	outline: none;
+}
 /* 查看器进出场：整体淡，图片单独从 0.955 收回原位（只补进场这一程，
    离场时点遮罩的人希望它立刻让开，缩回去会多拖 0.24s） */
 .viewer-enter-active,
@@ -3085,6 +3446,54 @@ html.dark .map-section {
 	transform: scale(0.97);
 }
 
+/* 「复制链接」：深链做好之后，界面上却没有一处告诉用户「地址栏就是这栋楼」，
+   等于只有知道的人在用。放在四个导航按钮下面单独一行 —— 上面那排是
+   「去别处」（高德 / 百度 / 腾讯 / Apple），这一枚是「把这里带走」。
+   形态刻意与它们同款（实线 + 浅底），只把文字从墨色降到灰：层次靠颜色区分，
+   不靠虚线 —— 虚线描边在浅灰卡片上几乎看不见，做了等于没做 */
+.detail-copy-link {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	width: 100%;
+	height: 30px;
+	margin-top: 6px;
+	border: 1px solid var(--c-line);
+	border-radius: 6px;
+	background: var(--c-paper);
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--c-muted);
+	transition: color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), border-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), background-color var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out), transform var(--wiki-duration-fast, 0.15s) var(--wiki-ease-out, ease-out);
+	cursor: pointer;
+}
+.detail-copy-link:hover {
+	border-color: var(--c-primary);
+	background: var(--c-primary-faint);
+	color: var(--c-primary);
+}
+.detail-copy-link:active {
+	transform: scale(0.985);
+}
+.detail-copy-link:focus-visible {
+	outline: 2px solid var(--c-primary);
+	outline-offset: 2px;
+}
+/* 结果就地反馈：转品牌色实底，失败用与 .location-error 同一支橙。
+   不弹 toast —— 卡片就在眼前，再飘一层提示反而是噪音 */
+.detail-copy-link.is-done {
+	border-color: var(--c-primary);
+	background: var(--c-primary-soft);
+	color: var(--c-primary);
+}
+.detail-copy-link.is-fail {
+	border-color: rgba(194, 65, 12, 0.35);
+	background: rgba(194, 65, 12, 0.06);
+	color: #C2410C;
+}
+
 /* 点位关联文章入口：品牌色描边按钮，悬停实底 */
 .detail-article-link {
 	display: flex;
@@ -3281,7 +3690,7 @@ html.dark .map-section {
 		--wiki-duration-collapse: 0.01ms;
 		--wiki-duration-slow: 0.01ms;
 	}
-	/* 详情卡与图片查看器的时长按「进慢出快」写死，没走令牌，单独收 */
+	/* 这两处时长是按「进慢出快」写死的（卡片 220/140ms、查看器 180ms），没走令牌，单独收 */
 	.detail-card-enter-active,
 	.detail-card-leave-active,
 	.viewer-enter-active,
