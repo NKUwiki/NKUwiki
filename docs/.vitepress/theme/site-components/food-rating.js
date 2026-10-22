@@ -246,7 +246,11 @@ export async function loadRatings(ids, { force = false } = {}) {
 	}
 
 	try {
-		for (const group of chunk(pending, 40)) await loadChunk(group)
+		// 分片并行发：148 家店是 4 个分片，串行要等 4 个来回首屏评分才齐，
+		// 并行只有一个来回的耗时。评分是非关键增强，宁可早到晚到，不要等到走。
+		// 某一片失败时 Promise.all 整体 reject，但已成功的分片结果照样落库
+		// （applyStats 在各分片内部执行），catch 只会清 loading、不会钉死 loaded。
+		await Promise.all(chunk(pending, 40).map(group => loadChunk(group)))
 	}
 	catch (error) {
 		console.error('美食评分加载失败：', error)

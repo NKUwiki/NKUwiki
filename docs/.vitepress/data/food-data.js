@@ -3,6 +3,7 @@
  *
  * 添加条目：在 FOODS 数组追加 { id, name, category, campus, location, price, tags, recommend, desc, cover, gallery }
  * - id 是评论与评分的唯一标识（Twikoo 路径 /food/<id>），把 id 当「主键」而非「名字」用
+ * - category 取 FOOD_CATEGORIES 里的 key：食堂按楼层（canteen-yi-1f …），其余是 xinancun / outside
  * - 同一品牌在不同商场的门店各占一条（各自独立评分），id 用「地点-店名拼音」区分
  * - price / recommend / desc 是编辑参考值，欢迎同学投稿修正；留空的字段在页面上自动隐藏
  * - cover / gallery 需 https 直链，没有图就留空（卡片用店名首字占位）
@@ -16,6 +17,19 @@
  *    MySQL:    UPDATE comment SET url = '/food/新id' WHERE url = '/food/旧id';
  *    （集合/表名以实际部署为准；迁移前先备份。迁移完成后 aliases 可保留也可移除）
  */
+import { CANTEEN_FOODS } from './food-canteens.js'
+
+/**
+ * 食堂实拍卡片的手写补充，按 id 覆盖自动生成的字段。
+ *
+ * 卡片本身由 scripts/fetch-bili-food.mjs 从 B 站合集「南开食堂天天吃」生成到
+ * food-canteens.js（重跑会整体覆盖，别去那边改）。一种食物一张卡，
+ * id 形如 `canteen-<楼层>-<菜名拼音>`；「几食堂几楼」是卡片的 location，
+ * 分类统一是 canteen。要补人均、改文案，或者把待定的卡片认领到具体楼层，
+ * 都写在这里，例如：
+ *   'canteen-yi-1f-kao-ya-fan': { price: '¥12' }
+ */
+const CANTEEN_META = {}
 
 /** 校区 key → 展示名 */
 /** @type {Record<string, string>} */
@@ -24,13 +38,41 @@ export const FOOD_CAMPUS = {
 	jinnan: '津南校区',
 }
 
+/**
+ * 分类 = 地点。食堂按「几食堂几楼」拆成独立分类，校外按一个商圈大类收口。
+ *
+ * key 只有一份：食堂楼层用 `canteen-<短码>`，短码与 scripts/fetch-bili-food.mjs
+ * 的 PLACE_DEFS 一一对应（那个脚本生成卡片时就写这个 key）；投稿助手也直接读这张表
+ * 当选项，别在别处再写一遍。
+ *
+ * campus 是「这个分类属于哪个校区」：两校区相距 20km、食堂名字不重合，一食堂二楼
+ * 只在八里台有。页面上的 chip 按「当前校区有没有卡片」实时决定显不显示（见
+ * site-components/food-filter.js），这里的 campus 供投稿助手用 —— 选了楼层就把
+ * 校区跟着定下来，避免投稿时把八里台的楼层挂到津南去。校外商圈两个校区都有，
+ * 不写 campus。新增分类时若只属于一个校区，记得补上。
+ *
+ * 顺序即页面上的 chip 顺序与分组顺序：按「一食 1F → 三食 3F → 待定 → 西南村 → 校外」的动线。
+ */
 export const FOOD_CATEGORIES = [
-	{ key: 'canteen', label: '校内食堂' },
-	{ key: 'inside', label: '校内店铺' },
+	{ key: 'canteen-yi-1f', label: '一食堂一楼', campus: 'balitai' },
+	{ key: 'canteen-yi-2f', label: '一食堂二楼', campus: 'balitai' },
+	{ key: 'canteen-er-1f', label: '二食堂一楼', campus: 'balitai' },
+	{ key: 'canteen-er-2f', label: '二食堂二楼', campus: 'balitai' },
+	{ key: 'canteen-er-3f', label: '二食堂三楼', campus: 'balitai' },
+	{ key: 'canteen-san-1f', label: '三食堂一楼', campus: 'balitai' },
+	{ key: 'canteen-san-2f', label: '三食堂二楼', campus: 'balitai' },
+	{ key: 'canteen-san-3f', label: '三食堂三楼', campus: 'balitai' },
+	{ key: 'canteen-qingzhen', label: '清真食堂', campus: 'balitai' },
+	{ key: 'canteen-jingyuan', label: '静园餐厅', campus: 'balitai' },
+	// 标题只写到「几食堂」或没写地点的，等人认领
+	{ key: 'canteen-tbd', label: '待定', campus: 'balitai' },
+	{ key: 'xinancun', label: '西南村', campus: 'balitai' },
+	// 五个商圈（大悦城 / 鲁能城 / 吾悦广场 / 新华城市广场 / 永旺梦乐城）合并为一个分类，
+	// 具体去哪家看卡片的 location；原「饮品甜点」也并进来，奶茶咖啡跟着商圈走
 	{ key: 'outside', label: '校外商圈' },
-	{ key: 'dessert', label: '饮品甜点' },
-	{ key: 'takeout', label: '外卖' },
 ]
+
+/** 食堂卡：一种食物一张，分类即楼层（category 与 location 都是「几食堂几楼」） */
 
 function photoList(item) {
 	if (Array.isArray(item.gallery) && item.gallery.length)
@@ -41,11 +83,14 @@ function photoList(item) {
 }
 
 export const FOODS = [
-	/* ===== 八里台 · 西南村（校内） ===== */
+	/* ===== 食堂 · 分类即楼层（B 站实拍生成，见 scripts/fetch-bili-food.mjs） ===== */
+	...CANTEEN_FOODS.map(item => ({ ...item, ...CANTEEN_META[item.id] })),
+
+	/* ===== 西南村（校内，单独一个分类） ===== */
 	{
 		id: 'xinancun-laotao-baozipu',
 		name: '老陶包子铺',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥10 左右',
@@ -56,7 +101,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-wuhan-reganmian',
 		name: '武汉热干面',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥8-15',
@@ -67,7 +112,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-sansheng-niuroufan',
 		name: '清真三升特色牛肉饭',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥15-25',
@@ -78,7 +123,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-chongqing-chuanxiang',
 		name: '重庆一绝串串香',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥30-60',
@@ -88,7 +133,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-liangshi-hanguoliaoli',
 		name: '梁氏韩国料理',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥20-40',
@@ -98,7 +143,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-shalina-xiaochi',
 		name: '莎莉娜特色风味小吃',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		price: '¥10-20',
@@ -108,7 +153,7 @@ export const FOODS = [
 	{
 		id: 'xinancun-shuigudian',
 		name: '西南村水果店',
-		category: 'inside',
+		category: 'xinancun',
 		campus: 'balitai',
 		location: '西南村',
 		tags: ['水果'],
@@ -119,7 +164,7 @@ export const FOODS = [
 	{
 		id: 'dayuecheng-luxihe',
 		name: '泸溪河桃酥',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '大悦城（南开店）',
 		price: '¥15-30',
@@ -130,7 +175,7 @@ export const FOODS = [
 	{
 		id: 'dayuecheng-yerenmufang',
 		name: '野人牧坊',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '大悦城（南开店）',
 		price: '¥10-25',
@@ -140,7 +185,7 @@ export const FOODS = [
 	{
 		id: 'dayuecheng-luckin',
 		name: '瑞幸咖啡',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '大悦城（南开店）',
 		price: '¥10-25',
@@ -151,7 +196,7 @@ export const FOODS = [
 	{
 		id: 'dayuecheng-xianguoshijian',
 		name: '鲜果时间',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '大悦城（南开店）',
 		price: '¥10-20',
@@ -234,7 +279,7 @@ export const FOODS = [
 	{
 		id: 'lunengcheng-xianyuxian',
 		name: '鲜芋仙',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '鲁能城',
 		price: '¥20-35',
@@ -245,7 +290,7 @@ export const FOODS = [
 	{
 		id: 'lunengcheng-xicunshushu',
 		name: '西村叔叔的店',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '鲁能城',
 		price: '¥30-50',
@@ -255,7 +300,7 @@ export const FOODS = [
 	{
 		id: 'lunengcheng-xicha',
 		name: '喜茶',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '鲁能城',
 		price: '¥15-35',
@@ -266,7 +311,7 @@ export const FOODS = [
 	{
 		id: 'lunengcheng-starbucks',
 		name: '星巴克',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'balitai',
 		location: '鲁能城',
 		price: '¥30-45',
@@ -370,7 +415,7 @@ export const FOODS = [
 	{
 		id: 'wuyueguangchang-suhou',
 		name: '酥侯糕点',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '吾悦广场',
 		price: '¥15-30',
@@ -380,7 +425,7 @@ export const FOODS = [
 	{
 		id: 'wuyueguangchang-dq',
 		name: 'DQ',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '吾悦广场',
 		price: '¥25-40',
@@ -391,7 +436,7 @@ export const FOODS = [
 	{
 		id: 'wuyueguangchang-starbucks',
 		name: '星巴克',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '吾悦广场',
 		price: '¥30-45',
@@ -401,7 +446,7 @@ export const FOODS = [
 	{
 		id: 'wuyueguangchang-bawangchaji',
 		name: '霸王茶姬',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '吾悦广场',
 		price: '¥15-25',
@@ -495,7 +540,7 @@ export const FOODS = [
 	{
 		id: 'xinhuachengshi-dq',
 		name: 'DQ',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '新华城市广场',
 		price: '¥25-40',
@@ -506,7 +551,7 @@ export const FOODS = [
 	{
 		id: 'xinhuachengshi-luckin',
 		name: '瑞幸咖啡',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '新华城市广场',
 		price: '¥10-25',
@@ -517,7 +562,7 @@ export const FOODS = [
 	{
 		id: 'xinhuachengshi-hushangayi',
 		name: '沪上阿姨',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '新华城市广场',
 		price: '¥12-25',
@@ -590,7 +635,7 @@ export const FOODS = [
 	{
 		id: 'yongwang-luxihe',
 		name: '泸溪河桃酥',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '永旺梦乐城',
 		price: '¥15-30',
@@ -601,7 +646,7 @@ export const FOODS = [
 	{
 		id: 'yongwang-dq',
 		name: 'DQ',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '永旺梦乐城',
 		price: '¥25-40',
@@ -612,7 +657,7 @@ export const FOODS = [
 	{
 		id: 'yongwang-chatailiangpin',
 		name: '茶太良品',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '永旺梦乐城',
 		price: '¥10-20',
@@ -622,7 +667,7 @@ export const FOODS = [
 	{
 		id: 'yongwang-cotti',
 		name: '库迪咖啡',
-		category: 'dessert',
+		category: 'outside',
 		campus: 'jinnan',
 		location: '永旺梦乐城',
 		price: '¥9-20',

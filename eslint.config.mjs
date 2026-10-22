@@ -21,6 +21,8 @@ export default antfu({
 		'packages/wiki-map/MapView.vue',
 		'docs/.vitepress/data/map-data.js',
 		'docs/.vitepress/data/campus-boundary.js',
+		// food-canteens.js 由 scripts/fetch-bili-food.mjs 生成（上百条实拍，格式由脚本决定）
+		'docs/.vitepress/data/food-canteens.js',
 	],
 	rules: {
 		'jsonc/indent': ['error', 2],
