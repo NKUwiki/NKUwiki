@@ -51,6 +51,52 @@ export function installImageFade() {
 		document.querySelectorAll<HTMLImageElement>('.vp-doc img').forEach(watch)
 	}
 
+	/** 把一批新增节点里的图片交给 watch（只认 .vp-doc 里的） */
+	function watchAdded(node: Node) {
+		if (node.nodeType !== 1)
+			return
+		const el = node as Element
+		// 新增的可能是页面容器本身（首屏 / 路由切换），此时 closest 会命中它自己
+		if (!el.closest('.vp-doc'))
+			return
+		if (el.tagName === 'IMG') {
+			watch(el as HTMLImageElement)
+			return
+		}
+		el.querySelectorAll<HTMLImageElement>('img').forEach(watch)
+	}
+
 	scan()
 	window.addEventListener('wiki:route-change', () => requestAnimationFrame(scan))
+
+	/**
+	 * 运行期插入的图片也必须接上：Vue 组件渲染的卡片封面、Twikoo 评论里的头像，
+	 * 都是首屏扫描之后才进 DOM 的。补不上 data-loaded 就会被隐藏态 CSS 永久藏住
+	 * ——「美食卡片的封面默认不显示、只有点开详情才看得到」就是这么来的
+	 * （详情弹窗 Teleport 到 body，不在 .vp-doc 里，所以躲过了那条规则）。
+	 *
+	 * 只观察 childList：本模块自己写的 data-loaded 是属性变更，不会反过来触发；
+	 * 仍按 rAF 合并，Vue 一次 patch 插入几十个节点也只处理一遍。
+	 */
+	if (typeof MutationObserver !== 'undefined') {
+		const pending = new Set<Node>()
+		let queued = false
+		const observer = new MutationObserver((records) => {
+			for (const record of records) {
+				for (const node of record.addedNodes)
+					pending.add(node)
+			}
+			if (queued || !pending.size)
+				return
+			queued = true
+			requestAnimationFrame(() => {
+				queued = false
+				for (const node of pending)
+					watchAdded(node)
+				pending.clear()
+			})
+		})
+		// 页面内容在 #app 里，观察 body + subtree 就够覆盖所有插入点
+		observer.observe(document.body, { childList: true, subtree: true })
+	}
 }

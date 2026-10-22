@@ -20,7 +20,15 @@ const FOCUSABLE
  * keydown），集中托管反而要为每个特例开口子。
  */
 export function createModalFocus() {
-	let lastTrigger: HTMLElement | null = null
+	/**
+	 * 触发元素用**栈**而不是单槽。
+	 *
+	 * 单层弹窗用不出差别；但两级嵌套时（美食详情里再开图片查看器），单槽会在
+	 * 内层关闭时把外层记录的触发元素一并消费掉——实测：查看器里翻完图 Esc
+	 * 关掉，再 Esc 关详情，焦点直接掉到 body。压栈／弹栈对单层就是进出各一次。
+	 * 栈顶永远是当前最内层。
+	 */
+	const triggers: Array<HTMLElement | null> = []
 
 	/**
 	 * Tab 焦点陷阱。挂在使用方的 keydown 里调用；拦下按键时通过
@@ -55,7 +63,7 @@ export function createModalFocus() {
 
 	/** 弹层打开时调用：记录触发元素并把焦点移入容器（等容器渲染完） */
 	function onOpen(container?: HTMLElement | null) {
-		lastTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+		triggers.push(document.activeElement instanceof HTMLElement ? document.activeElement : null)
 		void nextTick(() => {
 			if (!container)
 				return
@@ -65,18 +73,15 @@ export function createModalFocus() {
 		})
 	}
 
-	/** 弹层关闭时调用：焦点还原到触发元素 */
+	/** 弹层关闭时调用：焦点还原到本层的触发元素 */
 	function onClose() {
-		lastTrigger?.focus()
-		lastTrigger = null
+		triggers.pop()?.focus()
 	}
 
-	/** 组件在弹层仍开着时被卸载：照样还原焦点，别丢在已删除的节点上 */
+	/** 组件在弹层仍开着时被卸载：逐层还原焦点，别丢在已删除的节点上 */
 	function restoreIfOpen() {
-		if (lastTrigger) {
-			lastTrigger.focus()
-			lastTrigger = null
-		}
+		while (triggers.length)
+			triggers.pop()?.focus()
 	}
 
 	return { trap, onOpen, onClose, restoreIfOpen }
