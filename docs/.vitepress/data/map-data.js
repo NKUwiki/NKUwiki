@@ -145,7 +145,7 @@ export const BUILDINGS = [
     "photos": [
       "/map/pic/nankai-main-building.png"
     ],
-    "article": "/pages/BalitaiCampus/#主楼"
+    "article": "/pages/MainBuilding"
   },
   {
     "id": "n_landmark_02",
@@ -233,7 +233,8 @@ export const BUILDINGS = [
       117.171116,
       39.103659
     ],
-    "desc": "位于主楼北侧的公共教学楼。"
+    "desc": "位于主楼北侧的公共教学楼。",
+    "article": "/pages/SecondMainTeachingBuilding"
   },
   {
     "id": "n_teaching_02",
@@ -244,7 +245,8 @@ export const BUILDINGS = [
       117.170096,
       39.102659
     ],
-    "desc": "公共教学楼。"
+    "desc": "公共教学楼。",
+    "article": "/pages/TeachingBuilding4"
   },
   {
     "id": "n_teaching_03",
@@ -255,7 +257,8 @@ export const BUILDINGS = [
       117.169447,
       39.102177
     ],
-    "desc": "公共教学楼。"
+    "desc": "公共教学楼。",
+    "article": "/pages/TeachingBuilding5"
   },
   {
     "id": "n_teaching_04",
@@ -266,7 +269,8 @@ export const BUILDINGS = [
       117.169188,
       39.103834
     ],
-    "desc": "文科类科研与创新用楼。"
+    "desc": "文科类科研与创新用楼。",
+    "article": "/pages/LiberalArtsInnovationBuilding"
   },
   {
     "id": "n_teaching_05",
@@ -277,7 +281,8 @@ export const BUILDINGS = [
       117.163582,
       39.105295
     ],
-    "desc": "校区西北部的公共教学组团，邻近学生活动中心。"
+    "desc": "校区西北部的公共教学组团，邻近学生活动中心。",
+    "article": "/pages/CombinedTeachingCenter"
   },
   {
     "id": "n_teaching_06",
@@ -288,7 +293,8 @@ export const BUILDINGS = [
       117.164389,
       39.104501
     ],
-    "desc": "公共实验教学楼。"
+    "desc": "公共实验教学楼。",
+    "article": "/pages/CentralLaboratory"
   },
   {
     "id": "n_college_01",
@@ -563,7 +569,8 @@ export const BUILDINGS = [
       117.166693,
       39.10332
     ],
-    "desc": "电教中心，紧邻新图书馆。"
+    "desc": "电教中心，紧邻新图书馆。",
+    "article": "/pages/AVEducationCenter"
   },
   {
     "id": "n_canteen_04",
@@ -611,7 +618,8 @@ export const BUILDINGS = [
       117.174078,
       39.102537
     ],
-    "desc": "校区东部的公共实验教学楼，楼内设有南大商城与校园文化产品专卖店。"
+    "desc": "校区东部的公共实验教学楼，楼内设有南大商城与校园文化产品专卖店。",
+    "article": "/pages/BalitaiLabBuilding"
   },
   {
     "id": "n_admin_02",
@@ -854,7 +862,8 @@ export const BUILDINGS = [
       117.342801,
       38.988329
     ],
-    "desc": "本科生公共课程教学楼。"
+    "desc": "本科生公共课程教学楼。",
+    "article": "/pages/JinnanTeachingBuildingC"
   },
   {
     "id": "j_teaching_02",
@@ -865,7 +874,8 @@ export const BUILDINGS = [
       117.345993,
       38.989238
     ],
-    "desc": "本科生公共课程教学楼。"
+    "desc": "本科生公共课程教学楼。",
+    "article": "/pages/JinnanTeachingBuildingD"
   },
   {
     "id": "j_teaching_03",
@@ -876,7 +886,8 @@ export const BUILDINGS = [
       117.347704,
       38.988031
     ],
-    "desc": "电子信息类实验教学中心。"
+    "desc": "电子信息类实验教学中心。",
+    "article": "/pages/ElectronicInfoLabCenter"
   },
   {
     "id": "j_teaching_04",
@@ -887,7 +898,8 @@ export const BUILDINGS = [
       117.349099,
       38.988928
     ],
-    "desc": "综合实验教学楼群。"
+    "desc": "综合实验教学楼群。",
+    "article": "/pages/JinnanLabBuilding"
   },
   {
     "id": "j_dorm_01",
