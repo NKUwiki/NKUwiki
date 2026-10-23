@@ -12,6 +12,12 @@ import type { Member } from '@nkuwiki/theme/lib/types.ts'
 export const members: Record<string, Member> = {
 	Cure: { github: 'Cure2004', contact: '1352862815@qq.com' },
 	hht421: { github: 'hht421' },
+	/** B 站美食实拍 UP 主，「美食推荐」页食堂部分的图源作者（见 fetch-bili-food.mjs） */
+	zyc哈哈哈哈哈: {
+		avatar: '/img/authors/zyc.jpg',
+		link: 'https://space.bilibili.com/3493299289590174',
+		contact: 'B站：南开食堂天天吃',
+	},
 }
 
 /**

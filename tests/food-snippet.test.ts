@@ -42,8 +42,28 @@ test('拼音规则与脚本产出的 id 一致', () => {
 	assert.equal(slugify('𠮷野家'), 'u20bb7-ye-jia')
 })
 
+/**
+ * 窗口卡的名字是脚本里的粗分桶，不是用户投稿会填的名字；
+ * id 由脚本里的手写 slug 决定（不是 slugify 逐字转写），这里钉死映射防两边漂移。
+ */
+const STALL_SLUGS: Record<string, string> = {
+	自选菜: 'zi-xuan-cai',
+	面食窗口: 'mianshi',
+	早点窗口: 'zaodian',
+	饭菜窗口: 'fancai',
+}
+
 test('食堂楼层 + 菜名算出的 id，与脚本生成的一模一样', () => {
 	for (const card of CARDS) {
+		if (card.name in STALL_SLUGS) {
+			const floorSlug = card.category.replace(/^canteen-/, '')
+			assert.equal(
+				card.id,
+				`canteen-${floorSlug}-${STALL_SLUGS[card.name]}`,
+				`${card.place} 的窗口卡「${card.name}」id 与约定映射不一致`,
+			)
+			continue
+		}
 		const { id } = suggestFoodId({
 			name: card.name,
 			// 投稿面板里的分类选项就是楼层 key（canteen-yi-1f 这种）

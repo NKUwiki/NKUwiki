@@ -15,11 +15,12 @@
  * 为什么要缓存：B 站接口连打十几页会触发风控（code=-352），而调文案/规则时
  * 根本不需要重新要数据。缓存放在 vitepress 的 cache 目录（已被 gitignore）。
  *
- * ── 卡片粒度：一种食物一张卡 ──
+ * ── 卡片粒度：一个窗口 / 一家店一张卡 ──
  * 「几食堂几楼」既是卡片上的 location，也是分类：category 写成 `canteen-<楼层短码>`，
  * 页面上的筛选 chip 因此直接是「一食堂一楼 / 二食堂二楼 …」，不再有笼统的「校内食堂」。
- * 同一条视频可以含多道菜（「炸酱面和炒鸡面」）→ 生成多张卡，封面共用同一张图。
- * 同名菜在不同楼层各占一张卡（跟 food-data.js 里「同品牌不同商场各占一条」一致）。
+ * 标题不写窗口名，所以窗口按「楼层 + 粗档口类型」归（见 STALL_RULES）：一条视频基本
+ * 只拍一个窗口，整条视频归进同一张卡；实在归不进桶的单菜先按菜名单独建卡占位，
+ * 等人工补数据后再并进真正的窗口。西南村 / 肯德基不属食堂体系，不建卡。
  *
  * 标题解析出的三类信息，可靠性依次下降：
  *   1. 地点（一食堂一楼…）——129 条里 121 条能认出来
@@ -82,16 +83,31 @@ const PLACE_DEFS = [
 const TBD = { slug: 'tbd', place: '待定' }
 
 /**
- * 标题只写地点、没写菜名的实拍，按楼层聚合成一张「自选菜」卡。
- *
- * 配在这里的都是「同层同餐次、且确实是自选档口」的情况：
- * 一食堂一楼那 20 条全是「午饭，一食堂一楼」，正是那层自选菜档口的日常记录。
- * 二食堂一楼的 9 条虽然也一样没写菜名，但**全是早饭**（包子粥一类），
- * 套上「自选菜」会把语义弄错，所以不配 —— 没配置的楼层，无菜名实拍仍然不上页面。
+ * 标题只写地点、没写菜名的实拍，按「餐次」归口：
+ * 早饭的进该楼层的「早点窗口」，一食堂一楼的午饭实拍全是自选菜档口的日常记录
+ * （20 条），归「自选菜」；二食堂一楼的早饭那批以前没地方去，现在有了。
+ * 其余（没写餐次的）仍然不上页面 —— 连「大概是什么窗口」都推不出来。
  */
 const SELF_SERVE = new Map([
 	['一食堂一楼', { name: '自选菜', slug: 'zi-xuan-cai', tag: '自选' }],
 ])
+
+/**
+ * 粗档口归类：标题里没有窗口名，只能按菜品内容粗分。刻意只分四个桶，
+ * 归不进去的单菜先按菜名占位 —— 窗口的真实名字等人工补数据再细化，
+ * 机器猜得越细以后越难改。匹配在视频级做（一条视频 = 一次探店 ≈ 一个窗口），
+ * 多菜标题（「肉夹馍、八宝粥」）整条进同一张卡。
+ *
+ * 顺序有讲究：面食要排在早点前面，「西红柿鸡蛋面」里也有「鸡蛋」，
+ * 先匹配早点会被错误吸走。
+ */
+const STALL_RULES = [
+	// slug 用 zi-xuan-cai 与 SELF_SERVE 保持同一名：一食一楼的自选菜卡 id 不因重构而变
+	{ slug: 'zi-xuan-cai', name: '自选菜', re: /自选(菜|餐)/ },
+	{ slug: 'mianshi', name: '面食窗口', re: /面|米线|米粉|泡馍|馄饨|水饺|饺子|抄手/ },
+	{ slug: 'zaodian', name: '早点窗口', re: /包子|粥|油条|麻团|发糕|馅饼|糯米包|卷饼|鸡蛋|香肠|鸡柳|糖葫芦|煎饼|肉夹馍/ },
+	{ slug: 'fancai', name: '饭菜窗口', re: /饭|石锅|煲/ },
+]
 
 /** 不在食堂体系里的地点：认得出，但不建卡 */
 const EXCLUDED_PLACES = new Set(['西南村', '肯德基'])
@@ -108,10 +124,12 @@ const TAG_RULES = [
 	['面食', ['面', '米线', '米粉', '泡馍', '意面']],
 	['包子点心', ['包子', '馅饼', '煎饼', '卷饼', '糯米包', '发糕', '麻团', '油条', '糖葫芦']],
 	['粥', ['粥']],
-	['盖饭', ['饭', '拌饭', '双拼']],
+	['盖饭', ['饭', '拌饭', '双拼', '牛腩', '炖牛肉']],
 	['西餐', ['牛扒', '猪排', '意面', '咖喱']],
-	['汤锅', ['汤', '砂锅', '石锅', '煲']],
-	['小吃', ['鸡柳', '香肠', '玉米', '鸡蛋', '麻团']],
+	['汤锅', ['汤', '砂锅', '石锅', '煲', '蹄花']],
+	['小吃', ['鸡柳', '香肠', '鸡蛋', '麻团', '小酥肉', '里脊']],
+	['韩餐', ['分米鸡', '年糕鸡']],
+	['自选', ['自选菜', '自选餐']],
 ]
 
 const DATE_RE = /^(\d{4})\.(\d{1,2})\.(\d{1,2})\s*[，,]?\s*/
@@ -389,51 +407,56 @@ const PLACE_RANK = new Map(PLACE_DEFS.map((def, index) => [def.place, index]))
 const PLACE_SLUG = new Map(PLACE_DEFS.map(def => [def.place, def.slug]))
 
 /**
- * 一种食物一张卡。
- * 同一道菜被多次实拍（「黑米粥」拍了 3 次）→ 合并成一张卡，封面进 gallery 翻页；
- * 同名菜在不同楼层 → 各占一张（不同档口，价格和做法都可能不一样）。
- * 标题没写菜名的实拍没有具体食物，唯一例外是 SELF_SERVE 里配过的楼层，
- * 那些按「自选菜」合成一张卡（一食堂一楼 20 条午饭实拍）。
+ * 一个窗口一张卡。
+ * 视频级归类：一条视频基本只拍一个窗口，整条（含多菜标题）进同一张卡。
+ * 归类顺序：无菜名实拍按餐次/楼层归口（SELF_SERVE + 早饭→早点窗口）；
+ * 有菜名的先试 STALL_RULES 粗分桶；都没命中的按菜名单独建卡占位。
+ * 同一窗口被多次实拍 → 合并成一张卡，封面按时间排进 gallery。
  */
 function buildCards(shots) {
-	/** key 是「地点|菜名」，一个 key 一张卡 */
+	/** key 是「地点|桶标识」，一个 key 一张卡；桶标识是窗口 slug 或 `dish:菜名` */
 	const buckets = new Map()
-	/** key 是「地点|档口」，无菜名的实拍按楼层聚合成一张 */
-	const selfServe = new Map()
 
 	for (const shot of shots) {
 		// 楼层写清楚的才当 location，只写到「二食堂」的降级为待定
 		const place = PLACE_RANK.has(shot.place) ? shot.place : TBD.place
 
+		let bucketKey
 		if (!shot.dishes.length) {
-			const def = SELF_SERVE.get(place)
-			if (def) {
-				const key = `${place}\u0000${def.slug}`
-				let bucket = selfServe.get(key)
-				if (!bucket) {
-					bucket = { place, def, shots: [] }
-					selfServe.set(key, bucket)
-				}
-				bucket.shots.push(shot)
+			// 无菜名：早饭 → 早点窗口；配了 SELF_SERVE 的楼层按配置归；其余丢弃
+			if ((shot.meal || '').startsWith('早')) {
+				bucketKey = 'zaodian'
 			}
-			continue
+			else {
+				const selfServe = SELF_SERVE.get(place)
+				if (!selfServe) {
+					continue
+				}
+				bucketKey = selfServe.slug
+			}
+		}
+		else {
+			const subject = shot.dishes.join('、')
+			const rule = STALL_RULES.find(item => item.re.test(subject))
+			bucketKey = rule ? rule.slug : `dish:${shot.dishes[0]}`
 		}
 
+		const key = `${place}\u0000${bucketKey}`
+		let bucket = buckets.get(key)
+		if (!bucket) {
+			bucket = { place, rawPlace: shot.place, bucketKey, dishes: new Set(), shots: [] }
+			buckets.set(key, bucket)
+		}
+		bucket.shots.push(shot)
 		for (const dish of shot.dishes) {
-			const key = `${place}\u0000${dish}`
-			let bucket = buckets.get(key)
-			if (!bucket) {
-				bucket = { place, rawPlace: shot.place, dish, shots: [] }
-				buckets.set(key, bucket)
-			}
-			bucket.shots.push(shot)
+			bucket.dishes.add(dish)
 		}
 	}
 
 	const usedIds = new Set()
 	const cards = []
 
-	/** 同地点同菜名理论不重；真撞了（生字退化成同一码位）加序号，不让评论 key 互相覆盖 */
+	/** 真撞了（生字退化成同一码位）加序号，不让评论 key 互相覆盖 */
 	function uniqueId(base) {
 		let id = base
 		if (usedIds.has(id)) {
@@ -447,7 +470,8 @@ function buildCards(shots) {
 		return id
 	}
 
-	function pushCard({ id, name, place, list, desc, detail, tags }) {
+	function pushCard({ id, name, place, bucket, desc, detail, tags }) {
+		const list = bucket.shots
 		const covers = [...new Set(list.map(shot => shot.cover).filter(Boolean))]
 		cards.push({
 			id,
@@ -473,32 +497,25 @@ function buildCards(shots) {
 	}
 
 	for (const bucket of buckets.values()) {
-		const { place, dish } = bucket
-		// shots 已是新→旧，首条即最近一次实拍
-		const list = bucket.shots
-		pushCard({
-			id: uniqueId(`canteen-${PLACE_SLUG.get(place) || TBD.slug}-${dishSlug(dish)}`),
-			name: dish,
-			place,
-			list,
-			tags: tagsOf(dish),
-			...describe({ isTbd: place === TBD.place, rawPlace: bucket.rawPlace, dish, list }),
-		})
-	}
+		const { place, bucketKey, dishes } = bucket
+		const dishNames = [...dishes]
+		const isDishless = !dishes.size
+		const selfServe = isDishless && bucketKey !== 'zaodian' ? SELF_SERVE.get(place) : null
+		const stallName = isDishless
+			? (selfServe?.name || '早点窗口')
+			: (STALL_RULES.find(item => item.slug === bucketKey)?.name || dishNames[0])
+		const isStall = isDishless || !bucketKey.startsWith('dish:')
+		const tags = isDishless
+			? [selfServe?.tag || '早点']
+			: [...new Set(dishNames.flatMap(dish => tagsOf(dish)))].slice(0, 3)
 
-	for (const bucket of selfServe.values()) {
-		const { place, def } = bucket
-		const list = bucket.shots
-		const meals = [...new Set(list.map(shot => shot.meal).filter(Boolean))]
-		const mealText = meals.length === 1 ? meals[0] : ''
 		pushCard({
-			id: uniqueId(`canteen-${PLACE_SLUG.get(place) || TBD.slug}-${def.slug}`),
-			name: def.name,
+			id: uniqueId(`canteen-${PLACE_SLUG.get(place) || TBD.slug}-${isStall ? bucketKey : dishSlug(dishNames[0])}`),
+			name: stallName,
 			place,
-			list,
-			tags: [def.tag],
-			desc: `${place}的 ${list.length} 条${mealText}实拍都只写了地点，先归成这层的自选菜。`,
-			detail: `这些实拍没有写菜名，按档口和餐次推断是这层的自选菜档口，就不再拆成具体菜名了。收录 ${list.length} 条，最近 ${list[0].date}，最早 ${list[list.length - 1].date}。`,
+			bucket,
+			tags,
+			...describe({ isTbd: place === TBD.place, rawPlace: bucket.rawPlace, stallName, isStall, dishNames, list: bucket.shots }),
 		})
 	}
 
@@ -520,23 +537,31 @@ function buildCards(shots) {
 /**
  * 卡片描述分两层：
  *   desc   上卡片，一句话说完「这是什么」，卡片上两行截断
- *   detail 只在详情弹窗里出现，放实拍条数、日期与「菜名来自标题」这类注脚
+ *   detail 只在详情弹窗里出现，放实拍条数、吃过的菜与「窗口名是推断的」这类注脚
  *
  * 早先两层合在一句里（「收录 1 条实拍，最近 2025-11-24。菜名取自 B 站合集标题，非官方菜单。」），
- * 结果 89 张卡上重复刷同一句免责声明，还必然截断在半句。
+ * 结果每张卡上重复刷同一句免责声明，还必然截断在半句。
  */
-function describe({ isTbd, rawPlace, dish, list }) {
+function describe({ isTbd, rawPlace, stallName, isStall, dishNames, list }) {
 	const times = `收录 ${list.length} 条实拍，最近 ${list[0].date}${list.length > 1 ? `，最早 ${list[list.length - 1].date}` : ''}。`
+	const dishList = dishNames.join('、')
 	const caveat = '菜名取自 B 站合集标题，不是官方菜单，看到跟档口对不上就在评论区说一声。'
 	if (isTbd) {
 		const why = rawPlace
 			? `标题只写到「${rawPlace}」，没标楼层，先放在待定里。`
-			: `标题没写几食堂几楼，只认出「${dish}」，先放在待定里。`
+			: `标题没写几食堂几楼，只认出「${dishList || stallName}」，先放在待定里。`
 		return { desc: why, detail: `${times}认出楼层后会挪到对应分类。${caveat}` }
 	}
+	if (isStall) {
+		const tasted = dishNames.length ? `，拍过 ${dishList}` : ''
+		return {
+			desc: `${rawPlace}的${stallName}，${list.length} 条实拍${tasted.length > 30 ? '' : tasted}。`,
+			detail: `${times}${dishNames.length ? `实拍过的菜：${dishList}。` : ''}窗口名是按实拍内容粗分的，和实际档口对不上就在评论区说一声。`,
+		}
+	}
 	return {
-		desc: `${rawPlace}的${dish}，${list.length} 条实拍。`,
-		detail: `${times}${caveat}`,
+		desc: `${rawPlace}的${dishNames[0]}，${list.length} 条实拍。`,
+		detail: `${times}这层的窗口还没细分，先按菜名单独建卡。${caveat}`,
 	}
 }
 
@@ -553,8 +578,9 @@ function renderFile(cards, shots, { total, updatedAt, excluded, tbd }) {
  *
  * 字段说明：
  *   CANTEEN_SHOTS  逐条实拍的解析结果，dishes 为空表示标题没写菜名（这种成不了卡）
- *   CANTEEN_FOODS  一种食物一张卡，直接并入 food-data.js 的 FOODS。
+ *   CANTEEN_FOODS  一个窗口 / 一家店一张卡，直接并入 food-data.js 的 FOODS。
  *                  category 是「canteen-楼层短码」（分类即楼层），location 也是楼层；
+ *                  窗口名按实拍内容粗分（STALL_RULES），单菜占位卡在 detail 里注明。
  *                  desc 上卡片、detail 只在详情弹窗里出现。
  */
 
@@ -641,13 +667,18 @@ async function main() {
 	)
 
 	const withDish = usable.filter(shot => shot.dishes.length).length
-	const selfServeNames = new Set([...SELF_SERVE.values()].map(def => def.name))
-	const inSelfServe = cards
-		.filter(card => selfServeNames.has(card.name))
-		.reduce((sum, card) => sum + card.shotCount, 0)
-	console.log(`\n${cards.length} 张食物卡（${withDish} 条写了菜名的实拍 + ${inSelfServe} 条只写地点、归入自选菜卡）`)
-	if (usable.length - withDish - inSelfServe > 0) {
-		console.log(`  另有 ${usable.length - withDish - inSelfServe} 条只写地点、所在楼层又不配自选菜，未成卡`)
+	const byBvid = new Map(usable.map(shot => [shot.bvid, shot]))
+	const cardedNoDish = new Set()
+	for (const card of cards) {
+		for (const item of card.shots) {
+			if (!byBvid.get(item.bvid)?.dishes.length) {
+				cardedNoDish.add(item.bvid)
+			}
+		}
+	}
+	console.log(`\n${cards.length} 张窗口卡（${withDish} 条写了菜名的实拍 + ${cardedNoDish.size} 条只写了餐次/地点）`)
+	if (usable.length - withDish - cardedNoDish.size > 0) {
+		console.log(`  另有 ${usable.length - withDish - cardedNoDish.size} 条无菜名、归不出窗口的实拍未成卡`)
 	}
 	console.log('按地点分布：')
 	const byPlace = new Map()
