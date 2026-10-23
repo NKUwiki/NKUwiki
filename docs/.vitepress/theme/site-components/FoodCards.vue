@@ -599,7 +599,7 @@ onBeforeUnmount(() => {
 			{{ group.label }}
 		</h3>
 		<div class="nku-food-grid">
-			<article v-for="item in group.list" :key="item.id" class="nku-food-card">
+			<article v-for="item in group.list" :key="item.id" class="nku-food-card" @click="openDialog(item)">
 				<a class="nku-food-cover" href="#" @click.stop.prevent="openDialog(item)">
 					<img v-if="coverOf(item) && !brokenCovers.has(coverOf(item))" :src="coverOf(item)" :alt="item.name" loading="lazy" @error="onCoverError(coverOf(item))">
 					<span v-else class="nku-food-cover-fallback">{{ item.name.slice(0, 1) }}</span>
@@ -607,7 +607,7 @@ onBeforeUnmount(() => {
 					<span v-if="campusLabel(item.campus)" class="nku-food-cover-campus">{{ campusLabel(item.campus) }}</span>
 				</a>
 				<div class="nku-food-card-body">
-					<a class="nku-food-name" href="#" @click.prevent="openDialog(item)">{{ item.name }}</a>
+					<a class="nku-food-name" href="#" @click.stop.prevent="openDialog(item)">{{ item.name }}</a>
 					<div class="nku-food-card-tags">
 						<span v-if="item.location" class="nku-food-tag place">{{ item.location }}</span>
 						<span v-for="tag in (item.tags || []).slice(0, 3)" :key="tag" class="nku-food-tag">{{ tag }}</span>
@@ -630,7 +630,7 @@ onBeforeUnmount(() => {
 								<template v-if="stateOf(item).count">（{{ stateOf(item).count }}）</template>
 							</span>
 						</span>
-						<button class="nku-food-comment-btn" type="button" @click="openDialog(item)">
+						<button class="nku-food-comment-btn" type="button" @click.stop="openDialog(item)">
 							评价<template v-if="stateOf(item).count">
 								· {{ stateOf(item).count }}
 							</template>
@@ -957,7 +957,9 @@ onBeforeUnmount(() => {
 	border: 1px solid var(--vp-c-divider);
 	border-radius: 12px;
 	background: var(--vp-c-bg-soft);
+	/* 整卡可点开详情：光标提示可点，键盘用户仍走标题链接（Enter 同样开弹窗） */
 	transition: box-shadow var(--wiki-duration-collapse) var(--wiki-ease-out), transform var(--wiki-duration-collapse) var(--wiki-ease-out);
+	cursor: pointer;
 }
 
 .nku-food-card:hover {
