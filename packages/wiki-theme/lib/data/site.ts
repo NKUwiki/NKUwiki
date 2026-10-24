@@ -11,13 +11,15 @@
 // 因此 config.mts（Node 侧，define 不生效）应直接 import 站点侧数据文件；
 // 包内组件与本模块则消费这里导出的常量。
 
-declare const __SITE_URL__: string
-declare const __REPO_URL__: string
-declare const __WATERMARK_SUBTITLE__: string
+// 与 announcement.ts 同款 typeof 守卫：标识符未注入（主题包被独立复用）时
+// 也不抛 ReferenceError，常量退化为空串，由消费方自行兜底
+declare const __SITE_URL__: string | undefined
+declare const __REPO_URL__: string | undefined
+declare const __WATERMARK_SUBTITLE__: string | undefined
 
 /** 正式网址（尾带斜杠） */
-export const siteUrl: string = __SITE_URL__
+export const siteUrl: string = typeof __SITE_URL__ === 'string' ? __SITE_URL__ : ''
 /** 仓库地址 */
-export const repoUrl: string = __REPO_URL__
+export const repoUrl: string = typeof __REPO_URL__ === 'string' ? __REPO_URL__ : ''
 /** 页面背景水印的尾段文案（校名/定位词属站点数据，未配置时为空串） */
-export const watermarkSubtitle: string = __WATERMARK_SUBTITLE__
+export const watermarkSubtitle: string = typeof __WATERMARK_SUBTITLE__ === 'string' ? __WATERMARK_SUBTITLE__ : ''

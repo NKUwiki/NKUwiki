@@ -3,15 +3,36 @@ import type { Author, AuthorLookup, Member } from '../types.ts'
 const EMAIL_RE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/
 
 /**
+ * 链接协议是否安全：只放行 http(s) 与 mailto。
+ *
+ * frontmatter 是开放贡献的输入面，`javascript:` 这类伪协议必须在这里拦掉——
+ * markdown-it 的 validateLink 管不到 frontmatter 字段。解析不出绝对 URL 的
+ * （站内相对路径、锚点）无协议可言，直接放行；`//host` 形式的协议相对链接
+ * 与 AppCards 的 safeLink 同口径，一律拒绝。
+ */
+function isSafeProtocol(link: string): boolean {
+	if (link.startsWith('//'))
+		return false
+	try {
+		const protocol = new URL(link).protocol
+		return protocol === 'https:' || protocol === 'http:' || protocol === 'mailto:'
+	}
+	catch {
+		return true
+	}
+}
+
+/**
  * 清理跳转链接：去引号包裹与首尾空白；裸邮箱自动补 `mailto:` 前缀。
  *
- * frontmatter 里常被引号包裹，也可能直接写邮箱地址；不是字符串或空串时返回空串。
+ * frontmatter 里常被引号包裹，也可能直接写邮箱地址；不是字符串、空串或携带
+ * 不安全协议（javascript: 等）时返回空串，链接退化为不可点的徽章。
  */
 export function cleanLink(value: unknown): string {
 	if (typeof value !== 'string')
 		return ''
 	const link = value.trim().replace(/^[“”"'<]+|[“”"'>]+$/g, '').trim()
-	if (!link)
+	if (!link || !isSafeProtocol(link))
 		return ''
 	return EMAIL_RE.test(link) && !/^mailto:/i.test(link) ? `mailto:${link}` : link
 }

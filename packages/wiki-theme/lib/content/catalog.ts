@@ -35,24 +35,6 @@ function strings(value: unknown): string[] {
 	return [...new Set(values.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean))]
 }
 
-function hasTitleHeading(content: string): boolean {
-	let fence = ''
-	for (const line of content.replace(/^:::markmap[^\S\n]*\n[\s\S]*?^:::[^\S\n]*$/gm, '').split('\n')) {
-		// 围栏标记最多允许 3 个空格缩进（CommonMark），\s* 会把代码块内的 ``` 也当围栏开关
-		const marker = line.match(/^ {0,3}(`{3,}|~{3,})/)?.[1]
-		if (marker) {
-			if (!fence)
-				fence = marker
-			else if (marker[0] === fence[0] && marker.length >= fence.length)
-				fence = ''
-			continue
-		}
-		if (!fence && /^ {0,3}#\s+/.test(line))
-			return true
-	}
-	return false
-}
-
 /** 预计阅读速度：每分钟字数（中文阅读通行取值，与参考主题一致） */
 const WORDS_PER_MINUTE = 500
 
@@ -204,7 +186,6 @@ export function scanArticles(root = docsRoot) {
 			date,
 			lastUpdated,
 			lastUpdatedTime: lastUpdated ? Date.parse(lastUpdated) : 0,
-			hasHeading: hasTitleHeading(content),
 			empty: !content.trim(),
 			wordCount,
 			readingMinutes: wordCount ? Math.max(1, Math.ceil(wordCount / WORDS_PER_MINUTE)) : 0,
@@ -231,10 +212,28 @@ export function scanArticles(root = docsRoot) {
 function parseDateField(value: unknown, source: string, field: string): string {
 	if (!value)
 		return ''
-	const date = new Date(String(value))
-	if (Number.isNaN(date.getTime()))
-		throw new Error(`${source} 的 frontmatter ${field} 不是合法日期：${String(value)}`)
-	return date.toISOString().slice(0, 10)
+	/* 时区两条铁律（与 activity.ts 的 date() 同思路）：
+	   1. YAML 日期字面量被 js-yaml 解析成 **UTC 零点** 的 Date —— 按 UTC 取字段，
+	      得到的才是字面日期；
+	   2. 字符串一律按字面取 YYYY-MM-DD，绝不走 `new Date(str).toISOString()`：
+	      非严格 ISO 的写法（如 2025-3-1）会被按本地时区解析成零点、再转 UTC，
+	      东八区上会静默回退成前一天，污染排序、og meta 与 JSON-LD */
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime()))
+			throw new Error(`${source} 的 frontmatter ${field} 不是合法日期：${value.toISOString()}`)
+		const pad = (n: number) => String(n).padStart(2, '0')
+		return `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${pad(value.getUTCDate())}`
+	}
+	const text = String(value).trim()
+	const literal = /^(\d{4})-(\d{2})-(\d{2})(?![\d-])/.exec(text)
+	if (literal)
+		return `${literal[1]}-${literal[2]}-${literal[3]}`
+	const parsed = new Date(text)
+	if (Number.isNaN(parsed.getTime()))
+		throw new Error(`${source} 的 frontmatter ${field} 不是合法日期：${text}`)
+	// 其它可解析格式（March 1, 2025 等）按本地日历取字段，保持书写者的本地语义
+	const pad = (n: number) => String(n).padStart(2, '0')
+	return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`
 }
 
 /** 取 scanArticles 扫描时缓存的正文（search 建索引复用，避免二次读盘与 frontmatter 解析） */

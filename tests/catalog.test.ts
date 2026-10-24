@@ -54,7 +54,6 @@ test('new files use numeric directory order, preserve tags, infer missing titles
 		assert.deepEqual(articles[0].tags, ['测试'])
 		assert.deepEqual(articles[0].categories, ['专题'])
 		assert.equal(articles[1].empty, true)
-		assert.equal(articles[0].hasHeading, false)
 		mkdirSync(join(root, '01.专题/01.子专题'))
 		writeFileSync(join(root, '01.专题/01.子专题/01.文章.md'), '# 文章')
 		assert.equal(buildTree(scanArticles(root))[0].items![0].text, '子专题')
@@ -173,6 +172,25 @@ test('lastUpdated prefers the explicit field, falls back to date, and ignores le
 		assert.equal(missing.date, '2025-08-31')
 		assert.equal(missing.lastUpdated, '2025-08-31')
 		assert.equal(missing.lastUpdatedTime, Date.parse('2025-08-31'))
+	}
+	finally {
+		const target = relative(tmpdir(), root)
+		assert.ok(target && !target.startsWith('..') && !isAbsolute(target))
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
+test('frontmatter 日期按字面取值：非严格 ISO 字符串不因时区往返回退一天', () => {
+	const root = mkdtempSync(join(tmpdir(), 'ncepu-tz-'))
+	try {
+		mkdirSync(join(root, '01.专题'))
+		// 引号包裹 → 字符串（js-yaml 不转 Date）；非补零写法此前经
+		// new Date(str).toISOString() 在东八区会回退成 2025-02-28
+		writeFileSync(join(root, '01.专题/01.文章.md'), '---\ndate: "2025-3-1"\n---\n正文')
+		writeFileSync(join(root, '01.专题/02.带时间.md'), '---\ndate: "2025-03-01 08:00"\n---\n正文')
+		const [article, withTime] = loadCatalog(root).articles
+		assert.equal(article.date, '2025-03-01')
+		assert.equal(withTime.date, '2025-03-01')
 	}
 	finally {
 		const target = relative(tmpdir(), root)
