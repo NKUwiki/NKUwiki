@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "image-size": "^2.0.2",
-    "twikoo": "^2.0.13"
+    "twikoo": "^2.0.17"
   }
 }

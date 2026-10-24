@@ -3,7 +3,7 @@
   "type": "module",
   "version": "2.0.0",
   "private": true,
-  "packageManager": "pnpm@12.11.2",
+  "packageManager": "pnpm@12.15.0",
   "license": "MIT",
   "engines": {
     "node": "^22.19 || ^24.11 || >=26",
@@ -24,30 +24,30 @@
   },
   "dependencies": {
     "@iconify-icons/ri": "^2.0.0",
-    "@iconify/vue": "^5.0.1",
+    "@iconify/vue": "^5.0.4",
     "@nkuwiki/theme": "workspace:*",
     "@nkuwiki/wiki-map": "workspace:*",
-    "@nolebase/vitepress-plugin-enhanced-readabilities": "^2.18.2",
+    "@nolebase/vitepress-plugin-enhanced-readabilities": "^2.21.1",
     "minisearch": "^7.2.0",
     "modern-screenshot": "^4.7.0",
     "tippy.js": "^6.3.7",
-    "twikoo": "^2.0.13",
+    "twikoo": "^2.0.17",
     "uqr": "^0.1.3",
-    "vue": "^3.5.42",
-    "vue-tippy": "^6.7.1"
+    "vue": "^3.5.44",
+    "vue-tippy": "^6.8.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.3.0",
-    "@types/node": "^22.19.0",
+    "@types/node": "^24.19.2",
     "@vitepress-plugin/markmap": "^1.3.1",
     "@zinkawaii/eslint-config-css": "^0.5.1",
-    "eslint": "^10.9.1",
+    "eslint": "^10.13.0",
     "gray-matter": "^4.0.3",
     "markdown-it-mathjax3": "^4.3.2",
     "sharp": "^0.35.5",
-    "tsx": "^4.20.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitepress": "2.0.0-alpha.20",
-    "vue-tsc": "^3.3.0"
+    "vue-tsc": "^3.3.13"
   }
 }
