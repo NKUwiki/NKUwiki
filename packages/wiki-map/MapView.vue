@@ -488,7 +488,11 @@ function loadAMap() {
 		window._AMapSecurityConfig = {
 			securityJsCode: AMAP_SECURITY_JS_CODE,
 		}
+		/* 超时定时器在成功 / 失败路径都要清掉：Promise 已 settle 后再触发 reject
+		   虽是无害空操作，但定时器本身会白挂在事件循环里 15 秒 */
+		const timeoutTimer = setTimeout(() => reject(new Error('高德地图 SDK 加载超时')), 15000)
 		window.__NKUMapReady = () => {
+			clearTimeout(timeoutTimer)
 			if (window.AMap)
 				resolve(window.AMap)
 			else reject(new Error('高德地图 SDK 已响应，但没有提供地图对象'))
@@ -496,9 +500,11 @@ function loadAMap() {
 		const script = document.createElement('script')
 		script.async = true
 		script.src = `https://webapi.amap.com/maps?v=2.0&key=${encodeURIComponent(AMAP_KEY)}&callback=__NKUMapReady`
-		script.onerror = () => reject(new Error('高德地图 SDK 加载失败'))
+		script.onerror = () => {
+			clearTimeout(timeoutTimer)
+			reject(new Error('高德地图 SDK 加载失败'))
+		}
 		document.head.appendChild(script)
-		setTimeout(() => reject(new Error('高德地图 SDK 加载超时')), 15000)
 	})
 }
 
@@ -2029,6 +2035,15 @@ onUnmounted(() => {
 		clearTimeout(searchTimer)
 	detailResizeObserver?.disconnect()
 	stopVisualViewportObserver()
+	/* 衬底与跟随状态必须一并清：SPA 切页时组件卸载，主地图销毁了、poiMap 若留下，
+	   它的 canvas、瓦片与高德内部监听会随会话累积泄漏（桌面端默认建衬底）；
+	   resetPoiFollow 还会停掉仍在跑的跟随 rAF 循环与停手定时器 */
+	resetPoiFollow()
+	if (poiMap) {
+		try { poiMap.destroy() }
+		catch (e) { /* noop */ }
+		poiMap = null
+	}
 	if (locationMarker && map) {
 		try { map.remove(locationMarker) }
 		catch (e) { /* noop */ }
