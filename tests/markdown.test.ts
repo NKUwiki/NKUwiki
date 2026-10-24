@@ -79,6 +79,77 @@ test('steps wraps ordered list into wiki-steps container', async () => {
 	assert.ok(!open.includes('wiki-steps'), open)
 })
 
+test('steps 里嵌套 ::: tip 容器：内层完整渲染，外层不被内层闭合行截断', async () => {
+	const html = await render([
+		'::: steps',
+		'1. 第一步',
+		'   ::: tip',
+		'   提示内容',
+		'   :::',
+		'2. 第二步',
+		':::',
+		'',
+	].join('\n'))
+	assert.ok(html.includes('<div class="wiki-steps">'), html)
+	// 嵌套的 tip 由 VitePress 内置 container 渲染成容器，而不是字面段落
+	assert.match(html, /<(div|p)[^>]*class="[^"]*(custom-block|tip)/, html)
+	assert.ok(html.includes('提示内容'), html)
+	// 第二步仍在（旧实现的扫描停在 tip 的闭合行，后面的步骤漏出容器）
+	assert.ok(html.includes('第二步'), html)
+	// 容器尾不得被渲染成字面 ::: 段落
+	assert.ok(!html.includes('<p>:::</p>'), html)
+	assert.ok(!html.includes('<p>::: tip</p>'), html)
+})
+
+test('steps 里的代码块中出现 ::: 不会被误当容器标记', async () => {
+	const html = await render([
+		'::: steps',
+		'1. 复制下面这段',
+		'   ```',
+		'   ::: not-a-container',
+		'   ```',
+		'2. 完成',
+		':::',
+		'',
+	].join('\n'))
+	assert.ok(html.includes('wiki-steps'), html)
+	// 代码内容按原文保留
+	assert.ok(html.includes('::: not-a-container'), html)
+	assert.ok(html.includes('完成'), html)
+})
+
+test('四冒号（::::）闭合行同样能闭合容器', async () => {
+	// 回归：开启行正则 ^:{3,}[\t ]*\S 的回溯会把第 4 个冒号吃成 \S，
+	// 纯冒号行必须先按闭合行判定
+	const html = await render('::: steps\n1. A\n::::\n')
+	assert.ok(html.includes('wiki-steps'), html)
+	assert.ok(html.includes('<li>A</li>'), html)
+})
+
+test('紧跟正文段落的容器能打断段落生效', async () => {
+	// 回归：规则注册缺 alt 链时，::: steps 会被上一段的惰性续行吞成文字
+	const stepsHtml = await render('先来一段说明文字。\n::: steps\n1. 一\n2. 二\n:::\n')
+	assert.ok(stepsHtml.includes('wiki-steps'), stepsHtml)
+	assert.ok(stepsHtml.includes('说明文字'), stepsHtml)
+	const timelineHtml = await render('说明。\n::: timeline\n- 条目\n  time="2025-01"\n:::\n')
+	assert.ok(timelineHtml.includes('wiki-timeline'), timelineHtml)
+})
+
+test('steps 里嵌套 steps：内层容器完整渲染', async () => {
+	const html = await render([
+		'::: steps',
+		'1. 外层一',
+		'   ::: steps',
+		'   1. 内层',
+		'   :::',
+		'2. 外层二',
+		':::',
+		'',
+	].join('\n'))
+	assert.equal((html.match(/class="wiki-steps"/g) || []).length, 2, html)
+	assert.ok(html.includes('外层二'), html)
+})
+
 test('timeline renders items with time, type and container attrs', async () => {
 	const html = await render([
 		'::: timeline card line="dashed"',
@@ -110,4 +181,24 @@ test('timeline keeps plain text when attrs are not whitelist keys', async () => 
 	].join('\n'))
 	// 非白名单键整行当正文，不得当属性吞掉（引号会被 HTML 转义为 &quot;）
 	assert.ok(html.includes('foo=&quot;bar&quot;'), html)
+})
+
+test('timeline 的有序列表条目同样渲染成时间轴，不产生孤立的 </ol>', async () => {
+	const html = await render([
+		'::: timeline',
+		'1. 立项',
+		'   time="2025-03"',
+		'',
+		'   项目启动',
+		'2. 上线',
+		'   time="2025-09"',
+		':::',
+		'',
+	].join('\n'))
+	// 条目照常改写成时间轴节点，time 属性照常生效
+	assert.ok(html.includes('wiki-timeline-item'), html)
+	assert.ok(html.includes('wiki-timeline-time">2025-03<'), html)
+	assert.ok(html.includes('<p class="wiki-timeline-title">立项</p>'), html)
+	// 回归：此前 close 侧只隐藏 bullet，有序列表会输出没有 <ol> 开头的孤立 </ol>
+	assert.ok(!html.includes('</ol>'), html)
 })

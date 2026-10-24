@@ -108,8 +108,13 @@ export function flink(md: MarkdownRenderer) {
 		if (silent)
 			return true
 		const items = parseFlinkItems(state.getLines(startLine, close + 1, state.blkIndent, false))
-		if (!items.length)
+		if (!items.length) {
+			// 回退成普通 html_block 后页面上会出现字面 <flink> 文本——坏数据要大声说出来，
+			// 静默上线只会让人以为是样式坏了
+			const where = (state.env as { relativePath?: string } | undefined)?.relativePath
+			console.warn(`[flink] ${where ?? '(未知页面)'} 的 <flink> 块没有解析出任何有效条目（每条需 name 与合法 url），将按原文渲染`)
 			return false
+		}
 		const token = state.push('html_block', '', 0)
 		token.content = `${toComponentTag(items)}\n`
 		token.map = [startLine, close + 1]

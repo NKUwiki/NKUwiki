@@ -4,6 +4,7 @@ import mailIcon from '@iconify-icons/ri/mail-fill'
 import qqIcon from '@iconify-icons/ri/qq-fill'
 import kitchen from '@iconify-icons/ri/restaurant-line'
 import wechatIcon from '@iconify-icons/ri/wechat-fill'
+import { findContainerEnd } from '../markdown/container-end.ts'
 
 const plainText = (cell = '') => cell.replace(/<[^>]*>/g, '').trim()
 /** 从单元格取图片地址：`![](...)` 渲染出的 <img>、外链、或裸路径均可 */
@@ -60,7 +61,11 @@ function cardIconSprite(): string {
 
 /** 把单元格里的 :名称: 替换为引用精灵图的 <use>（名称不存在则原样保留） */
 function renderCardIcons(value: string): string {
-	return value.replace(/:([a-z][a-z0-9-]*):/gi, (match, name: string) => {
+	// <code>…</code> 段里的短码原样保留：文档里演示「:qq: 这个写法本身」时，
+	// 示例文字不该被替换成图标。交替分支一次扫描完成，无需先切分字符串
+	return value.replace(/<code>[\s\S]*?<\/code>|:([a-z][a-z0-9-]*):/gi, (match, name: string | undefined) => {
+		if (!name)
+			return match
 		return name.toLowerCase() in cardIcons
 			? `<svg class="card-field-icon" aria-hidden="true"><use href="#${SPRITE_PREFIX}${name.toLowerCase()}"></use></svg>`
 			: match
@@ -73,8 +78,7 @@ export function cardlist(md: MarkdownRenderer) {
 		const line = (index: number) => state.src.slice(state.bMarks[index] + state.tShift[index], state.eMarks[index]).trim()
 		if (line(start) !== '::: cardlist')
 			return false
-		let close = start + 1
-		while (close < end && line(close) !== ':::') close++
+		const close = findContainerEnd(state, start, end)
 		if (close === end)
 			return false
 		if (silent)

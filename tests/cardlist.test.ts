@@ -28,11 +28,30 @@ test('群卡片按表头名取 QQ 列，且群名不做二次转义', async () =
 	assert.doesNotMatch(html, /&amp;amp;/)
 })
 
+test('图标短码在代码段里保持原文，段外照常替换', async () => {
+	const md = await createMarkdownRenderer(process.cwd(), { config: cardlist })
+	const table = [
+		'| 名称 | 加入方式 |',
+		'| --- | --- |',
+		'| A | 加入 `:qq:` 即可 |',
+		'| B | :qq: 直接加 |',
+	].join('\n')
+	const html = md.render(`::: cardlist\n\n${table}\n\n:::`)
+	// 代码段里的 :qq: 是「展示写法」的示例文字，不得替换成图标
+	assert.match(html, /<code>:qq:<\/code>/)
+	// 段外的一个短码仍然替换为精灵引用
+	assert.match(html, /<use href="#wiki-card-icon-qq">/)
+	assert.equal((html.match(/card-field-icon/g) || []).length, 1)
+})
+
 test('all group and food rows reach the cards with no hidden overflow columns', async () => {
 	const md = await createMarkdownRenderer(process.cwd(), { config: cardlist })
 	for (const file of ['03.群汇总/01.兴趣群.md', '03.群汇总/02.老乡群.md', '03.群汇总/03.学生组织与社团.md', '03.群汇总/04.实验室.md']) {
 		const { content } = matter(readFileSync(`docs/${file}`, 'utf8').replaceAll('\r\n', '\n'))
 		const tables = [...content.matchAll(/::: cardlist[^\S\r\n]*\n([\s\S]*?)\n:::/g)]
+		// 没写卡片表的页面（如老乡群暂未收录，正文是空态提示）对本断言无意义
+		if (!tables.length)
+			continue
 		let count = 0
 		for (const [, table] of tables) {
 			const rows = table.trim().split('\n').filter(line => line.startsWith('|'))

@@ -1,4 +1,4 @@
-// Timeline 时间线容器：把容器内的无序列表渲染成带时间点、竖向连线的时间轴。
+// Timeline 时间线容器：把容器内的无序列表渲染成带时间点、竖向连线的 时间轴。
 // 语法与视觉参考 plume 主题的 plugin-md-power timeline 规则，但渲染为纯 HTML
 // 结构 + CSS（enhance.css），不依赖 plume 的 VPTimeline Vue 组件与 iconify：
 //
@@ -13,15 +13,17 @@
 //     内容……
 //   :::
 //
+// 有序列表同样支持（渲染与无序一致，编号不进时间轴）；内容里可以嵌套 ::: tip
+// 等容器与代码块，闭合行按嵌套深度匹配（见 ./container-end.ts）。
 // 容器级属性：horizontal（横向）/ card（卡片化）/ placement（left|right，默认 left）
 //           / line（solid|dashed|dotted，默认 solid，item 可单独覆盖）
 // 条目级属性（写在标题同段的下一行，形如 key="value" 空格分隔）：
 //   time / type（info|tip|success|warning|danger|caution|important）/ color / line / card / placement
 // plume 的 icon 属性依赖图标系统，这里暂不支持（写了会被忽略）。
 import type { MarkdownRenderer } from 'vitepress'
+import { findContainerEnd } from './container-end.ts'
 
 const OPEN_RE = /^:{3,}[\t ]*timeline\b/
-const CLOSE_RE = /^:{3,}\s*$/
 
 interface ContainerAttrs {
 	horizontal: boolean
@@ -139,10 +141,13 @@ function rewriteTimelineTokens(tokens: ReturnType<MarkdownRenderer['parse']>) {
 				token.hidden = true
 		}
 		else if (token.type === 'bullet_list_close' || token.type === 'ordered_list_close') {
-			if (listStack.pop() === 'bullet' && listStack.length === 0)
+			listStack.pop()
+			// 与 open 侧对称：根级列表不论 bullet / ordered 都隐藏包裹层——
+			// 此前只隐藏 bullet，有序列表写出「无 <ol> 开头的孤立 </ol>」损坏 HTML
+			if (listStack.length === 0)
 				token.hidden = true
 		}
-		else if (token.type === 'list_item_open' && listStack.length === 1 && listStack[0] === 'bullet') {
+		else if (token.type === 'list_item_open' && listStack.length === 1) {
 			token.type = 'wiki_timeline_item_open'
 			// 按类型定位标题段落（首个 paragraph_open），避免 loose/嵌套列表下固定偏移错位
 			let j = i + 1
@@ -168,7 +173,7 @@ function rewriteTimelineTokens(tokens: ReturnType<MarkdownRenderer['parse']>) {
 				}
 			}
 		}
-		else if (token.type === 'list_item_close' && listStack.length === 1 && listStack[0] === 'bullet') {
+		else if (token.type === 'list_item_close' && listStack.length === 1) {
 			token.type = 'wiki_timeline_item_close'
 		}
 	}
@@ -212,9 +217,7 @@ export function timeline(md: MarkdownRenderer) {
 		const open = OPEN_RE.exec(line(startLine))
 		if (!open)
 			return false
-		let close = startLine + 1
-		while (close < endLine && !CLOSE_RE.test(line(close)))
-			close++
+		const close = findContainerEnd(state, startLine, endLine)
 		if (close === endLine)
 			return false
 		if (silent)
@@ -232,5 +235,5 @@ export function timeline(md: MarkdownRenderer) {
 		token.map = [startLine, close + 1]
 		state.line = close + 1
 		return true
-	})
+	}, { alt: ['paragraph', 'reference', 'blockquote', 'list'] })
 }
