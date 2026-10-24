@@ -1,0 +1,70 @@
+# 同步 main 到 web-edit：web-edit 是在线编辑平台（WebObsidian）的投稿分支，
+# 从 main 分叉而来，必须始终基于最新文档，编辑器里的改动才不会基于旧内容。
+#
+# 触发：main 有新推送 / 每 6 小时定时 / 维护者在 Actions 页面手动运行。
+# 暂停条件：web-edit → main 存在未合并的 PR 时跳过本轮同步——待审核的编辑
+# 内容不与主分支改动混在同一次合并里，PR 合并或关闭后的下一轮自动跟进。
+# 因此 web-edit 无需人工维护，直接在在线编辑器里编辑即可。
+name: 同步 main 到 web-edit
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: sync-web-edit
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: 合并 main 到 web-edit
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出 web-edit 分支
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: web-edit
+
+      - name: 检查 web-edit 是否有未合并的 PR
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          count=$(gh pr list --repo "$GITHUB_REPOSITORY" --head web-edit --state open --json number --jq 'length')
+          if [ "$count" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::web-edit 存在 ${count} 个未合并的 PR，暂停同步，待 PR 处理后再跟进。"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 合并 main 到 web-edit
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "::notice::web-edit 已包含 main 的最新提交，无需同步。"
+            exit 0
+          fi
+
+          if ! git merge --no-edit -m "同步: 合并 main 到 web-edit" origin/main; then
+            echo "::error::合并冲突：web-edit 上存在与 main 冲突的改动（通常是 PR 已关闭但分支未清理）。请维护者本地合并 origin/main 到 web-edit 并解决冲突后推送，或确认无需保留后将 web-edit 重置到 main。"
+            exit 1
+          fi
+          git push origin HEAD:web-edit
+          echo "::notice::已将 main 同步到 web-edit。"
