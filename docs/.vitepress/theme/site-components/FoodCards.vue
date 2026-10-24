@@ -304,8 +304,13 @@ function syncFoodQuery(id: string | null) {
 	else
 		url.searchParams.delete('food')
 	// 保留既有 history.state：搜索弹窗往里写了 'wiki:search' 标记，
-	// 关搜索时靠它决定要不要 history.back()，被置成 null 就丢了
-	history.replaceState({ ...history.state }, '', url)
+	// 关搜索时靠它决定要不要 history.back()，被置成 null 就丢了。
+	// 沙箱 iframe（预览面板）里 replaceState 可能抛 SecurityError——地址栏同步
+	// 只是锦上添花，不能让它把「打开弹窗」这件事带崩（MapView 同款容错）
+	try {
+		history.replaceState({ ...history.state }, '', url)
+	}
+	catch { /* noop */ }
 }
 
 /**
