@@ -187,9 +187,9 @@ function isExternal(link?: string) {
 					<h2>热门标签</h2><a :href="withBase('/tags/')">全部 →</a>
 				</div><WikiChips :items="tagChips(data.tags.slice(0, 12))" label="热门标签" />
 			</section>
-			<!-- 联系我们：两个 QQ 群、GitHub 仓库，以及手机访问的二维码（直接展示，无下拉） -->
+			<!-- 联系我们：编辑贡献 QQ 群、GitHub 仓库，以及手机访问的二维码（直接展示，无下拉） -->
 			<section>
-				<h2>联系我们</h2><p>聊天交流 QQ 群 <strong>XXXXXXXX</strong><br>编辑贡献 QQ 群 <strong>1108024910</strong></p><a :href="repoUrl">GitHub ↗</a>
+				<h2>联系我们</h2><p>编辑贡献 QQ 群 <strong>1108024910</strong></p><a :href="repoUrl">GitHub ↗</a>
 				<div class="qr-details">
 					<span>手机访问本站</span><QrCode :src="`${siteUrl}/`" label="NKUwiki 网站二维码" />
 				</div>
