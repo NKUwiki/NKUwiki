@@ -108,7 +108,10 @@ export default defineConfig({
 		// （插件只认以 / 开头的站内路径），加一个斜杠即可被正确改写
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-light.svg'), 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-dark.svg'), 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
-		['link', { rel: 'manifest', href: `${base}manifest.webmanifest` }],
+		// favicon / manifest 都写成绝对路径：相对路径在深层页面（cleanUrls 下
+		// /pages/xxx）会按当前目录解析而 404，且资源外链替换插件只认 / 开头的站内路径
+		['link', { rel: 'manifest', href: assetUrl('manifest.webmanifest') }],
+		['meta', { property: 'og:locale', content: 'zh_CN' }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
 		['meta', { name: 'author', content: 'NKUwiki-Group' }],
 		['meta', { property: 'og:site_name', content: 'NKUwiki' }],
@@ -240,7 +243,11 @@ export default defineConfig({
 		// 输出路径去掉 .md / index.md；404 页不参与（单独 noindex）
 		const is404 = page.relativePath === '404.md'
 		const pagePath = article ? article.url : page.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
-		const pageUrl = `${siteUrl.replace(/\/$/, '')}${pagePath}`
+		// article.url 恒带前导斜杠，直通页的 pagePath 则形态不一（categories/index.md →
+		// "categories/"、map.md → "map"），与去尾斜杠的域名直接拼接会拼出
+		// freshnkuer.wiki categories 这种不存在的地址——canonical 与 og:url 一起失效，
+		// 这里统一剥前导斜杠后用 "/" 连接
+		const pageUrl = `${siteUrl.replace(/\/$/, '')}/${pagePath.replace(/^\//, '')}`
 
 		if (is404) {
 			page.frontmatter.head ??= []
@@ -260,7 +267,9 @@ export default defineConfig({
 			['meta', { property: 'og:url', content: pageUrl }],
 			['meta', { property: 'og:image', content: `${siteUrl.replace(/\/$/, '')}/og-default.png` }],
 			['meta', { property: 'og:type', content: article ? 'article' : 'website' }],
-			['meta', { name: 'twitter:card', content: 'summary' }],
+			// og:image 是 1200×630 大图：文章页用 summary_large_image 分享效果更好，
+			// 非文章页（地图、分类索引）没有专属大图，维持 summary
+			['meta', { name: 'twitter:card', content: article ? 'summary_large_image' : 'summary' }],
 		]
 
 		if (article) {
