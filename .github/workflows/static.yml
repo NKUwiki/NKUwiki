@@ -14,7 +14,9 @@ permissions:
 
 concurrency:
   group: pages-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: false
+  # 连续 push 时取消仍在跑的旧构建：Pages 部署以最后一次 push 为准，
+  # 排队跑完中间提交只会让旧版本先上线再被覆盖，白耗 runner 时长
+  cancel-in-progress: true
 
 jobs:
   build:

@@ -13,6 +13,7 @@
  */
 import { existsSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -21,6 +22,7 @@ const scopeDir = join(repoRoot, 'node_modules', '@nkuwiki')
 
 let fixed = 0
 let ok = 0
+const failed = []
 
 for (const dir of readdirSync(packagesDir)) {
 	const pkgDir = join(packagesDir, dir)
@@ -43,10 +45,22 @@ for (const dir of readdirSync(packagesDir)) {
 		continue
 	}
 
-	rmSync(linkPath, { recursive: true, force: true })
-	symlinkSync(pkgDir, linkPath, 'junction')
-	fixed++
-	console.log(`[fix-workspace-links] 重建 ${name} -> packages/${dir}`)
+	// 单包失败不中断整个 postinstall：杀软/权限拦截一个链接就放弃全部，
+	// 会让「能用的包也坏掉」并让 pnpm install 整体失败。汇总后统一报告、非零退出
+	try {
+		rmSync(linkPath, { recursive: true, force: true })
+		symlinkSync(pkgDir, linkPath, 'junction')
+		fixed++
+		console.log(`[fix-workspace-links] 重建 ${name} -> packages/${dir}`)
+	}
+	catch (error) {
+		failed.push(`${name}: ${error.message}`)
+	}
 }
 
-console.log(`[fix-workspace-links] 检查完成：正常 ${ok} 个，重建 ${fixed} 个`)
+console.log(`[fix-workspace-links] 检查完成：正常 ${ok} 个，重建 ${fixed} 个${failed.length ? `，失败 ${failed.length} 个` : ''}`)
+if (failed.length) {
+	for (const message of failed)
+		console.error(`[fix-workspace-links] ${message}`)
+	process.exitCode = 1
+}

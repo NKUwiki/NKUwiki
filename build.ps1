@@ -37,7 +37,7 @@ function Get-FreePort {
 }
 
 if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-	throw '未找到 pnpm，请先安装：npm install --global pnpm@11.24.0'
+	throw '未找到 pnpm，请先安装：npm install --global pnpm@12.11.2（与 package.json 的 packageManager 一致）'
 }
 
 if (-not (Test-Path -LiteralPath 'node_modules')) {

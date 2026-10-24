@@ -32,7 +32,7 @@
  * 卡片照样生成，等人工在 CANTEEN_META 或本源里补。西南村 / 肯德基不属食堂体系，不建卡。
  */
 import { Buffer } from 'node:buffer'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -155,7 +155,11 @@ async function fetchPage(pageNum) {
 			}
 			const json = await res.json()
 			if (json.code === -352) {
-				throw new Error('被 B 站风控（-352）：请求太频繁，等几分钟再试，或直接用缓存跑')
+				// 风控是「等几分钟」型错误：800/1600/2400ms 的瞬时重试只会火上浇油，
+				// 直接放弃本次抓取，让调用方走缓存兜底或改天再跑
+				const error = new Error('被 B 站风控（-352）：请求太频繁，等几分钟再试，或直接用缓存跑')
+				error.fatal = true
+				throw error
 			}
 			if (json.code !== 0) {
 				throw new Error(`接口返回 code=${json.code} ${json.message}`)
@@ -163,6 +167,8 @@ async function fetchPage(pageNum) {
 			return json.data
 		}
 		catch (error) {
+			if (error.fatal)
+				throw error
 			lastError = error
 			await new Promise(ok => setTimeout(ok, 800 * (attempt + 1)))
 		}
@@ -190,7 +196,8 @@ function readCache(maxAge) {
 		if (!Array.isArray(raw.archives) || !raw.archives.length) {
 			return null
 		}
-		if (maxAge !== Infinity && Date.now() - raw.savedAt > maxAge) {
+		// savedAt 缺失/非法时按过期处理：NaN 比较恒为 false，会让永不过期
+		if (maxAge !== Infinity && !(Number.isFinite(raw.savedAt) && Date.now() - raw.savedAt <= maxAge)) {
 			return null
 		}
 		return raw.archives
@@ -347,15 +354,21 @@ async function downloadImage(shot, stats) {
 		if (buf.length < 1024) {
 			throw new Error(`内容过小（${buf.length}B）`)
 		}
-		writeFileSync(file, buf)
+		// 临时文件 + rename：直接覆盖被中途打断会留下半张 webp，而它 >1KB，
+		// 下次会通过上面的「已有文件」检查被永久跳过
+		const tmp = `${file}.tmp`
+		writeFileSync(tmp, buf)
+		renameSync(tmp, file)
 		stats.downloaded++
 		stats.bytes += buf.length
 		return rel
 	}
 	catch (error) {
 		stats.failed.push(`${shot.bvid}：${error.message}`)
-		// 兜底用远程 https 直链，图还能显示，只是依赖 B 站可用性
-		return imageUrl(shot.pic)
+		// 不兜底远程直链：页面 <img> 不带 referrerpolicy="no-referrer"，
+		// B 站图床对带第三方 Referer 的请求回 403，直链在页面上就是死图。
+		// 留空走「首字占位」，卡片照常出；失败已在 stats.failed 汇总并以非零退出提醒重跑
+		return ''
 	}
 }
 
@@ -644,6 +657,10 @@ async function main() {
 		}
 		for (const line of imageStats.failed.slice(0, 5)) {
 			console.warn(`  ! ${line}`)
+		}
+		if (imageStats.failed.length) {
+			console.warn(`  ! 共 ${imageStats.failed.length} 张封面下载失败，对应卡片将以无图占位生成；建议稍后重跑补齐`)
+			process.exitCode = 1
 		}
 	}
 	else {
