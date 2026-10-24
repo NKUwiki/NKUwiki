@@ -201,9 +201,20 @@
 	aspect-ratio: 1 / 1;
 }
 
-@media (max-width: 600px) {
+/* 手机上保持两列：网格视图要真的像网格，退化成整行就和列表视图没有差别了。
+   minmax(0,1fr) 防长标题把轨道撑破；内边距同步收窄，给半宽卡片里的标题让出文字宽度。
+   阈值取 640px 而非 VitePress 常用的 768/600：外层 auto-fill 在容器 ≥ 2×280+10=570px
+   （wide 版心 90% 视口 → 约 634px）起自然两列，640 与之衔接成连续的两列区间，
+   600~633px 那段不再出现「两列 → 一列 → 两列」的非单调跳变 */
+@media (max-width: 640px) {
 	.vp-doc .article-cards {
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	/* 特意带上 ul/li 元素选择器抬高特异性：分类/归档/标签页都是 wide 布局，
+	   cards.css 后导入且其 .wiki-wide ... li（12px 16px）特异性同为 0-3-1，等宽会反超 */
+	.vp-doc ul.article-list.article-cards > li {
+		padding: 12px;
 	}
 }
 
