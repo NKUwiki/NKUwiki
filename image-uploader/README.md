@@ -73,9 +73,9 @@ npm install            # 独立 npm 项目，不参与主仓库的 pnpm workspac
 npx wrangler login
 
 # 1. 把现有 docs/public 的静态资源镜像进桶（跳过 CNAME 与 robots.txt；
-#    幂等可重跑，支持传前缀做增量）
+#    先比 ETag，只传新增/变化的，可重跑，也可传前缀只处理某目录）
 node scripts/mirror-public.mjs
-node scripts/mirror-public.mjs img/03   # 例：只补传某前缀
+node scripts/mirror-public.mjs img/03   # 例：只处理某前缀
 
 # 2. 可选但推荐：GitHub token，防 API 限流（catalog 拉取 + 角色查询）
 npx wrangler secret put GITHUB_TOKEN
@@ -163,7 +163,7 @@ curl -s -D - -o /dev/null -H "Origin: https://freshnkuer.wiki" \
 插件是**无条件改写**（这是为了支持「图片只存图床、仓库不放」），所以「仓库有图、桶里没有」不会被构建发现——`pnpm dev` 根本不跑插件（`apply: 'build'`），`pnpm build` 也照常成功，只有线上是 404。两道保险：
 
 1. **闸门（已启用，零密钥）**：CI 在构建之后、上传产物之前跑 `docs/.vitepress/scripts/check-cdn-assets.mjs`，把产物里每个图床地址 HEAD 一遍（188 条约 10 秒，8 并发；HEAD 不被支持时退回 `Range: bytes=0-0` 的 GET）。main 上有取不到的就**直接失败、不部署**，线上保持旧版本；PR 只打 warning（贡献者没有桶的写权限，硬卡会让人无从下手）。本地等价命令：`pnpm check:cdn`。
-2. **自动镜像（可选）**：配了两个 secret 后，CI 在构建前跑 `npm ci && node scripts/mirror-public.mjs`，加图不必再手动补传。
+2. **自动镜像（可选）**：配了两个 secret 后，CI 在构建前跑 `npm ci && node scripts/mirror-public.mjs`，加图不必再手动补传。**默认增量**：先 HEAD 每个公开地址、比对 ETag 与本地 MD5，内容一致就跳过——196 个文件无改动时约 14 秒、上传 0 个；只有新增/改过的才真传。
 
 没配也能正常跑：同步步骤打印一行提示后跳过，缺图交给闸门拦。要配就一次配完，两个值：
 
@@ -196,7 +196,9 @@ CLOUDFLARE_API_TOKEN=<token> CLOUDFLARE_ACCOUNT_ID=<account-id> \
   node node_modules/wrangler/bin/wrangler.js r2 bucket list   # 能看到 nkuwiki 即通过
 ```
 
-CI 里正常的样子：`Mirror docs/public into R2 bucket` 步骤刷出一串 `✓ img/...`，收尾 `完成：196 个对象`。异常对照：
+CI 里正常的样子：`Mirror docs/public into R2 bucket` 步骤先静默十几秒（在逐个 HEAD 比对），
+没有新增图片时收尾就是 `完成：上传 0，跳过 196（内容一致）`；这次 push 真加了图才会刷出对应的
+几行 `✓ img/...`。异常对照：
 
 | 现象 | 原因 |
 | --- | --- |
@@ -205,14 +207,25 @@ CI 里正常的样子：`Mirror docs/public into R2 bucket` 步骤刷出一串 `
 | `Authentication error [code: 10000]` / 403 | Account Resources 没 Include 到该账号 |
 | `could not find account` | `CLOUDFLARE_ACCOUNT_ID` 缺失或写错 |
 | 本地能跑、CI 403 | token 上设了 IP 过滤 |
+| 每次都「上传 196」，并打印「未配置 IMAGE_BASE_URL，无法比对 ETag」 | `wrangler.toml` 的 `IMAGE_BASE_URL` 被清空或改了格式，退回全量；填回 `https://img.freshnkuer.wiki` 即恢复增量 |
 
 手动补传（本机需先 `wrangler login`）：
 
 ```bash
 cd image-uploader
-node scripts/mirror-public.mjs             # 全量（幂等，同名覆盖）
-node scripts/mirror-public.mjs img/05      # 只补某个前缀（增量）
+node scripts/mirror-public.mjs             # 增量（ETag 比对，只传变化的）
+node scripts/mirror-public.mjs img/05      # 只处理某个前缀
+node scripts/mirror-public.mjs --force     # 全量重传（怀疑桶被人工改过时用）
+node scripts/mirror-public.mjs --dry       # 只打印判定结果，不写桶
 ```
+
+比对靠两件事：`IMAGE_BASE_URL`（`wrangler.toml`）是公开域，R2 单段上传的对象 ETag 就是内容
+MD5。因此新增或改动才会真传，没变的直接跳过。判据是「相等才跳过」——HEAD 失败、404、ETag
+缺失或有差异一律照传，最坏多传一次，不会留下旧内容。
+
+代价是：**R2 没有 list 接口**（`wrangler r2 object` 只有 get/put/delete），所以没法按桶内
+清单做双向同步。桶里多出来的对象（比如上传器传的、改过名的）不会被这次比对发现，也不会被删
+——这正是我们要的：桶里的东西可能只存在于图床。
 
 本地自查，等同 CI 那道闸门：
 
@@ -240,7 +253,7 @@ image-uploader/
 ├── package.json         # 独立 npm 项目（wrangler / typescript）
 ├── tests/               # util 与 storage 的测试（在仓库根目录用 pnpm test 跑）
 ├── scripts/
-│   ├── mirror-public.mjs     # docs/public → R2 桶镜像上传（幂等，支持前缀增量）
+│   ├── mirror-public.mjs     # docs/public → R2 桶镜像上传（ETag 比对，只传变化的）
 │   └── fetch-catalog-once.ts # 文章目录缓存手动刷新（Worker 出口被 GitHub 限流时用）
 └── src/
     ├── index.ts         # Worker 入口：/（UI）、/api/*、/img/* 代理（路径↔键 1:1）

@@ -53,7 +53,8 @@ jobs:
       - name: Check types, style and content index
         run: pnpm check
 
-      # 可选：配了 CLOUDFLARE_API_TOKEN 就把 docs/public 全量镜像进桶，加图不必再手动补传。
+      # 可选：配了 CLOUDFLARE_API_TOKEN 就把 docs/public 增量镜像进桶（HEAD 比对 ETag/MD5，
+      # 内容一致就跳过；无改动时十几秒、上传 0 个），加图不必再手动补传。
       # 没配则跳过，缺图交给下一步的验活兜住（那时加图的人要自己 mirror 一次）。
       # PR 不跑：fork 拿不到 secret，且不该让未合并的分支改写生产桶。
       - name: Mirror docs/public into R2 bucket
