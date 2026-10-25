@@ -1,5 +1,12 @@
 import { renderSVG } from 'uqr'
 
+/**
+ * 兜底图标也取不到时的最后手段（不依赖网络）：中性头像占位。
+ * 本站图片走图床后是跨域地址，取它需要桶上配好 CORS；这里留一层，
+ * 免得一张头像取不到就把整张长图连带拖死。
+ */
+const NEUTRAL_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#d8d8d8"/><circle cx="16" cy="12" r="5.5" fill="#9a9a9a"/><path d="M4.5 27a11.5 11.5 0 0 1 23 0z" fill="#9a9a9a"/></svg>'
+
 export async function createShareImage(source: HTMLElement, title: string, url: string, compact: boolean) {
 	const { domToBlob } = await import('modern-screenshot')
 	const fallbackIcon = document.documentElement.classList.contains('dark') ? '/favicon-dark.svg' : '/favicon-light.svg'
@@ -102,7 +109,7 @@ export async function createShareImage(source: HTMLElement, title: string, url: 
 				if (!url.startsWith('https://p.qlogo.cn/'))
 					return false
 				try {
-					const response = await fetch(url, { signal: AbortSignal.timeout(5000) })
+					const response = await fetch(url, { cache: 'reload', signal: AbortSignal.timeout(5000) })
 					if (!response.ok)
 						throw new Error('Avatar unavailable')
 					const blob = await response.blob()
@@ -114,11 +121,26 @@ export async function createShareImage(source: HTMLElement, title: string, url: 
 					})
 				}
 				catch {
-					const svg = await fetch(fallbackIcon).then(response => response.text())
+					// 头像取不到 → 退回站点图标；图标也取不到 → 退回内置占位。
+					// 图标要 cache:'reload'：它可能已被 <link rel=icon> 以 no-cors 方式缓存，
+					// 命中的话 CORS 模式的 fetch 会直接失败（同下面 requestInit 那条）。
+					const svg = await fetch(fallbackIcon, { cache: 'reload' })
+						.then(response => response.text())
+						.catch(() => NEUTRAL_ICON)
 					return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 				}
 			},
-			fetch: { placeholderImage: () => { throw new Error('部分图片无法嵌入，请选择分享卡片或浏览器打印。') } },
+			// 长图里的图片会被逐张 fetch 成 data URL（否则 canvas 被污染）。构建期若
+			// 配了 WIKI_ASSETS_BASE，图片就是跨域地址，这条 fetch 依赖图床的 CORS，
+			// 桶上没有规则时整个导出会失败——见 image-uploader/README.md。
+			// requestInit 必须覆盖：该库默认 cache: 'force-cache'，而图片此时已经被
+			// <img> 以 no-cors 方式缓存过，浏览器不会为这份不透明副本补 CORS 校验，
+			// 于是 fetch 直接失败、图片被静默丢掉（实测：默认模式 3/3 失败，
+			// cache:'reload' 3/3 成功）。
+			fetch: {
+				requestInit: { cache: 'reload' },
+				placeholderImage: () => { throw new Error('部分图片无法嵌入，请选择分享卡片或浏览器打印。') },
+			},
 		})
 		if (!blob)
 			throw new Error('浏览器未能生成图片，请使用分享卡片或浏览器打印。')
