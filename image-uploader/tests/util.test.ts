@@ -10,7 +10,7 @@ import {
 	sha256Hex,
 	toManagedDir,
 	truncateFileName,
-} from '../image-uploader/src/util.ts'
+} from '../src/util.ts'
 
 test('sanitizeFileName 保留中文名并剔除非法字符与路径段', () => {
 	assert.equal(sanitizeFileName('活动现场.jpg'), '活动现场.jpg')

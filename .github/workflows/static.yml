@@ -22,6 +22,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # 图片/媒体资源外链到 R2 图床（config.mts 读 process.env，不读 docs/.env）。
+    # 删掉这一行即完整回退为 Pages 直出（产物逐字节还原），是全站唯一的开关；
+    # 下面的构建与「图床验活」共用它。
+    # 必须放在这里而不是 docs/.env：.env 只喂 VITE_ 前缀、且只进 import.meta.env，
+    # 而 config.mts 读的是 process.env，写进 .env 会被静默忽略、构建照常成功但功能没开。
+    # 也不要改成 ${{ secrets.* }}：secret 未配置时值是空串，空串会把已配置的地址
+    # 覆盖掉、功能被静默关闭（Twikoo 评论区就曾因此不上线）。
+    env:
+      WIKI_ASSETS_BASE: https://img.freshnkuer.wiki
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
@@ -43,13 +53,34 @@ jobs:
       - name: Check types, style and content index
         run: pnpm check
 
+      # 可选：配了 CLOUDFLARE_API_TOKEN 就把 docs/public 全量镜像进桶，加图不必再手动补传。
+      # 没配则跳过，缺图交给下一步的验活兜住（那时加图的人要自己 mirror 一次）。
+      # PR 不跑：fork 拿不到 secret，且不该让未合并的分支改写生产桶。
+      - name: Mirror docs/public into R2 bucket
+        if: github.event_name != 'pull_request'
+        working-directory: image-uploader
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "未配置 CLOUDFLARE_API_TOKEN，跳过自动镜像（缺图会被下一步的验活拦下）"
+            exit 0
+          fi
+          npm ci --no-audit --no-fund
+          node scripts/mirror-public.mjs
+
       - name: Build VitePress site
         run: pnpm build
-        # 站点级构建变量写在 docs/.env（VitePress 从 srcDir 读取），随仓库分发。
-        # 这里不要写 ${{ secrets.* }} 传同名变量：secret 未配置时值是空串，而
-        # process.env 里的 VITE_ 变量优先级高于 .env 文件，空串会把已配置的
-        # 地址覆盖掉、功能被静默关闭（Twikoo 评论区就曾因此不上线）。
-        # 需要保密的值才配 secret，且必须确保该 secret 已填写。
+
+      # 部署前闸门：产物里每个图床地址都 HEAD 一次，取不到就不上传、线上保持旧版本。
+      # 为什么必须有：插件是无条件改写，仓库有图、桶里没同步时构建不会报错，
+      # 本地 dev 也不经过插件（apply: 'build'），只有线上 404。
+      # main 分支硬失败；PR 只打 warning（贡献者没有桶的写权限）。
+      - name: Verify every CDN asset resolves
+        env:
+          CHECK_CDN_STRICT: ${{ github.event_name != 'pull_request' }}
+        run: node docs/.vitepress/scripts/check-cdn-assets.mjs docs/.vitepress/dist
 
       - name: Upload built site to artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

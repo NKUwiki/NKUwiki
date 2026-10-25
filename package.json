@@ -19,7 +19,8 @@
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix --max-warnings=0",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts image-uploader/tests/*.test.ts",
+    "check:cdn": "node docs/.vitepress/scripts/check-cdn-assets.mjs",
     "check": "pnpm gen:history && pnpm typecheck && pnpm lint && pnpm test"
   },
   "dependencies": {

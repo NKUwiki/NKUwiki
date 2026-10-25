@@ -1,8 +1,8 @@
-import type { Env } from '../image-uploader/src/types.ts'
+import type { Env } from '../src/types.ts'
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createPending, decidePending, deletePath, ensureDir, listPending, storeFile } from '../image-uploader/src/storage.ts'
-import { sha256Hex } from '../image-uploader/src/util.ts'
+import { createPending, decidePending, deletePath, ensureDir, listPending, storeFile } from '../src/storage.ts'
+import { sha256Hex } from '../src/util.ts'
 
 /** 最小内存版 R2 模拟：覆盖 storage 层用到的 put/get/head/list/delete 语义 */
 function mockEnv(): { env: Env, objects: Map<string, { data: Uint8Array, customMetadata?: Record<string, string> }> } {
