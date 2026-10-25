@@ -119,6 +119,8 @@ const routes: Record<string, Handler> = {
 					continue
 				}
 				if (asGuest) {
+					// 必须把内容作为 blob 一并存进 _pending/：申请里只有元数据，
+					// 批准时 applyPending 靠它还原文件
 					const meta = await createPending(env, {
 						action: 'upload',
 						actor,
@@ -127,7 +129,7 @@ const routes: Record<string, Handler> = {
 						name,
 						size: bytes.byteLength,
 						sha256,
-					})
+					}, bytes)
 					results.push({ name, queued: true, id: meta.id })
 				}
 				else {
