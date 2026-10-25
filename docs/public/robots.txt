@@ -2,4 +2,9 @@ User-agent: *
 
 Allow: /
 
+# 分类/标签筛选走查询串（/categories/?category=xxx），但这里刻意不写
+# Disallow: /*?* —— Google 官方建议重复 URL 用 canonical 合并而不是 robots 屏蔽：
+# 被屏蔽后爬虫读不到页面上的 canonical，反而失去合并依据；且部分引擎会把 ? 当作
+# 通配符，存在把全站一起屏蔽的风险。重复内容交给每页的 canonical 处理。
+
 Sitemap: https://freshnkuer.wiki/sitemap.xml

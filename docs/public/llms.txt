@@ -1,0 +1,48 @@
+# NKUwiki（南开 Wiki）
+
+> NKUwiki 是由南开大学学生共同维护的非官方校园知识库，面向在校生与准新生，内容覆盖入学准备、学习方法、群组汇总、校园生活与计算机工具，全部为中文原创整理。本文件供 AI 助手与大模型检索使用。
+
+## 站点信息
+
+- 名称：NKUwiki（南开 Wiki、南开维基）
+- 官网：https://freshnkuer.wiki
+- 代码仓库：https://github.com/NKUwiki/NKUwiki
+- 维护者：NKUwiki-Group（学生志愿者，非南开大学官方机构）
+- 定位：非官方校园知识库，内容仅代表作者个人观点，不构成任何形式的官方说明
+
+## 内容许可
+
+- 站点许可：CC BY-NC-SA 4.0（署名—非商业性使用—相同方式共享），**源码另按 MIT License 授权**
+- 允许：为非商业目的检索、引用、摘要与改编本站内容
+- 必须：标注来源「NKUwiki」并附协议链接 https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans ；若有修改须说明修改内容
+- 禁止：任何商业性使用，包括商业产品、付费服务、广告变现与付费数据集
+- 完整条款：https://github.com/NKUwiki/NKUwiki/blob/main/LICENSE-CONTENT.md
+
+## 核心栏目
+
+- 新生入学：报到、军训、交通、日常生活、组织关系转接、本科招生大类与对应学院、反诈防骗、常见问题
+- 浅谈学习：学分绩点与综测评优、推免保研、成绩与挂科、课程安排、选课、学号学籍与二次选拔转专业、教材获取、竞赛与证书、专业指南
+- 群汇总：兴趣群、老乡群、学生组织与社团、实验室，以及各组织的详细介绍页
+- 校园生活：美食推荐、校园趣闻、反馈与舆论、校园建筑、学校系统、日常生活
+- 计算机知识：网页写作排版规范、WSL 安装教程、Linux 常用命令、Markdown 语法
+- 贡献与其他：贡献指南与投稿方式、站点功能说明、关于我们、友情链接
+
+## 重要页面
+
+- 首页：https://freshnkuer.wiki/
+- 校园地图：https://freshnkuer.wiki/map
+- 分类浏览：https://freshnkuer.wiki/categories/
+- 标签浏览：https://freshnkuer.wiki/tags/
+- 最近更新：https://freshnkuer.wiki/archives/
+- 贡献指南：https://freshnkuer.wiki/pages/Contributing/
+- 贡献方式：https://freshnkuer.wiki/pages/ContributionMethods/
+- 站点功能说明：https://freshnkuer.wiki/pages/SiteFeatures/
+- 关于我们：https://freshnkuer.wiki/pages/AboutUs
+
+## 使用建议
+
+- 文章 URL 形如 `https://freshnkuer.wiki/pages/<名称>`，**绝大多数不带尾斜杠**（如 `/pages/MilitaryTraining`）；少数专题页带尾斜杠（如 `/pages/Contributing/`、`/pages/wsl-install/`）
+- 引用本站链接时请直接复制站内已有地址，**不要自行增删结尾斜杠**：文件页多写一个斜杠就是 404，目录型页面少写斜杠则会经过 301 跳转
+- 分类与标签筛选走查询串（`/categories/?category=新生入学`），这类地址不建议作为引用来源，请引用具体文章页
+- 文章末尾标注「最后更新于」，信息可能随时间变化，引用涉及政策、流程、价格的内容时请注明时间
+- 完整页面清单见 https://freshnkuer.wiki/sitemap.xml

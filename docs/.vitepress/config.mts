@@ -20,6 +20,7 @@ import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
 import { fallbackAuthor, members } from './data/members.ts'
 import { repoUrl, siteUrl, watermarkSubtitle } from './data/site.ts'
+import { assertSeoTitleMapMatches, seoTitleFor, standaloneSeo } from './seo.ts'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {
@@ -59,11 +60,23 @@ function stripMarkmapInjection() {
 }
 
 const articles = scanArticles()
+// seoTitleMap 靠 permalink 匹配，permalink 一改就静默失效，构建期先炸掉
+assertSeoTitleMapMatches(articles)
 const base = ''
 /* 拼资源地址：base 可能是 ''（当前自定义域名根部署），将来若改成 '/xxx/' 带尾斜杠，
    直接写 `${base}/a.png` 会拼成双斜杠。这里统一剥掉尾斜杠。 */
 const assetUrl = (path: string) => `${base.replace(/\/+$/, '')}/${path}`
 const description = 'NKUwiki（南开校园 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
+
+/**
+ * frontmatter 里的日期写的是 "2026-09-01" 这种裸日期，直接塞进 og:article 与
+ * JSON-LD 时没有时区、部分抓取方会判为无效。统一补成 ISO 8601；
+ * 解析不了的原始值原样返回，宁可格式不完美也不要丢日期。
+ */
+function isoDate(value: string) {
+	const time = new Date(value)
+	return Number.isNaN(time.getTime()) ? value : time.toISOString()
+}
 
 /** 把一段块内容插到 frontmatter（若在）之后、正文最前面。 */
 function prependToBody(source: string, block: string) {
@@ -101,8 +114,10 @@ export default defineConfig({
 	base,
 	lang: 'zh-CN',
 	title: 'NKUwiki',
-	// 搜索结果里的「页面名 | 后缀」：后缀带上定位词，命中「南开 + 知识库」类搜索词
-	titleTemplate: ':title | NKUwiki - 南开校园知识库',
+	// 搜索结果里的「页面名 | 后缀」：后缀只留品牌，长度让给标题主体。
+	// 「南开大学」「知识库」这类定位词由 seo.ts 的 seoTitleMap 写进每个页面标题的主体里
+	// （主体在 SERP 里权重更高，也更不容易被省略号截掉），首页另有完整后缀。
+	titleTemplate: ':title | NKUwiki',
 	description,
 	cleanUrls: true,
 	lastUpdated: false,
@@ -122,16 +137,19 @@ export default defineConfig({
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
 		['meta', { name: 'author', content: 'NKUwiki-Group' }],
 		['meta', { property: 'og:site_name', content: 'NKUwiki' }],
-		['script', { type: 'application/ld+json' }, JSON.stringify({
-			'@context': 'https://schema.org',
-			'@type': 'WebSite',
-			'name': 'NKUwiki',
-			'alternateName': ['NKUwiki', 'nkuwiki', 'NKU wiki', '南开wiki', '南开 wiki', '南开维基', '南开大学 wiki', '南开大学维基'],
-			'url': siteUrl,
-			'inLanguage': 'zh-CN',
-		})],
+		// 站点级 WebSite 结构化数据不放在这里：head 数组会注入到每一个页面，
+		// 每页都重复一份 WebSite 只会稀释信号。改成在 transformPageData 里只给首页加。
 	],
-	sitemap: { hostname: siteUrl },
+	sitemap: {
+		hostname: siteUrl,
+		transformItems(items) {
+			// 404 错误页不该被收录；空正文占位页属于薄内容，同样不进站点地图
+			// （两处都另有 noindex，这里是第二道保险）。
+			const normalize = (u: string) => u.replace(/^https?:\/\/[^/]+/, '').replace(/^\//, '').replace(/\/$/, '')
+			const emptyUrls = new Set(articles.filter(a => a.empty).map(a => normalize(a.url)))
+			return items.filter(item => normalize(item.url) !== '404' && !emptyUrls.has(normalize(item.url)))
+		},
+	},
 	themeConfig: {
 		nav: [
 			{ text: '新生入学', link: '/categories/?category=新生入学' },
@@ -140,7 +158,8 @@ export default defineConfig({
 			{ text: '群汇总', link: '/categories/?category=群汇总' },
 			{ text: '计算机知识', link: '/categories/?category=计算机知识' },
 			{ text: '全部分类', link: '/categories/' },
-			{ text: '校园地图', link: '/map/' },
+			// 不带尾斜杠：map.md 是文件页（产物 map.html），cleanUrls 下 /map/ 会 404
+			{ text: '校园地图', link: '/map' },
 			{ text: '参与共建', link: '/categories/?category=贡献与其他', activeMatch: categoryMatch('贡献与其他') },
 		],
 		sidebar,
@@ -241,14 +260,16 @@ export default defineConfig({
 	// 最终 HTML 的 <head>（favicon、字体 preload）是 VitePress 在 bundle 之后拼出来的，
 	// Vite 插件的 generateBundle 够不到，靠这个钩子补上，与 assets.plugin 配合使用
 	transformHtml: code => assets.transformHtml(code),
-	// 按页注入 SEO 元数据：canonical、og/twitter 卡片、文章页 Article 结构化数据。
-	// 站点级 head 只保留 og:site_name 与 WebSite JSON-LD，页级数据在这里生成，
+	// 按页注入 SEO 元数据：canonical、og/twitter 卡片、结构化数据，以及页面 <title>。
+	// 站点级 head 只保留 og:site_name 这类与页面无关的标签，页级数据在这里生成，
 	// 否则分享出去的都是首页标题与首页地址。
 	transformPageData(page) {
 		const article = articles.find(item => item.source === page.relativePath || outputPath(item.url) === page.relativePath)
 		// 页面规范地址：文章用 permalink，直通页（map.md、categories/index.md 等）按
 		// 输出路径去掉 .md / index.md；404 页不参与（单独 noindex）
 		const is404 = page.relativePath === '404.md'
+		const isHome = page.relativePath === 'index.md'
+		const standalone = standaloneSeo[page.relativePath]
 		const pagePath = article ? article.url : page.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
 		// article.url 恒带前导斜杠，直通页的 pagePath 则形态不一（categories/index.md →
 		// "categories/"、map.md → "map"），与去尾斜杠的域名直接拼接会拼出
@@ -258,45 +279,124 @@ export default defineConfig({
 
 		if (is404) {
 			page.frontmatter.head ??= []
-			page.frontmatter.head.push(['meta', { name: 'robots', content: 'noindex' }])
+			page.frontmatter.head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
 			return
 		}
 
-		const pageTitle = article?.title ?? (page.frontmatter.title as string | undefined) ?? 'NKUwiki · 南开大学校园知识库'
+		// <title>：文章用 seoTitleFor 补全搜索意图，非文章页用 standaloneSeo 覆盖短标题
+		// （「最近更新」「标签」这类词单独出现没有任何搜索价值）。
+		const pageTitle = article
+			? seoTitleFor(article)
+			: (standalone?.title ?? (page.frontmatter.title as string | undefined) ?? 'NKUwiki · 南开大学校园知识库')
+		// og:title 取「拼好后」的标题：页面级 frontmatter 可以覆盖 titleTemplate
+		// （首页就自带一个），直接拿裸 title 会让分享卡片只剩一个「NKUwiki」。
+		const frontmatterTemplate = page.frontmatter.titleTemplate as string | undefined
+		const ogTitle = frontmatterTemplate
+			? frontmatterTemplate.replace(/:title/g, String(page.frontmatter.title ?? ''))
+			: pageTitle
 		// 页面描述三级兜底：frontmatter description → 正文首段（构建期从扫描缓存提取）→ 全站文案。
 		// scanArticles 在 config 顶层已执行，正文缓存可直接复用（避免二次读盘）。
 		const bodyDescription = article ? excerptFromContent(getArticleContent(article.source) ?? '') : ''
 		const pageDescription = (page.frontmatter.description as string | undefined) || bodyDescription || description
+		// 社交卡片统一用这张 1200×630 的默认大图（尺寸与 og-default.png 实际像素一致，
+		// 平台据此预留版位，写错会拉伸）。卡片比 <title> 多一个品牌尾巴：站外分享时
+		// 页面标题里的「| NKUwiki」容易被平台切掉，图片替代文本里补上更稳。
+		const ogImage = `${siteUrl.replace(/\/$/, '')}/og-default.png`
+		// 首页标题主体本身就叫「NKUwiki」，无条件追加品牌会得到「NKUwiki… · NKUwiki」
+		const ogImageAlt = /nkuwiki/i.test(ogTitle) ? ogTitle : `${ogTitle} · NKUwiki`
 		const head: [string, Record<string, string>, string?][] = [
 			['link', { rel: 'canonical', href: pageUrl }],
-			['meta', { property: 'og:title', content: pageTitle }],
+			['meta', { property: 'og:title', content: ogTitle }],
 			['meta', { property: 'og:description', content: pageDescription }],
 			['meta', { property: 'og:url', content: pageUrl }],
-			['meta', { property: 'og:image', content: `${siteUrl.replace(/\/$/, '')}/og-default.png` }],
+			['meta', { property: 'og:image', content: ogImage }],
+			['meta', { property: 'og:image:width', content: '1200' }],
+			['meta', { property: 'og:image:height', content: '630' }],
+			['meta', { property: 'og:image:alt', content: ogImageAlt }],
 			['meta', { property: 'og:type', content: article ? 'article' : 'website' }],
-			// og:image 是 1200×630 大图：文章页用 summary_large_image 分享效果更好，
-			// 非文章页（地图、分类索引）没有专属大图，维持 summary
-			['meta', { name: 'twitter:card', content: article ? 'summary_large_image' : 'summary' }],
+			// twitter:image 不会被任何平台从 og:image 推导：只写 og:image 时 X 卡片
+			// 会退回无图样式，summary_large_image 也就白设了。全站共用一张 1200×630
+			// 大图，所以文章页与索引页都用大图版式
+			['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+			['meta', { name: 'twitter:image', content: ogImage }],
+			['meta', { name: 'twitter:image:alt', content: ogImageAlt }],
+			// max-image-preview:large 让 Google 结果页可以用大缩略图（默认只有 small/none，
+			// 校园指南带图的页面在 SERP 里会明显吃亏）。noindex 页另有更严格的 robots，
+			// 多个 robots meta 由 Google 合并取最严，不会互相抵消。
+			['meta', { name: 'robots', content: 'index, follow, max-image-preview:large' }],
 		]
 
 		if (article) {
-			page.title = article.title
+			page.title = pageTitle
 			page.lastUpdated = article.lastUpdatedTime || undefined
 			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes })
 			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发；
 			// 成员表是站点数据，显式注入给主题包的纯函数
 			page.frontmatter.authors = collectAuthors(page.frontmatter.author, { members, fallbackName: fallbackAuthor })
 			const articleAuthor = (page.frontmatter.authors as Array<{ name?: string }> | undefined)?.[0]?.name
+			// collectAuthors 在文章没写 author 时会回退成组织名，那不是一个自然人，
+			// 标成 Person 反而误导（「NKUwiki-Group」被当成作者姓名）
+			const isNamedAuthor = Boolean(articleAuthor) && articleAuthor !== fallbackAuthor
+			// article:* 只在 og:type=article 时有意义，Facebook / LinkedIn 读它判断
+			// 发布时间与分区；日期统一转成带时区的 ISO 字符串（frontmatter 写的是
+			// "2026-09-01" 这种裸日期，部分抓取方会当成无效值）。
+			if (article.date)
+				head.push(['meta', { property: 'article:published_time', content: isoDate(article.date) }])
+			const modifiedTime = article.lastUpdated || article.date
+			if (modifiedTime)
+				head.push(['meta', { property: 'article:modified_time', content: isoDate(modifiedTime) }])
+			// 分区取最外层分类（「新生入学」「群汇总」），子目录留给 JSON-LD 的 articleSection
+			if (article.folders[0])
+				head.push(['meta', { property: 'article:section', content: article.folders[0] }])
+			for (const tag of article.tags.slice(0, 6))
+				head.push(['meta', { property: 'article:tag', content: tag }])
 			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
 				'@context': 'https://schema.org',
 				'@type': 'Article',
-				'headline': article.title,
+				// headline 与 <title> 主体保持一致，否则结构化数据与页面标题对不上
+				'headline': pageTitle,
 				'description': pageDescription,
-				'datePublished': article.date || undefined,
-				'dateModified': article.lastUpdated || undefined,
-				'author': { '@type': 'Organization', 'name': articleAuthor || 'NKUwiki-Group' },
+				// Article 的 image 是必填：缺了这条结构化数据基本拿不到富结果。
+				// publisher 不给 logo 是刻意的——favicon 是 1540×1760 非正方形，
+				// Google 要求 logo 为 1:1，硬塞会被判不合格，不如不写。
+				'image': { '@type': 'ImageObject', 'url': ogImage, 'width': 1200, 'height': 630 },
+				'datePublished': article.date ? isoDate(article.date) : undefined,
+				'dateModified': modifiedTime ? isoDate(modifiedTime) : undefined,
+				// 有站内成员名就标 Person（Org 标在具体人名上是错的），没有则回退组织
+				'author': isNamedAuthor
+					? { '@type': 'Person', 'name': articleAuthor }
+					: { '@type': 'Organization', 'name': fallbackAuthor },
+				'publisher': { '@type': 'Organization', 'name': 'NKUwiki-Group', 'url': `${siteUrl.replace(/\/$/, '')}/` },
+				'articleSection': article.folders.join(' - '),
 				'mainEntityOfPage': { '@type': 'WebPage', '@id': pageUrl },
 				'inLanguage': 'zh-CN',
+			})])
+			// 只有 frontmatter、没有正文的占位页不索引：收录进去就是薄内容
+			if (article.empty)
+				head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
+		}
+		else if (standalone?.title) {
+			page.title = standalone.title
+		}
+
+		if (standalone?.noindex)
+			head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
+
+		// 站点级 WebSite 结构化数据只给首页：每页都挂一份会把「这是哪一站」的信号打散
+		if (isHome) {
+			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
+				'@context': 'https://schema.org',
+				'@type': 'WebSite',
+				'name': 'NKUwiki',
+				'alternateName': ['NKUwiki', 'nkuwiki', 'NKU wiki', '南开wiki', '南开 wiki', '南开维基', '南开大学 wiki', '南开大学维基'],
+				'url': `${siteUrl.replace(/\/$/, '')}/`,
+				'description': pageDescription,
+				'inLanguage': 'zh-CN',
+				'publisher': {
+					'@type': 'Organization',
+					'name': 'NKUwiki-Group',
+					'url': `${siteUrl.replace(/\/$/, '')}/`,
+				},
 			})])
 		}
 

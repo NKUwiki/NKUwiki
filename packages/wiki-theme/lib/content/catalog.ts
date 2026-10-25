@@ -138,9 +138,14 @@ export function scanArticles(root = docsRoot) {
 			if (!entry.name.endsWith('.md'))
 				continue
 			const source = relative(root, file).replaceAll('\\', '/')
-			const isArticle = /^\d+\./.test(source)
+			// 404.md 恰好满足「数字开头」的命名（"404." + "md"），但它是 VitePress 的错误页，
+			// 不属于文章：当成文章会进侧栏、分类、标签、搜索索引和站点地图。
+			const isReserved = source === '404.md'
+			const isArticle = !isReserved && /^\d+\./.test(source)
 			const stat = statSync(file)
 			signature += `${source}:${stat.mtimeMs}:${stat.size};`
+			if (isReserved)
+				continue
 			if (!isArticle) {
 				if (!source.startsWith('activity/'))
 					passThrough.push(`/${source}`)

@@ -8,6 +8,7 @@ outline: false
 pageClass: map-page
 hideChangelog: true
 title: 校园地图
+description: 南开大学八里台与津南校区校园地图：教学楼、食堂、宿舍、体育场馆等点位导览与照片。
 ---
 
 <script setup>
