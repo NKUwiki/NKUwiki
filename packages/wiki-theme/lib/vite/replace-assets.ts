@@ -18,19 +18,31 @@
  * 建议只在生产构建启用（与 Plume 的做法一致），例如读环境变量：
  *
  *   image: process.env.WIKI_ASSETS_BASE || ''
+ *   skip: '^/assets/'   // VitePress 自己的打包产物（文件名带哈希），必须留在站内
  *
  * 迁移步骤：把 docs/public 整个目录上传到对象存储 → 配上访问域名 → 设置环境变量
  * 重新构建。资源路径在本地与远端保持一致，所以不需要改任何 md / 组件代码。
  *
  * ── 能识别什么 ──
- * 只处理**以 / 开头的站内绝对路径**且带资源扩展名的链接，覆盖三种写法：
+ * 只处理**以 / 开头的站内绝对路径**且带资源扩展名的链接，覆盖四种写法：
  *   HTML  <img src="/img/foo.png">
  *   CSS   background: url(/img/foo.png)
  *   JS    const foo = '/img/foo.png'
- * 已经是 http(s) / 协议相对 // / data: 的链接不会被动（正则要求以单个 / 开头）。
+ *   JS    const foo = `/img/foo.png`   ← 压缩器常把单引号改写成模板字面量
+ * 三种引号（" ' `）与左括号都算作路径的起点，因为产物里的字符串必然被其中一种
+ * 包住。已经是 http(s) / 协议相对 // / data: 的链接不会被动（要求以单个 / 开头）。
  *
- * 不支持拼接的路径（'/img/' + 'foo.png'），也不处理 srcset 的多候选写法——
- * 这是所有同类插件的共同限制，遇到就写成完整字符串。
+ * 不支持用 + 拼接的路径（'/img/' + 'foo.png'），也不处理 srcset 的多候选写法——
+ * 这是所有同类插件的共同限制，遇到就写成完整字符串。模板字面量里的 ${} 插值不受
+ * 影响（`/img/${campus}/a.png` 只替换静态前缀，插值原样保留）。
+ *
+ * ── 只改写「该搬走」的资源 ──
+ * skip 用来排除不该迁移的路径，最常见的是 Vite(Press) 自己打包出来的目录：
+ * 那些文件名带构建哈希（/assets/inter-roman-latin.q5rAVC0E.woff2），每次构建都变，
+ * 对象存储永远追不平，改写到桶里必然 404，只能继续由站点直出。
+ *
+ * 反过来说，**不要**用「文件是否存在」来做判据：本站允许图片只存在于图床
+ * （`docs/public` 里没有也能用），那种引用必须照改不误。
  */
 import type { Plugin } from 'vite'
 
@@ -62,6 +74,11 @@ export interface ReplaceAssetsOptions {
 	rules?: AssetReplaceRule | AssetReplaceRule[]
 	/** 额外纳入的扩展名（不含点），追加到 image 与 media 两组 */
 	extensions?: string[]
+	/**
+	 * 保持原样、不改写的路径（字符串约定同 find：'^/assets/' 为前缀，'$' 结尾为后缀）。
+	 * 构建产物目录必须列在这里：带哈希的文件名每次构建都变，桶里追不平。
+	 */
+	skip?: RegExp | string | Array<RegExp | string>
 }
 
 const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -137,6 +154,9 @@ export function replaceAssets(options: ReplaceAssetsOptions = {}): ReplaceAssets
 	if (!rules.length)
 		return { plugin: { name, apply: 'build' }, transformHtml: code => code }
 
+	// skip 判据：与 find 同一套字符串约定（'^/assets/' 前缀、'/foo$' 后缀）
+	const skips = (options.skip ? (Array.isArray(options.skip) ? options.skip : [options.skip]) : []).map(toRegExp)
+
 	const replace = (url: string) => {
 		// 只处理站内绝对路径；协议相对（//cdn...）已是外部地址
 		if (!url.startsWith('/') || url.startsWith('//'))
@@ -144,6 +164,9 @@ export function replaceAssets(options: ReplaceAssetsOptions = {}): ReplaceAssets
 		const path = siteBase && (url === siteBase || url.startsWith(`${siteBase}/`))
 			? url.slice(siteBase.length)
 			: url
+		// 构建产物（带哈希）不改写：桶里追不平，切过去必 404
+		if (skips.some(skip => skip.test(path)))
+			return url
 		for (const rule of rules) {
 			if (!rule.find.test(path))
 				continue
@@ -154,12 +177,18 @@ export function replaceAssets(options: ReplaceAssetsOptions = {}): ReplaceAssets
 		return url
 	}
 
-	// 匹配 ["'(] 后面的站内资源路径，用 lookahead 结束以便连续替换。
+	// 匹配资源路径字面量：前导是字符串定界符（" ' `）或 CSS url( 的左括号，
+	// 结尾必须紧跟定界符，这样才连得上「整条路径就是一个完整字符串」。
+	// 反引号不能少：压缩器会把同一段字面量在 " / ' / ` 之间改写，少了反引号，
+	// 被打包成模板字面量的路径会整批漏改（实测漏掉 180 个真实资源：美食卡片封面、
+	// 协会头像、favicon 切换、地图照片）。
 	// 路径长度设 512 上限：惰性量 + 三十余个扩展名分支，不设上限时遇到
 	// 不含资源扩展名的超长引号串（打包进 JS 的长 SVG path、JSON 串）会退化成
 	// O(长度² × 扩展名数) 的回溯扫描
+	const quote = `"'\``
+	const inner = `[^${quote}()\\s]`
 	const pattern = new RegExp(
-		`(["'(])(/(?:[^"'()\\s]{1,512}?)\\.(?:${[...imageExt, ...mediaExt].join('|')})(?:\\?[^"'()\\s]*)?)(?=["')])`,
+		`([${quote}(])(/(?:${inner}{1,512}?)\\.(?:${[...imageExt, ...mediaExt].join('|')})(?:\\?${inner}*)?)(?=[${quote})])`,
 		'gi',
 	)
 	const apply = (code: string) => code.replace(pattern, (_m, open: string, url: string) => open + replace(url))

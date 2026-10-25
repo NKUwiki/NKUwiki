@@ -86,8 +86,13 @@ const sidebar = Object.fromEntries(articles.map(article => [article.url, [
 
 // 资源外链替换（构建期）：设置 WIKI_ASSETS_BASE 后，产物里的本地资源路径会改写到该域名。
 // 未设置时两个入口都是恒等操作，产物逐字节不变。详见 lib/vite/replace-assets.ts。
+// skip：/assets/ 下是 VitePress 自己打包的产物，文件名带构建哈希（如
+// inter-roman-latin.q5rAVC0E.woff2），每次构建都变、桶里永远追不平，
+// 改写到图床必 404 —— 这类资源继续由 Pages 直出。（实测唯一实例是内置 Inter 字体。）
+// 不要改成「只改写 docs/public 里存在的文件」：正文允许引用只存在于图床的图片。
 const assets = replaceAssets({
 	siteBase: base,
+	skip: '^/assets/',
 	image: process.env.WIKI_ASSETS_BASE || '',
 	media: process.env.WIKI_ASSETS_BASE || '',
 })
@@ -108,8 +113,10 @@ export default defineConfig({
 		// （插件只认以 / 开头的站内路径），加一个斜杠即可被正确改写
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-light.svg'), 'media': '(prefers-color-scheme: light)', 'data-wiki-icon': '' }],
 		['link', { 'rel': 'icon', 'type': 'image/svg+xml', 'href': assetUrl('favicon-dark.svg'), 'media': '(prefers-color-scheme: dark)', 'data-wiki-icon': '' }],
-		// favicon / manifest 都写成绝对路径：相对路径在深层页面（cleanUrls 下
-		// /pages/xxx）会按当前目录解析而 404，且资源外链替换插件只认 / 开头的站内路径
+		// manifest 也写成绝对路径：相对路径在深层页面（cleanUrls 下 /pages/xxx）
+		// 会按当前目录解析而 404。文件在 docs/public 下，public 是原样拷贝的、
+		// 不经过 rollup 打包，所以插件看不到它——里面的图标路径始终指向站点，
+		// 文件也一直在站内，切图床后照旧从 Pages 取。
 		['link', { rel: 'manifest', href: assetUrl('manifest.webmanifest') }],
 		['meta', { property: 'og:locale', content: 'zh_CN' }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
