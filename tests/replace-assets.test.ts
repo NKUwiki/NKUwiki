@@ -142,12 +142,12 @@ test('generateBundle 同时处理 JS chunk 与 CSS 资源', () => {
  * 被打包成模板字面量的路径会整批漏改（实测漏掉 180 个真实资源）。
  */
 test('模板字面量里的路径同样改写', () => {
-	const bundle = { 'app.js': { type: 'chunk', code: 'const icon = `/favicon-dark.svg`;const cover=`/food/shots/BV1.webp`' } }
+	const bundle = { 'app.js': { type: 'chunk', code: 'const icon = `/favicon-dark.svg`;const cover=`/img/food/shots/BV1.webp`' } }
 	const run = replaceAssets({ siteBase: '', image: cdn }).plugin.generateBundle as (options: unknown, bundle: unknown) => void
 	run({}, bundle)
 	assert.equal(
 		bundle['app.js'].code,
-		`const icon = \`${cdn}/favicon-dark.svg\`;const cover=\`${cdn}/food/shots/BV1.webp\``,
+		`const icon = \`${cdn}/favicon-dark.svg\`;const cover=\`${cdn}/img/food/shots/BV1.webp\``,
 	)
 })
 

@@ -226,7 +226,7 @@ test('封面就是图集第一张，且文件真实存在', () => {
 		assert.equal(photos.length, card.shotCount, `${card.name} 的图集长度与 shotCount 不符`)
 		assert.equal(card.cover, photos[0], `${card.name} 的封面不是图集第一张（第一张应是最新实拍）`)
 		for (const photo of photos) {
-			assert.match(photo, /^\/food\/shots\/(BV\w+|zuiai-[\w-]+)\.webp$/, `${card.name} 的封面路径不合规范：${photo}`)
+			assert.match(photo, /^\/img\/food\/shots\/(BV\w+|zuiai-[\w-]+)\.webp$/, `${card.name} 的封面路径不合规范：${photo}`)
 			const file = resolve(process.cwd(), 'docs/public', photo.slice(1))
 			assert.ok(existsSync(file), `${card.name} 引用了不存在的封面：${photo}（重跑 fetch-bili-food.mjs 补齐）`)
 		}

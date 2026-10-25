@@ -170,8 +170,8 @@ export const FOODS = [
 		recommend: '咖喱鸡排饭',
 		desc: '专做咖喱饭的小店，鸡排饭 15 元起，现点现炸浇汁。咖喱口味偏清淡。',
 		detail: '西南村里专做咖喱饭的小店，菜单：咖喱鸡排饭 15 元、咖喱猪肉饭 15 元、咖喱鸡肉饭 15 元、咖喱蛋包饭 15 元、咖喱猪排饭 17 元、咖喱牛肉饭 22 元、咖喱蔬菜饭 12 元，另有韩式冷面 13 元、蔬菜沙拉 7 元，可以加卤蛋 2 元/个、鸡排 5 元/份、猪排 8 元/份。实拍为咖喱鸡排饭：鸡排切块盖在饭上，配土豆胡萝卜咖喱浓汤和一撮蔬菜丝。咖喱味道有些淡，常吃咖喱饭的人可能会觉得不够浓郁，重口可以加点猪排或自己调味。图集第二张附完整菜单。',
-		cover: '/food/shots/zuiai-gailiwu-jipaifan.webp',
-		gallery: ['/food/shots/zuiai-gailiwu-jipaifan.webp', '/food/shots/zuiai-gailiwu-caidan.webp'],
+		cover: '/img/food/shots/zuiai-gailiwu-jipaifan.webp',
+		gallery: ['/img/food/shots/zuiai-gailiwu-jipaifan.webp', '/img/food/shots/zuiai-gailiwu-caidan.webp'],
 	},
 
 	/* ===== 八里台 · 大悦城（南开店） ===== */

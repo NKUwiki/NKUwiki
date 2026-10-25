@@ -143,7 +143,7 @@ export const BUILDINGS = [
     ],
     "desc": "八里台校区标志性主楼，位于校园中轴线上，是南开大学的地标建筑。",
     "photos": [
-      "/map/pic/nankai-main-building.png"
+      "/img/map/pic/nankai-main-building.png"
     ],
     "article": "/pages/MainBuilding"
   },

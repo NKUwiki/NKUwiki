@@ -277,14 +277,14 @@ test('基于现有条目投稿：信息整条搬过来，原名原地点沿用�
 		desc: '一句简介',
 		detail: '一段详情',
 		// 现有条目里 cover 通常就是 gallery 第一张，搬过来要去重
-		cover: '/food/shots/a.webp',
-		gallery: ['/food/shots/a.webp', '/food/shots/b.webp'],
+		cover: '/img/food/shots/a.webp',
+		gallery: ['/img/food/shots/a.webp', '/img/food/shots/b.webp'],
 	}
 	const draft = draftFromFood(source)
 	assert.equal(draft.name, '烤鸭饭')
 	assert.equal(draft.detail, '一段详情')
 	assert.deepEqual(draft.tags, ['盖饭'])
-	assert.deepEqual(draft.photos, ['/food/shots/a.webp', '/food/shots/b.webp'])
+	assert.deepEqual(draft.photos, ['/img/food/shots/a.webp', '/img/food/shots/b.webp'])
 
 	const same = { name: '烤鸭饭', category: 'canteen-yi-1f', location: '一食堂一楼' }
 	assert.ok(isSameFood(same, source), '只改人均/简介/图片时应当沿用原 id')

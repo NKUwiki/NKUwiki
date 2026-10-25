@@ -9,7 +9,7 @@
  *
  * 产物：
  *   docs/.vitepress/data/food-canteens.js   （自动生成，勿手改）
- *   docs/public/food/shots/<bvid>.webp
+ *   docs/public/img/food/shots/<bvid>.webp
  *   docs/.vitepress/cache/bili-food-raw.json（接口原始响应，6 小时内复用）
  *
  * 为什么要缓存：B 站接口连打十几页会触发风控（code=-352），而调文案/规则时
@@ -41,7 +41,7 @@ import { slugify } from '../docs/.vitepress/data/pinyin.js'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
 const OUT_JS = resolve(ROOT, 'docs/.vitepress/data/food-canteens.js')
-const IMG_ROOT = resolve(ROOT, 'docs/public/food/shots')
+const IMG_ROOT = resolve(ROOT, 'docs/public/img/food/shots')
 
 const MID = '3493299289590174'
 const SEASON_ID = '4166470'
@@ -338,7 +338,7 @@ function imageUrl(pic) {
  * 分目录会让同一张封面在仓库里存好几份。
  */
 async function downloadImage(shot, stats) {
-	const rel = `/food/shots/${shot.bvid}.webp`
+	const rel = `/img/food/shots/${shot.bvid}.webp`
 	const file = resolve(IMG_ROOT, `${shot.bvid}.webp`)
 	if (!REFRESH && existsSync(file) && statSync(file).size > 1024) {
 		stats.skipped++
@@ -665,7 +665,7 @@ async function main() {
 	}
 	else {
 		for (const shot of usable) {
-			shot.cover = `/food/shots/${shot.bvid}.webp`
+			shot.cover = `/img/food/shots/${shot.bvid}.webp`
 		}
 	}
 

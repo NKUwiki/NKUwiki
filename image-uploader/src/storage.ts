@@ -1,7 +1,7 @@
 /**
  * R2 操作层：网盘式列目录、去重上传、删除/重命名/移动/新建目录、_pending 审批流。
  *
- * 桶键布局镜像主站 docs/public/ 的相对路径（img/05/09/美食.jpg、food/...、favicon 等），
+ * 桶键布局镜像主站 docs/public/ 的相对路径（img/05/09/美食.jpg、img/food/shots/…、favicon 等），
  * 与站内 /img/... 引用经 replace-assets 改写后的 CDN 链接一一对应；上传器把所有写入
  * 归一到 img/ 子树（util.toManagedDir）。另有两组保留前缀：
  *   _meta/    — 图床自身数据（catalog 缓存），列表里隐藏

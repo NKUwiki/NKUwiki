@@ -73,7 +73,7 @@ export const BUILDINGS = [
 		campusId: 'n',
 		coord: [116.3972, 39.9092],
 		desc: '虚拟点位：替换为你的真实建筑。photos 字段放多张图片地址。',
-		photos: ['/map/pic/demo.jpg'],
+		photos: ['/img/map/pic/demo.jpg'],
 	},
 	{
 		id: 'demo-gate-1',

@@ -250,8 +250,8 @@ onUnmounted(() => {
 
 		<label class="pick-field">
 			<span>图片路径<em>每行一个</em></span>
-			<!-- 占位符别写成 /map/pic/xxx.png：构建期会把这类「像真资源」的串改写到图床 -->
-			<textarea v-model="photosText" rows="2" placeholder="/map/pic/xxx" />
+			<!-- 占位符别写成 /img/map/pic/xxx.png：构建期会把这类「像真资源」的串改写到图床 -->
+			<textarea v-model="photosText" rows="2" placeholder="/img/map/pic/xxx" />
 		</label>
 
 		<label class="pick-field">
