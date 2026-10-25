@@ -36,7 +36,7 @@ NKUwiki 不是把 Markdown 直接套上默认主题——站点在 VitePress 之
 
 ```text
 NKUwiki/
-├── .github/workflows/static.yml     # GitHub Actions：构建并发布到 GitHub Pages
+├── .github/workflows/static.yml     # GitHub Actions：构建 → 图床验活 → 发布到 GitHub Pages
 ├── pnpm-workspace.yaml              # workspace 定义：docs + packages/*
 ├── docs/                            # VitePress 文档根目录（站点装配层）
 │   ├── index.md                     # 首页
@@ -45,7 +45,7 @@ NKUwiki/
 │   │   ├── config.mts               # 站点配置：导航、Markdown 扩展、SEO 注入
 │   │   ├── data/                    # data loader：目录/活动/搜索索引（VitePress 约定位置）
 │   │   ├── theme/                   # 装配层：薄壳主题入口与依赖站点数据的组件
-│   │   └── scripts/                 # 构建辅助：从 Git 历史生成页面更新时间
+│   │   └── scripts/                 # 构建辅助：页面更新时间、大图压缩、图床地址验活
 │   ├── public/                      # 静态资源：文章图片（img/）、站点图标、CNAME
 │   ├── 01.新生入学/ 02.浅谈学习/ 03.群汇总/ 04.校园生活/ 05.计算机知识/
 │   ├── 10.贡献与其他/               # 协作说明、站点功能说明、关于我们、友情链接
@@ -54,7 +54,7 @@ NKUwiki/
 │   ├── theme/                       # 浏览器端：布局、通用组件、composables、分层样式
 │   └── lib/                         # 构建期业务库：文章目录、站点数据、站内搜索、资源外链替换
 ├── image-uploader/                  # 图片上传器（独立部署的 Cloudflare Worker + R2 图床，见其 README）
-├── tests/                           # 数据层单元测试
+├── tests/                           # 站点工程的单元测试（上传器的测试在其目录内）
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
 ├── tsconfig.json                    # TypeScript 配置
 └── package.json                     # 依赖与脚本
@@ -80,14 +80,17 @@ pnpm dev               # 本地开发，http://localhost:5173/
 pnpm check             # 页面历史生成 + TypeScript + ESLint（含 CSS）+ 单元测试
 pnpm build             # 生产构建，校验 Markdown 内部链接
 pnpm preview           # 预览生产产物，http://localhost:4173/
+pnpm check:cdn         # 逐个校验产物里的图床地址（需先带 WIKI_ASSETS_BASE 构建）
 pnpm images:optimize   # 压缩 docs/public 下的大图（维护用）
 ```
 
-文章图片默认随仓库放在 `docs/public/img/栏目编号/文章编号/`；需要把图片外置到图床时，部署 [image-uploader](image-uploader/README.md)（Cloudflare Worker + R2，网页上传、按文章编号归档、审批流），再以 `WIKI_ASSETS_BASE=https://img.<域名> pnpm build` 构建即可把产物里的资源链接统一改写到图床，正文写法不变。
+文章图片随仓库放在 `docs/public/img/栏目编号/文章编号/`，构建期由主题包的 `replace-assets` 插件把产物里的资源地址统一改写到图床，**正文写法不变**，图片存在哪里都不用改文章。线上图床是 [image-uploader](image-uploader/README.md) 部署的 Cloudflare Worker + R2（网页上传、按文章编号归档、审批流）；开关是 `.github/workflows/static.yml` 里的 `WIKI_ASSETS_BASE`，删掉即回退为 GitHub Pages 直出。
+
+图片同时存在仓库与桶两处，而插件只做改写、不检查对象是否存在，所以 CI 在部署前会逐个校验产物里的图床地址（`pnpm check:cdn`）：取不到就**不部署**，避免线上出现 404。桶的同步方式与两道保险见 [image-uploader README](image-uploader/README.md#图片同步两道保险)。
 
 Windows 下还可以运行根目录的 `./build.ps1` 一键构建并预览（自动挑选空闲端口，`-Port` 可指定）。
 
-推送 `main` 后由 GitHub Actions 自动构建并发布到 GitHub Pages；发往 `main` 的 PR 上 CI 会自动运行 `pnpm check` 与 `pnpm build`。
+推送 `main` 后由 GitHub Actions 自动构建并发布到 GitHub Pages；发往 `main` 的 PR 上 CI 会自动运行 `pnpm check` 与 `pnpm build`。main 构建若在验活阶段发现缺图会直接失败，本次不部署、线上保持上一版。
 
 ## 许可证
 
