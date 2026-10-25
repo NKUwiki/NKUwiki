@@ -23,7 +23,7 @@
  * 校区轮廓 POLYGONS 从 ./campus-boundary.js 注入（脚本生成，勿手改），按 id 引用。
  *
  * 各字段的详细说明与「点位关联文章（article）」用法，
- * 见站内《贡献指南》的「校园地图数据维护」一节。
+ * 见站内《站点功能说明》的「校园地图（MapView）」一节。
  */
 
 /* 校区边界（GCJ02）：{ 校区 key: [环, 环...] }，由 scripts/gen-boundary.mjs

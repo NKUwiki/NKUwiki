@@ -31,17 +31,17 @@
 
 - **不要随便新建顶层编号目录**，想加新大类先在群里或 Issue 里提一句；
 - `archives/`、`categories/`、`tags/` 是站点功能页，不要往里面写文章；
-- 新增图片放 `docs/public/img/目录编号/文章编号/`。站点部署了[图片上传器](image-uploader/README.md)后也可以直接在网页里上传：选好文章自动归档到对应编号目录，正文继续写本地路径（构建时自动替换为图床地址），无需再动仓库。
+- 新增图片**优先传到[图床上传器](https://upload.freshnkuer.wiki)**（选文章即归档到 `img/栏目编号/文章编号/`，正文照写 `/img/...`，构建时自动换成图床地址，仓库不增文件）；只有站点自身资源（favicon、og 图、manifest、logo）和已有旧图才放进 `docs/public/`。
 
 ## 本地开发与构建
 
-需要 Node.js 22.19+ / 24.11+ / 26+ 与 pnpm 11.24.0：
+需要 Node.js 22.19+ / 24.11+ / 26+ 与 pnpm 12.15.0：
 
 ```bash
-npm install --global pnpm@11.24.0
+npm install --global pnpm@12.15.0
 pnpm install --frozen-lockfile
 pnpm dev         # 本地开发，http://localhost:5173/
-pnpm check       # TypeScript、ESLint（含 CSS）与数据层测试
+pnpm check       # 页面历史生成 + TypeScript + ESLint（含 CSS）+ 单元测试
 pnpm build       # 生产构建，校验 Markdown 内部链接
 pnpm preview     # 预览生产产物，http://localhost:4173/
 ```

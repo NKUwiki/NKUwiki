@@ -36,7 +36,7 @@ NKUwiki 不是把 Markdown 直接套上默认主题——站点在 VitePress 之
 
 ```text
 NKUwiki/
-├── .github/workflows/static.yml     # GitHub Actions：构建 → 图床验活 → 发布到 GitHub Pages
+├── .github/workflows/static.yml     # GitHub Actions：check → 增量镜像图床 → 构建 → 验活 → 发布到 GitHub Pages
 ├── pnpm-workspace.yaml              # workspace 定义：docs + packages/*
 ├── docs/                            # VitePress 文档根目录（站点装配层）
 │   ├── index.md                     # 首页
@@ -53,6 +53,7 @@ NKUwiki/
 ├── packages/wiki-theme/             # @nkuwiki/theme 主题包（pnpm workspace，源码直引）
 │   ├── theme/                       # 浏览器端：布局、通用组件、composables、分层样式
 │   └── lib/                         # 构建期业务库：文章目录、站点数据、站内搜索、资源外链替换
+├── packages/wiki-map/               # @nkuwiki/wiki-map 地图包：MapView、点位拾取面板（不参与 ESLint，便于同步上游）
 ├── image-uploader/                  # 图片上传器（独立部署的 Cloudflare Worker + R2 图床，见其 README）
 ├── tests/                           # 站点工程的单元测试（上传器的测试在其目录内）
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
@@ -70,10 +71,10 @@ NKUwiki/
 
 ## 本地开发与构建
 
-环境要求：Node.js 22.19+ / 24.11+ / 26+，以及 `packageManager` 固定的 pnpm 11.24.0（无需 Corepack）。
+环境要求：Node.js 22.19+ / 24.11+ / 26+，以及 `packageManager` 固定的 pnpm 12.15.0（无需 Corepack）。
 
 ```bash
-npm install --global pnpm@11.24.0
+npm install --global pnpm@12.15.0
 pnpm install
 
 pnpm dev               # 本地开发，http://localhost:5173/
@@ -84,7 +85,7 @@ pnpm check:cdn         # 逐个校验产物里的图床地址（需先带 WIKI_A
 pnpm images:optimize   # 压缩 docs/public 下的大图（维护用）
 ```
 
-图片一律放在 `docs/public/img/` 下（`栏目编号/文章编号/`、美食封面 `food/shots/`、地图照片 `map/pic/`），构建期由主题包的 `replace-assets` 插件把产物里的资源地址统一改写到图床，**正文写法不变**，图片存在哪里都不用改文章。线上图床是 [image-uploader](image-uploader/README.md) 部署的 Cloudflare Worker + R2（网页上传、按文章编号归档、审批流），它把上传的图同样落到 `img/` 下 —— 也就是说同一张图既可以随仓库来，也可以只存在图床，两者的正文引用写法完全一致；开关是 `.github/workflows/static.yml` 里的 `WIKI_ASSETS_BASE`，删掉即回退为 GitHub Pages 直出。
+新图优先传[图床上传器](https://upload.freshnkuer.wiki)（Cloudflare Worker + R2，网页上传、按文章编号归档、审批流），仓库 `docs/public/img/` 只留已有旧图与站点自身资源（favicon、og 图、manifest、logo）。两处的路径规则相同：`栏目编号/文章编号/`、美食封面 `food/shots/`、地图照片 `map/pic/`，正文一律写 `/img/...`。构建期由主题包的 `replace-assets` 插件把产物里的资源地址统一改写到图床，**正文写法不变**，图片存在哪里都不用改文章 —— 同一张图既可以随仓库来，也可以只存在图床；开关是 `.github/workflows/static.yml` 里的 `WIKI_ASSETS_BASE`，删掉即回退为 GitHub Pages 直出。
 
 图片同时存在仓库与桶两处，而插件只做改写、不检查对象是否存在，所以 CI 在部署前会逐个校验产物里的图床地址（`pnpm check:cdn`）：取不到就**不部署**，避免线上出现 404。构建前还有一步可选的增量镜像——配好 `CLOUDFLARE_API_TOKEN` 与 `CLOUDFLARE_ACCOUNT_ID` 两个 repository secret 后，往仓库加图不必再手动传桶（比对 ETag 与本地 MD5，内容一致就跳过，无改动时十几秒）。同步方式、两道保险与 token 权限见 [image-uploader README](image-uploader/README.md#图片同步两道保险)。
 

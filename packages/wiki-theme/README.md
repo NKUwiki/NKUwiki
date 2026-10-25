@@ -15,15 +15,16 @@ packages/wiki-theme/
 ├── package.json        # exports 指向源码；peerDependencies: vue
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
-│   ├── components/     # 26 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
-│   ├── composables/    # 6 个无 UI 的客户端逻辑
+│   ├── components/     # 28 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
+│   ├── composables/    # 13 个无 UI 的客户端逻辑
 │   └── styles/         # 11 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
     ├── types.ts        # 全局共享类型
-    ├── content/        # 文章目录：catalog / category / cardlist
-    ├── data/           # 站点数据：members / authors / activity / site
-    ├── markdown/       # markdown-it 内容增强规则：annotation / plot / mark / code-title / image-size / steps / timeline
-    └── search/         # 站内搜索：search 索引 / searchCore 纯函数
+    ├── content/        # 文章目录与内容块：catalog / category / cardlist / gallery / flink
+    ├── data/           # 站点数据：members / authors / activity / site / announcement
+    ├── markdown/       # markdown-it 内容增强规则：annotation / plot / mark / code-title / image-size / steps / timeline / container-end
+    ├── search/         # 站内搜索：search 索引 / searchCore 纯函数
+    └── vite/           # 构建期插件：replace-assets（资源外链替换）
 ```
 
 ## theme/ — 浏览器端
@@ -40,7 +41,7 @@ packages/wiki-theme/
 
 入口还负责：侧栏收放状态尽早同步（避免闪烁）、导航高亮、`wiki:route-change` 事件派发、标题锚点跳转高亮、Nolebase 聚光灯默认值写入、隐秘文本 `{.click}` 的点击开合（`installPlotToggle`）、打印前临时切回浅色主题（暗色页面打印费墨，打印结束恢复）。
 
-### components/ — 26 个组件
+### components/ — 28 个组件
 
 | 组件 | 职责 | 注册方式 |
 | --- | --- | --- |
@@ -70,6 +71,8 @@ packages/wiki-theme/
 | `ImagePreview.vue` | 图片预览（lightbox）：点击正文图片全屏放大，多图轮播、滚轮缩放、拖拽平移（随 WikiLayout 挂载） | 内部引用 |
 | `WaterMark.vue` | 全局水印：斜向平铺站名（SVG 平铺、亮暗两套），打印时不印（随 WikiLayout 挂载） | 内部引用 |
 | `PrintButton.vue` | 「打印本页」按钮：挂在右侧目录面板顶部，唤起浏览器打印（打印排版见 base.css） | 内部引用（aside-top 插槽） |
+| `OnlineEdit.vue` | 「在线编辑本页」入口：深链到 webObsidian 的当前页编辑器，读者改完可在平台内直接提 PR；`VITE_EDITOR_URL` 未注入时整体不渲染，`edit: false` 可单篇关闭 | 内部引用 |
+| `TwikooComments.vue` | Twikoo 评论区：挂在 doc-after，正文之后、页面历史之前；`VITE_TWIKOO_ENV_ID` 未注入 / `comments: false` / 非文章布局三重门控，任一不满足即整体不渲染（零开销） | 内部引用 |
 
 ### composables/ — 无 UI 的客户端逻辑
 
@@ -80,7 +83,14 @@ packages/wiki-theme/
 | `headingHighlight.ts` | 点击标题/大纲跳转的平滑滚动与目标高亮 |
 | `plot.ts` | 隐秘文本 `!!...!!{.click}` 的点击开合（文档级事件委托） |
 | `searchState.ts` | 搜索弹窗开关、加载状态与全局快捷键（模块级单例，只注册一次） |
-| `share-image.ts` | 页面分享图的绘制（modern-screenshot + 二维码） |
+| `share-image.ts` | 页面分享图的绘制（modern-screenshot + 二维码；拉图必须 `cache: 'reload'` 绕开浏览器的不透明缓存，否则 CORS 校验失败、长图静默缺图） |
+| `imageFade.ts` | 正文图片加载淡入，配合构建期注入的宽高，图未到也不会抖布局（三层降级：无 JS 直接显示） |
+| `reveal.ts` | 滚动进入渐显：`data-reveal` 元素首次进入视口时淡入上移（同样三层降级） |
+| `pageTransition.ts` | 跨页转场：监听 `wiki:route-change`，只给内容容器加 class，不包 `<Transition>`，避免与 VitePress 渲染管线打架 |
+| `themeTransition.ts` | 深浅色切换的整页交叉淡入（View Transitions API，用 UA 默认动画，不自定义 `::view-transition-*`） |
+| `modalA11y.ts` | 弹层无障碍：打开记录触发元素并把焦点移入、Tab 在弹层内循环、关闭还原焦点（支持两级嵌套），同时锁背景滚动 |
+| `spotlightGuard.ts` | 聚光灯高亮显隐守卫：修 Nolebase 只在鼠标移动时重算、移出后高亮「钉」在原处的问题 |
+| `twikoo.ts` | 评论区实例销毁：twikoo 2.x 无公开销毁 API，仅清 DOM 会漏掉 document 捕获阶段的全局监听 |
 
 ### styles/ — 分层样式
 
@@ -107,6 +117,7 @@ packages/wiki-theme/
 | `content/category.ts` | 分类层级路径的解析、统计与排序（分类页与筛选栏共用） |
 | `content/cardlist.ts` | `::: cardlist` 短码：把 Markdown 表格渲染成卡片网格 |
 | `content/gallery.ts` | 图片画廊的布局纯函数：按宽高比贪心分行、等高铺满（单元测试在 `tests/gallery.test.ts`） |
+| `content/flink.ts` | `<flink>` 友链数据块：把 md 里的列表解析成 FriendLinks 组件的 props，数据与卡片样式分离 |
 | `data/members.example.ts` | 成员表**格式示例**（虚拟数据）。站点真实成员表在站点侧 `docs/.vitepress/data/members.ts`，经 `AuthorLookup` 注入 `collectAuthors` |
 | `data/authors.ts` | 作者解析纯函数：frontmatter + 注入的成员表 → 完整作者对象，头像首字兜底；不感知站点数据 |
 | `data/activity.ts` | 活动页数据：扫描 `docs/activity/` 生成活动列表 |
@@ -119,8 +130,10 @@ packages/wiki-theme/
 | `markdown/image-size.ts` | 本地图片构建期读宽高写入 `<img>`，防布局跳动（CLS）；远程图与已标尺寸的跳过 |
 | `markdown/steps.ts` | 步骤条容器 `::: steps`：容器内有序/无序列表 → 圆点编号+竖向连线的步骤条（CSS counter 编号，视觉参考 plume plugin-md-power） |
 | `markdown/timeline.ts` | 时间线容器 `::: timeline`：无序列表 → 时间轴（条目属性 time/type/color/line/card/placement，渲染为纯 HTML + CSS，不依赖 plume 的 Vue 组件与 iconify，icon 属性暂不支持） |
+| `markdown/container-end.ts` | 块级容器（`::: xxx`）闭合行的扫描，steps / timeline / cardlist 共用；识别嵌套容器，避免外层被内层闭合行截断 |
 | `search/search.ts` | 构建期索引：扫描全部条目生成 SearchDoc（标题/章节/正文纯文本） |
 | `search/searchCore.ts` | 搜索纯函数：中文分词、变体展开、正文摘要与高亮（构建端与客户端共用） |
+| `vite/replace-assets.ts` | 构建期资源外链替换：把产物 HTML / CSS / JS 里的站内绝对资源路径改成图床地址（`apply: 'build'`，dev 不生效；`skip` 排除带哈希的 `/assets/`；配置见 `docs/.vitepress/config.mts`） |
 
 ## 在站点侧使用
 

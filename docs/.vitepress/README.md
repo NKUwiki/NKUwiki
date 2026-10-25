@@ -31,21 +31,23 @@ VitePress 只扫描 `srcDir` 下的 `*.data.ts`，因此它们必须留在站点
 | `site-components/WikiSearch.vue` | 站内搜索弹窗（MiniSearch + 自建分词） |
 | `site-components/MemberGrid.vue` | 成员网格卡片（「关于我们」页使用）：读 `data/members.ts`，头像优先级与作者胶囊一致 |
 
-这三个组件留在站点侧的原因：它们直接消费 data loader，而 data loader 只能被 `srcDir` 扫描——组件与数据绑定，一起留在装配层。
+这些组件留在站点侧的原因：它们直接消费 data loader，而 data loader 只能被 `srcDir` 扫描——组件与数据绑定，一起留在装配层。
 
 ## scripts/ — 构建辅助
 
 | 文件 | 职责 |
 | --- | --- |
 | `gen-history.mjs` | 从 Git 提交历史计算每篇页面的最近更新时间，写 `history.json`（dev/build 前自动执行，带缓存） |
+| `optimize-images.mjs` | `pnpm images:optimize`：压缩 `docs/public` 下超过阈值的大图（维护用，不参与构建） |
+| `check-cdn-assets.mjs` | `pnpm check:cdn`：把产物里的图床地址逐个 HEAD 验活，CI 部署前的闸门（main 取不到即不部署，PR 只警告） |
 | `contributors-mapping.json` | 贡献者邮箱/姓名 → GitHub 用户名映射（gen-history 专用数据） |
 
 ## packages/wiki-theme — 主题包
 
 主题主体（通用组件、布局、composables、styles、构建期业务库 `lib/`）全部在 **`@nkuwiki/theme`** 包内，组件清单、注册方式、包边界约定与复用方法详见 **[packages/wiki-theme/README.md](../../packages/wiki-theme/README.md)**。要点：
 
-- `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、MapView 等 21 个）、composables（sidebar、chips、searchState 等）、styles 分层样式
-- `lib/`：构建期业务库——`content/`（catalog、category、cardlist、gallery）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）与 `types.ts`
+- `theme/`：WikiLayout 布局、通用组件（ArticleMeta、GitHistory、Gallery 等 28 个，地图组件已拆到 `packages/wiki-map`）、composables（sidebar、chips、searchState 等 13 个）、styles 分层样式
+- `lib/`：构建期业务库——`content/`（catalog、category、cardlist、gallery、flink）、`data/`（members、authors、activity、site）、`search/`（search、searchCore）、`vite/`（replace-assets 资源外链替换）与 `types.ts`
 
 ## 分类标准
 
