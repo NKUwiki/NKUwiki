@@ -10,3 +10,10 @@ docs/.vitepress/.temp/
 docs/.vitepress/history.json
 gen-history.cache.json
 .workbuddy/
+# 图片上传器（独立 npm 项目，不进 pnpm workspace）
+image-uploader/node_modules/
+image-uploader/.wrangler/
+image-uploader/.dev.vars
+image-uploader/tree.json
+image-uploader/catalog-cache.json
+

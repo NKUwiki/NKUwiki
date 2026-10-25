@@ -1,0 +1,25 @@
+{
+  "name": "@nkuwiki/image-uploader",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NKUwiki 图片上传器：Cloudflare Worker + R2，按文章编号分层存储，配合构建期 replace-assets 插件实现图床外链",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261010.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.42.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261019.1": true
+  }
+}

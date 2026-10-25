@@ -1,0 +1,42 @@
+# NKUwiki 图片上传器部署配置。account_id 不入库：部署者用
+# `wrangler login` 登录后自动携带，或手动填入本文件（不要提交）。
+name = "nkuwiki-image-uploader"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+# 默认不开放 workers.dev 公网地址：入口走下面的自定义域。
+workers_dev = false
+
+# Worker 自定义域（wrangler deploy 时自动创建 DNS 记录与证书）。
+# 该域名同时受 Cloudflare Access 应用「upload」保护（Zero Trust 控制台配置）。
+routes = [ { pattern = "upload.freshnkuer.wiki", custom_domain = true } ]
+
+# 图片桶。自定义域 img.freshnkuer.wiki 已绑定在本桶上（2026-10-25 实测确认；
+# 曾按旧文档另建过 nkuwiki-images，未绑域，可删除）。
+# 桶键镜像 docs/public/ 的相对路径（img/...、food/...、favicon 等）。
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "nkuwiki"
+
+[vars]
+# 公开图片域名（不含尾斜杠）。留空则 UI 复制链接时用 Worker 自身域名（走 /img/* 代理）。
+IMAGE_BASE_URL = "https://img.freshnkuer.wiki"
+# 是否强制 Cloudflare Access 登录。已接入 Access，必须为 true：
+# Worker 对所有 /api/* 验签 + 判定角色（owner / member / guest）。
+REQUIRE_AUTH = true
+# 主站仓库（用于拉取「栏目/文章」目录树，供上传时按文章归档）。
+WIKI_REPO = "NKUwiki/NKUwiki"
+# GitHub 组织名（判定 owner / member / guest 角色）。
+GITHUB_ORG = "NKUwiki"
+# 逗号分隔的邮箱名单：命中的登录者视为 owner，不依赖 GitHub 组织查询。
+# 兜底管理员：GitHub IdP 尚未接入时，用 Cloudflare 账号邮箱登录也能保持 owner。
+ADMIN_EMAILS = "1352862815@qq.com"
+# 单文件大小上限（MB）。Worker 内存有限，不建议超过 32。
+MAX_UPLOAD_MB = "25"
+
+# 敏感/环境相关配置用 secret 而非 vars（不进 git、不进 dashboard 明文）：
+#   wrangler secret put GITHUB_TOKEN       # 可选：调 GitHub API 防限流，无 token 时走匿名限额
+#   wrangler secret put ACCESS_TEAM_DOMAIN # 形如 example.cloudflareaccess.com（REQUIRE_AUTH=true 时必填）
+#   wrangler secret put ACCESS_AUD         # Access 应用的 AUD 标签（REQUIRE_AUTH=true 时必填）
+#
+# 本地开发：复制 .dev.vars.example 为 .dev.vars 填入同名变量（被 .gitignore 排除）。

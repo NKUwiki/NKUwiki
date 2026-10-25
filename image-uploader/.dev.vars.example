@@ -1,0 +1,6 @@
+# 复制为 .dev.vars 使用（wrangler dev 自动加载，已被 .gitignore 排除）。
+# 本地开发一般全部留空即可：REQUIRE_AUTH=false 时所有操作直接生效。
+
+# GITHUB_TOKEN=github_pat_xxx
+# ACCESS_TEAM_DOMAIN=example.cloudflareaccess.com
+# ACCESS_AUD=xxxx.access

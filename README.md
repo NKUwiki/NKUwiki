@@ -52,7 +52,8 @@ NKUwiki/
 │   └── categories/ tags/ archives/  # 专题页与归档
 ├── packages/wiki-theme/             # @nkuwiki/theme 主题包（pnpm workspace，源码直引）
 │   ├── theme/                       # 浏览器端：布局、通用组件、composables、分层样式
-│   └── lib/                         # 构建期业务库：文章目录、站点数据、站内搜索
+│   └── lib/                         # 构建期业务库：文章目录、站点数据、站内搜索、资源外链替换
+├── image-uploader/                  # 图片上传器（独立部署的 Cloudflare Worker + R2 图床，见其 README）
 ├── tests/                           # 数据层单元测试
 ├── eslint.config.mjs                # ESLint（含 CSS）配置
 ├── tsconfig.json                    # TypeScript 配置
@@ -81,6 +82,8 @@ pnpm build             # 生产构建，校验 Markdown 内部链接
 pnpm preview           # 预览生产产物，http://localhost:4173/
 pnpm images:optimize   # 压缩 docs/public 下的大图（维护用）
 ```
+
+文章图片默认随仓库放在 `docs/public/img/栏目编号/文章编号/`；需要把图片外置到图床时，部署 [image-uploader](image-uploader/README.md)（Cloudflare Worker + R2，网页上传、按文章编号归档、审批流），再以 `WIKI_ASSETS_BASE=https://img.<域名> pnpm build` 构建即可把产物里的资源链接统一改写到图床，正文写法不变。
 
 Windows 下还可以运行根目录的 `./build.ps1` 一键构建并预览（自动挑选空闲端口，`-Port` 可指定）。
 
