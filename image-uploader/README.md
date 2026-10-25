@@ -29,6 +29,68 @@
 
 > `REQUIRE_AUTH=false` 时不做任何鉴权，所有请求都按管理员处理——只适合本地开发或完全私有的内测环境。**部署到公网前务必先配好 Access 再改成 `true`**（生产当前已为 `true`）。
 
+### 权限一览
+
+| 操作 | 管理员 | 成员 | 访客 |
+| --- | :-: | :-: | :-: |
+| 浏览图片库、预览 | ✅ | ✅ | ✅ |
+| 复制公开链接 | ✅ | ✅ | ✅ |
+| 上传图片 | ✅ 立即生效 | ✅ 立即生效 | ⏳ 需审批 |
+| 重命名 / 移动 / 新建目录 | ✅ | ✅ | ⏳ 需审批 |
+| 删除 | ✅（`img/` 根目录受保护拒删） | ✅ | ⏳ 需审批 |
+| 查看待审批列表 | ✅ 全部申请 | 仅自己的 | 仅自己的 |
+| 批准 / 拒绝申请 | ✅ | ❌ | ❌ |
+
+### 流程图：登录与角色判定
+
+```mermaid
+flowchart TD
+    U["打开 upload.freshnkuer.wiki"] --> L{"已通过 Cloudflare Access 登录？"}
+    L -->|"否"| A["Access 登录页：GitHub / Cloudflare 账号"]
+    A --> L
+    L -->|"是"| V["关口① JWT 验签：aud / iss / 有效期"]
+    V --> W{"邮箱命中 ADMIN_EMAILS 白名单？"}
+    W -->|"是"| OWNER["管理员 owner"]
+    W -->|"否"| I["get-identity 读取 GitHub 身份"]
+    I --> R{"关口② GitHub 组织角色判定（NKUwiki，缓存 5 分钟）"}
+    R -->|"组织 owner"| OWNER
+    R -->|"组织成员"| MEMBER["成员 member"]
+    R -->|"组织外 / 查询失败"| GUEST["访客 guest（宁降勿纵）"]
+```
+
+### 流程图：一张图片要过的关、最终到哪
+
+```mermaid
+flowchart TD
+    S["选择文件 / 拖拽 / 粘贴截图"] --> H["前端计算 SHA-256"]
+    H --> P["POST /api/upload（目标目录归一到 img/ 子树）"]
+    P --> Q{"关口③ 上传校验：文件名清洗 / 25MB 上限 / 哈希核对"}
+    Q -->|"不通过"| X1["逐文件报错，不入库"]
+    Q -->|"通过"| ROLE{"角色？"}
+    ROLE -->|"管理员 / 成员"| DEDUP{"关口④ 同名去重（R2 元数据对比）"}
+    ROLE -->|"访客"| PEND["内容与元数据暂存 _pending/&lt;id&gt;.blob / .json<br/>（不在图片库、链接未生效）"]
+    PEND --> REV["关口⑤ 管理员审批"]
+    REV -->|"拒绝"| DEL["申请与内容一并丢弃"]
+    REV -->|"批准"| CHK{"SHA-256 复核"}
+    CHK -->|"不符"| KEEP["报错，申请保留待人工处理"]
+    CHK -->|"相符"| DEDUP
+    DEDUP -->|"同名同内容"| REUSE["复用现有对象（deduped）"]
+    DEDUP -->|"同名不同内容"| REN["自动加内容哈希后缀：图.jpg → 图-a1b2c3.jpg"]
+    DEDUP -->|"无冲突"| WRITE["写入 R2 桶：img/栏目编号/文章编号/文件名"]
+    REUSE --> FINAL["最终地址：https://img.freshnkuer.wiki/img/栏目/文章/文件名"]
+    REN --> FINAL
+    WRITE --> FINAL
+```
+
+### 流程图：管理操作（删除 / 重命名 / 移动 / 新建目录）
+
+```mermaid
+flowchart LR
+    O["删除 / 重命名 / 移动 / 新建目录"] --> R{"角色？"}
+    R -->|"管理员 / 成员"| E["立即执行<br/>（整删 img/ 根目录会被拒绝）"]
+    R -->|"访客"| Q["写入 _pending/ 待审批"] --> A2["管理员批准后才执行"]
+```
+
 ### 管理员（owner）
 
 日常管理全部即时生效，无需等待审批：
