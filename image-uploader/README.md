@@ -165,14 +165,46 @@ curl -s -D - -o /dev/null -H "Origin: https://freshnkuer.wiki" \
 1. **闸门（已启用，零密钥）**：CI 在构建之后、上传产物之前跑 `docs/.vitepress/scripts/check-cdn-assets.mjs`，把产物里每个图床地址 HEAD 一遍（188 条约 10 秒，8 并发；HEAD 不被支持时退回 `Range: bytes=0-0` 的 GET）。main 上有取不到的就**直接失败、不部署**，线上保持旧版本；PR 只打 warning（贡献者没有桶的写权限，硬卡会让人无从下手）。本地等价命令：`pnpm check:cdn`。
 2. **自动镜像（可选）**：配了两个 secret 后，CI 在构建前跑 `npm ci && node scripts/mirror-public.mjs`，加图不必再手动补传。
 
-配 secret（`Settings → Secrets and variables → Actions`）：
+没配也能正常跑：同步步骤打印一行提示后跳过，缺图交给闸门拦。要配就一次配完，两个值：
+
+**① 建 token**（只给桶写权限，别用模板）：
+
+1. <https://dash.cloudflare.com/profile/api-tokens> → **Create Token** → **Create Custom Token** 的 **Get started**；
+2. Permissions 只加一行：`Account` · `Workers R2 Storage` · `Edit`；
+3. Account Resources 选 `Include` + 本账号；Zone Resources 留空（不碰 DNS）；
+4. **Client IP Address Filtering 必须留空**——GitHub runner 是动态 IP，填了 CI 必 403；
+5. TTL 建议设个到期日，页面上显示的 token 只出现一次，关掉就只能 Roll 重来。
+
+**② 填 secret**（`Settings → Secrets and variables → Actions` → **Repository secrets**）：
 
 | Secret | 取值 |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | My Profile → API Tokens，需要 R2 读写权限 |
-| `CLOUDFLARE_ACCOUNT_ID` | 控制台域名概览页右侧的 Account ID |
+| `CLOUDFLARE_API_TOKEN` | 上一步复制的 token |
+| `CLOUDFLARE_ACCOUNT_ID` | `wrangler whoami` 里的 Account ID，或控制台 R2 概览页右侧 |
 
-没配也能正常跑：同步步骤打印一行提示后跳过，缺图交给闸门拦。
+三个容易踩的点：
+
+- **不要用 R2 页面的「Manage R2 API Tokens」**：那里生成的是 S3 风格凭据（Access Key ID / Secret），wrangler 认不了，会报 `Invalid access token`；
+- **必须放 Repository secrets**，不能放 Environment secrets——build job 没绑 environment，读不到；
+- `CLOUDFLARE_ACCOUNT_ID` 不是秘密，但 workflow 读的是 `secrets.` 前缀，放 Variables 会读不到。
+
+先在本地用同一份凭据做只读验证（不需要推送）：
+
+```bash
+cd image-uploader
+CLOUDFLARE_API_TOKEN=<token> CLOUDFLARE_ACCOUNT_ID=<account-id> \
+  node node_modules/wrangler/bin/wrangler.js r2 bucket list   # 能看到 nkuwiki 即通过
+```
+
+CI 里正常的样子：`Mirror docs/public into R2 bucket` 步骤刷出一串 `✓ img/...`，收尾 `完成：196 个对象`。异常对照：
+
+| 现象 | 原因 |
+| --- | --- |
+| 步骤显示「未配置 CLOUDFLARE_API_TOKEN，跳过自动镜像」 | secret 名字不符或放错位置（Environment 而非 Repository） |
+| `Invalid access token` | 用了 R2 的 S3 凭据，或 token 复制不全 |
+| `Authentication error [code: 10000]` / 403 | Account Resources 没 Include 到该账号 |
+| `could not find account` | `CLOUDFLARE_ACCOUNT_ID` 缺失或写错 |
+| 本地能跑、CI 403 | token 上设了 IP 过滤 |
 
 手动补传（本机需先 `wrangler login`）：
 
