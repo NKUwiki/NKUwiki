@@ -57,4 +57,6 @@ pnpm preview     # 预览生产产物，http://localhost:4173/
 
 ## 行为准则与许可
 
-参与本项目即视为同意遵守[社区行为准则](CODE_OF_CONDUCT.md)。提交文章、代码或其他素材，即表示同意按双协议（代码 MIT、内容 CC BY-NC-SA 4.0）授权发布，详见[README 的许可证说明](README.md#许可证)。
+参与本项目即视为同意遵守[社区行为准则](CODE_OF_CONDUCT.md)。提交文章、代码或其他素材，即表示你同意按项目双协议授权发布：**内容**（文章、配图、表格数据等）依 CC BY-NC-SA 4.0，**代码**依 MIT。
+
+完整的授权条件（署名、非商业、相同方式共享）、署名模板与投稿者需确认的事项，见[贡献指南的投稿许可协议](https://freshnkuer.wiki/pages/Contributing/)；协议全文见 [LICENSE-CONTENT.md](LICENSE-CONTENT.md) 与 [LICENSE](LICENSE)。
