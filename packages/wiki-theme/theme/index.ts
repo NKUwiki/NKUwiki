@@ -17,6 +17,7 @@ import { installPageTransition } from './composables/pageTransition'
 import { installPlotToggle } from './composables/plot'
 import { installReveal } from './composables/reveal'
 import { syncSidebarCollapsed } from './composables/sidebar'
+import { installSpotlightAnchor } from './composables/spotlightAnchor'
 import { installSpotlightGuard } from './composables/spotlightGuard'
 import '@vitepress-plugin/markmap/style.css'
 import './styles/index.css'
@@ -34,6 +35,8 @@ installReveal()
 installImageFade()
 // 聚光灯高亮块的显隐守卫（组件只在鼠标移动时重算位置，移出正文不清理）
 installSpotlightGuard()
+// 高亮块的横向锚点：不让它跟着段落/列表的缩进左右跳动
+installSpotlightAnchor()
 
 /**
  * 分类页的「新生入学」等导航入口都用 /categories/?category=xxx 表示，

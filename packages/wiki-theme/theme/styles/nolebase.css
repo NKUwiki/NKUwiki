@@ -20,6 +20,20 @@ html.wiki-spotlight-outside .VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock 
 	opacity: 0;
 }
 
+/* 高亮块的横向锚点：恒定对齐正文栏，不跟着内容缩进走。
+   组件把 left/width 贴着被高亮的元素算（left = 元素 left - 4、width = 元素 width + 8），
+   列表项比正文左边界右移 20px、更深的嵌套更多，于是那条竖线在同一篇文章里左一下右一下。
+   两个变量由 composables/spotlightAnchor.ts 实测正文栏后写入，类只在写入成功后挂上，
+   避免变量为空时把高亮块挤成一团。纵向不动，仍是组件按行的 rect 计算。
+   组件把坐标写在 inline style 上，样式表只有 !important 能压过——这也是本仓库唯一
+   必须用它的场景，其余场合都靠提权类名解决。 */
+html.wiki-spotlight-anchored .VPNolebaseEnhancedReadabilitiesSpotlightHoverBlock {
+	/* eslint-disable-next-line css/no-important */
+	left: calc(var(--wiki-spotlight-left) - 4px) !important;
+	/* eslint-disable-next-line css/no-important */
+	width: calc(var(--wiki-spotlight-width) + 8px) !important;
+}
+
 /* 顶栏里 GitHub 与「阅读增强」之间的竖分隔线：组件默认左右各 0.5rem，
    但左侧 GitHub 图形只留 8px 间距、右侧按钮有 12px 内边距加一个箭头，
    视觉上分隔线偏向 GitHub 一侧（左 18.5px / 右 30.1px）。

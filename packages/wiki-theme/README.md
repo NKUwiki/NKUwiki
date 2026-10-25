@@ -16,7 +16,7 @@ packages/wiki-theme/
 ├── theme/              # 浏览器端
 │   ├── index.ts        # 主题入口：extends 默认主题、注册全局组件
 │   ├── components/     # 28 个 Vue 组件（地图组件已拆分至 packages/wiki-map）
-│   ├── composables/    # 13 个无 UI 的客户端逻辑
+│   ├── composables/    # 14 个无 UI 的客户端逻辑
 │   └── styles/         # 11 个分层样式文件
 └── lib/                # 构建期执行、双端共享的业务库
     ├── types.ts        # 全局共享类型
@@ -90,6 +90,7 @@ packages/wiki-theme/
 | `themeTransition.ts` | 深浅色切换的整页交叉淡入（View Transitions API，用 UA 默认动画，不自定义 `::view-transition-*`） |
 | `modalA11y.ts` | 弹层无障碍：打开记录触发元素并把焦点移入、Tab 在弹层内循环、关闭还原焦点（支持两级嵌套），同时锁背景滚动 |
 | `spotlightGuard.ts` | 聚光灯高亮显隐守卫：修 Nolebase 只在鼠标移动时重算、移出后高亮「钉」在原处的问题 |
+| `spotlightAnchor.ts` | 聚光灯高亮横向锚定：把正文栏左/宽写进 CSS 变量，覆盖组件「贴着元素算」的 left/width，高亮块不再随列表、引用块的缩进左右跳动 |
 | `twikoo.ts` | 评论区实例销毁：twikoo 2.x 无公开销毁 API，仅清 DOM 会漏掉 document 捕获阶段的全局监听 |
 
 ### styles/ — 分层样式
