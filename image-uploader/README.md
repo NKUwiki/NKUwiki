@@ -174,15 +174,47 @@ Cloudflare Dashboard → R2 → `nkuwiki` → Settings → Public access → 绑
 
 ## 与主站构建的配合
 
-桶键与 `docs/public/` 完全同构，所以**正文里的写法完全不变**（`![图](/img/05/09/美食.jpg)`）。要把资源流量切到图床时：
+桶键与 `docs/public/` 完全同构，所以**正文里的写法永远不变**（`![图](/img/05/09/美食.jpg)`）。改写由主站已有的 `replace-assets` 插件完成（实现在 `packages/wiki-theme/lib/vite/replace-assets.ts`，接入点 `docs/.vitepress/config.mts`），开关只有一个环境变量：
 
 ```bash
-WIKI_ASSETS_BASE=https://img.freshnkuer.wiki pnpm build
+WIKI_ASSETS_BASE=https://img.freshnkuer.wiki pnpm build   # 切换
+# 不设置该变量 = 插件空转，产物逐字节不变（当前生产现状）→ 回滚也只需去掉变量重新构建
 ```
 
-构建产物里所有指向本地静态资源的链接（HTML/CSS/JS 里的 `/img/...`、`/food/...`、favicon 等）会被改写到该域名，与桶键一一对应；不设该变量时产物逐字节不变。本地 `pnpm dev` 始终读 `docs/public`，两边可以并行存在，迁移与回滚都只是环境变量的事。
+### 流程图：正文里图片链接的传导路径
 
-注意切换后 `CNAME`、`robots.txt`、`manifest.webmanifest` 与 `og:image`（使用站点绝对地址）仍由 GitHub Pages 直出——它们本来就不在替换范围内，桶里不存也不影响。切换前先用 `mirror-public.mjs` 把仓库里最新的 `docs/public` 镜像进桶（之后新增图片走上传器，或定期重跑脚本补齐）。
+```mermaid
+flowchart TD
+    W["作者写正文：![图](/img/05/09/美食.jpg)<br/>（本地路径，永远不变）"]
+    W -->|"pnpm dev 本地预览"| DEV["图片取自仓库 docs/public/img/05/09/…<br/>（与图床并行，互不影响）"]
+    W -->|"合入 main 触发 CI 构建"| B{"是否设置<br/>WIKI_ASSETS_BASE？"}
+    B -->|"未设置（当前现状）"| KEEP["插件空转：产物逐字节不变<br/>图片随 GitHub Pages 一起分发"]
+    B -->|"已设置 = https://img.freshnkuer.wiki"| RW["replace-assets 统一改写（源码零改动）"]
+    RW --> E1["入口① generateBundle：打包产物里的 JS / CSS"]
+    RW --> E2["入口② transformHtml：最终 HTML<br/>（head 里的 favicon、manifest 等 bundle 之后才拼）"]
+    E1 --> MATCH["匹配：以 / 开头的站内绝对路径 + 图片/媒体扩展名<br/>/img/…、/food/…、favicon-*.svg、字体等<br/>（http(s) 外链与拼接路径不动）"]
+    E2 --> MATCH
+    MATCH --> URL["拼上前缀：https://img.freshnkuer.wiki/<原路径><br/>桶键与路径一一对应，无需映射表"]
+    URL --> DEP["部署到 GitHub Pages（freshnkuer.wiki）"]
+    KEEP --> DEP
+    DEP --> VIS["读者浏览器：拿到的 HTML/JS 里已是最终地址"]
+    VIS -->|"已切换"| CDN["img.freshnkuer.wiki<br/>Cloudflare 边缘缓存 → R2 桶 img/05/09/美食.jpg"]
+```
+
+### 流程图：切换后新增一张图的两种做法
+
+```mermaid
+flowchart TD
+    N["要给文章新增一张图"] --> UP["上传器选中文章上传<br/>→ 落桶 img/05/09/x.jpg"]
+    UP --> WRITE["正文写 ![x](/img/05/09/x.jpg)（与过去写法相同）"]
+    WRITE --> CHOICE{"本地 pnpm dev 预览要不要看到这张图？"}
+    CHOICE -->|"要"| BOTH["同一张图也放进 docs/public/img/05/09/<br/>随 PR 进仓库；构建时反正被改写到 CDN，<br/>重跑 mirror-public.mjs 也是同键覆盖，无副作用"]
+    CHOICE -->|"不要"| ONLY["只存图床：生产页正常显示，<br/>本地 dev 该图 404（仅预览受限）"]
+    BOTH --> PR["提 PR → CI 构建（带 WIKI_ASSETS_BASE）→ 上线"]
+    ONLY --> PR
+```
+
+切换前记得用 `mirror-public.mjs` 把仓库最新的 `docs/public` 镜像进桶（正文引用的历史图片都在这里）。改写范围之外、始终由主站直出的只有：`CNAME` / `robots.txt`（页面不引用）与 `og:image` 这类**带域名的绝对地址**（插件只改以 `/` 开头的站内路径）。
 
 ## 本地开发
 
