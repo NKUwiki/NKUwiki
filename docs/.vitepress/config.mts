@@ -15,6 +15,7 @@ import { plot } from '@nkuwiki/theme/lib/markdown/plot.ts'
 import { steps } from '@nkuwiki/theme/lib/markdown/steps.ts'
 import { timeline } from '@nkuwiki/theme/lib/markdown/timeline.ts'
 import { replaceAssets } from '@nkuwiki/theme/lib/vite/replace-assets.ts'
+import { spotlightHoverBlockPatch } from '@nkuwiki/theme/lib/vite/spotlight-patch.ts'
 import markmapPlugin from '@vitepress-plugin/markmap'
 import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
@@ -199,6 +200,11 @@ export default defineConfig({
 			// 迁移时把 docs/public 整个目录上传到对象存储，再带上该变量重新构建即可，
 			// 内容里的本地路径无需改动（详见 lib/vite/replace-assets.ts 顶部说明）。
 			assets.plugin,
+			// 聚光灯组件替换：Nolebase 的 SpotlightHoverBlock 逐行高亮段落（跟着鼠标走）、
+			// 且列表命中在「一项 ↔ 整块」间跳变。此插件把该组件重定向到主题包内的修补副本
+			// （theme/components/SpotlightHoverBlock.vue，渲染链路原样保留，仅改目标选择与删除
+			// 段落逐行特判），升级 @nolebase/vitepress-plugin-enhanced-readabilities 时需 diff 一次。
+			spotlightHoverBlockPatch(),
 		],
 		build: {
 			// 剩余超 500KB 的 chunk 都已核实无害：chunks/metadata 是站点数据

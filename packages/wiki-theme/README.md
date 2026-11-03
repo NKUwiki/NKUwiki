@@ -73,6 +73,7 @@ packages/wiki-theme/
 | `PrintButton.vue` | 「打印本页」按钮：挂在右侧目录面板顶部，唤起浏览器打印（打印排版见 base.css） | 内部引用（aside-top 插槽） |
 | `OnlineEdit.vue` | 「在线编辑本页」入口：深链到 webObsidian 的当前页编辑器，读者改完可在平台内直接提 PR；`VITE_EDITOR_URL` 未注入时整体不渲染，`edit: false` 可单篇关闭 | 内部引用 |
 | `TwikooComments.vue` | Twikoo 评论区：挂在 doc-after，正文之后、页面历史之前；`VITE_TWIKOO_ENV_ID` 未注入 / `comments: false` / 非文章布局三重门控，任一不满足即整体不渲染（零开销） | 内部引用 |
+| `SpotlightHoverBlock.vue` | Nolebase SpotlightHoverBlock 的仓库内修补副本（lib/vite/spotlight-patch.ts 解析期重定向）：命中目标统一为正文根的直接子块（列表下探到直接 `li`），删除段落逐行特判——高亮不再跟着鼠标走；过渡与滚动跟随保持组件原样。**升级 @nolebase/vitepress-plugin-enhanced-readabilities 时需 diff 一次** | 插件内部引用 |
 
 ### composables/ — 无 UI 的客户端逻辑
 
@@ -91,6 +92,7 @@ packages/wiki-theme/
 | `modalA11y.ts` | 弹层无障碍：打开记录触发元素并把焦点移入、Tab 在弹层内循环、关闭还原焦点（支持两级嵌套），同时锁背景滚动 |
 | `spotlightGuard.ts` | 聚光灯高亮显隐守卫：修 Nolebase 只在鼠标移动时重算、移出后高亮「钉」在原处的问题 |
 | `spotlightAnchor.ts` | 聚光灯高亮横向锚定：把正文栏左/宽写进 CSS 变量，覆盖组件「贴着元素算」的 left/width，高亮块不再随列表、引用块的缩进左右跳动 |
+| `spotlightTarget.ts` | 聚光灯命中目标解析（配套修补副本组件）：目标恒为正文根的直接子块，列表下探到直接 `li`，块间空白按 y 就近取块；纯逻辑、DOM 桩可测 |
 | `twikoo.ts` | 评论区实例销毁：twikoo 2.x 无公开销毁 API，仅清 DOM 会漏掉 document 捕获阶段的全局监听 |
 
 ### styles/ — 分层样式
