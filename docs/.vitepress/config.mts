@@ -1,9 +1,10 @@
+import type { CardRow } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import type { MarkdownRenderer } from 'vitepress'
 import { existsSync, readFileSync } from 'node:fs'
 // 显式导入而非直接用全局：ESLint 的 node/prefer-global/process 要求如此
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { cardlist } from '@nkuwiki/theme/lib/content/cardlist.ts'
+import { cardlist, parseCardTables, renderCard } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
@@ -83,6 +84,44 @@ function isoDate(value: string) {
 function prependToBody(source: string, block: string) {
 	const frontmatter = source.match(/^(-{3,}\r?\n[\s\S]*?\r?\n-{3,}\r?\n?)/)
 	return frontmatter ? frontmatter[1] + block + source.slice(frontmatter[1].length) : block + source
+}
+
+/** 收录组织详情页的汇总页（三个详情页目录共用这一张表） */
+const ORG_SUMMARY_SOURCE = '03.群汇总/03.学生组织与社团.md'
+/** 详情页 permalink → 汇总表里对应的那一行；首次渲染时构建，之后复用 */
+let orgCardIndex: Map<string, CardRow> | undefined
+
+function buildOrgCardIndex(md: MarkdownRenderer): Map<string, CardRow> {
+	const index = new Map<string, CardRow>()
+	const file = fileURLToPath(new URL(`../${ORG_SUMMARY_SOURCE}`, import.meta.url))
+	if (!existsSync(file))
+		return index
+	for (const row of parseCardTables(md, readFileSync(file, 'utf8'))) {
+		if (row.link)
+			index.set(row.link.replace(/\/$/, ''), row)
+	}
+	return index
+}
+
+/** 详情页末尾的「所属汇总」：一行小标题 + 一张与汇总页逐字相同的卡片 */
+function renderOrgRecap(row: CardRow): string {
+	const summary = articles.find(item => item.source === ORG_SUMMARY_SOURCE)
+	const url = summary?.url ?? '/pages/association/'
+	const title = summary?.title ?? '学生组织与社团'
+	const href = `${url}#${row.anchor}`
+	const target = row.group ? `${title} · ${row.group}` : title
+	// 卡片长得和汇总页一模一样，光看外表看不出「点它会跳走」。提示只放一个短标签，
+	// 完整说明交给原生 title（悬停时才出现），避免在正文末尾堆一句长文案。
+	const hint = '返回汇总'
+	const hintTitle = '点击卡片可回到汇总页中的这张卡片'
+	return [
+		'<section class="org-recap">',
+		`<p class="org-recap-caption"><span>所属汇总：<a href="${href}">${target}</a></span><a class="org-recap-hint" href="${href}" title="${hintTitle}"><svg class="org-recap-hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h9a7 7 0 0 1 0 14h-3" /></svg>${hint}</a></p>`,
+		'<div class="campus-card-grid org-recap-grid" role="list">',
+		renderCard({ headers: row.headers, cells: row.cells, link: href, linkTitle: hintTitle }),
+		'</div>',
+		'</section>',
+	].join('\n')
 }
 
 /** 某个目录下所有文章的路由，用来给「参与共建」这类导航项做高亮 */
@@ -252,6 +291,24 @@ export default defineConfig({
 				state.env.wikiTitleInserted = true
 				if (article)
 					state.src = prependToBody(state.src, '<ArticleMeta />\n\n')
+			})
+			// 组织详情页末尾注入「所属汇总」卡片：数据直接取自汇总页同一张表的同一行，
+			// 卡片也由同一个 renderCard 渲染——详情页不维护第二份卡片数据，改汇总表即可同步。
+			// 点击整卡回到汇总页对应卡片的锚点（cardlist 给带「文章」列的行生成了 id）。
+			md.core.ruler.before('block', 'org-card-recap', (state) => {
+				// relativePath 是 rewrites 之后的输出路径（pages/Zipo.md），不是源文件路径，
+				// 与 article-title 一样用 outputPath 反查文章，再从 source 判断目录
+				const relative = state.env.relativePath as string | undefined
+				if (!relative || state.env.wikiOrgRecapInserted)
+					return
+				state.env.wikiOrgRecapInserted = true
+				const article = articles.find(item => outputPath(item.url) === relative || item.source === relative)
+				if (!article?.source.startsWith('03.群汇总/05.组织详情/'))
+					return
+				const row = (orgCardIndex ??= buildOrgCardIndex(md)).get(article.url.replace(/\/$/, ''))
+				if (!row?.link || !row.anchor)
+					return
+				state.src = `${state.src.replace(/\s*$/, '')}\n\n${renderOrgRecap(row)}`
 			})
 			const headingClose = md.renderer.rules.heading_close
 			md.renderer.rules.heading_close = (tokens, index, options, env, self) => {

@@ -7,6 +7,8 @@ import wechatIcon from '@iconify-icons/ri/wechat-fill'
 import { findContainerEnd } from '../markdown/container-end.ts'
 
 const plainText = (cell = '') => cell.replace(/<[^>]*>/g, '').trim()
+/** 卡片里图标引用的精灵图 symbol 前缀（symbol 由 cardIconSprite 每页注入一次） */
+const SPRITE_PREFIX = 'wiki-card-icon-'
 /** 从单元格取图片地址：`![](...)` 渲染出的 <img>、外链、或裸路径均可 */
 function pickImageSrc(cell = '') {
 	return cell.match(/<img\b[^>]*?\ssrc="([^"]+)"/i)?.[1]
@@ -19,6 +21,173 @@ const pickHref = (cell = '') => cell.match(/<a\b[^>]*?\shref="([^"]+)"/i)?.[1]
 
 /** 转义 HTML 属性值，避免链接里的 & 等字符破坏标签 */
 const escapeAttr = (value = '') => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/**
+ * 归一化站内链接：去掉查询串与锚点，以及 VitePress 在某些渲染环境里追加的 `.html`。
+ * 同一个 `/pages/Zipo` 在正式渲染里可能是 `/pages/Zipo.html`（取决于 env），
+ * 不归一化的话锚点与索引键会跟着变，详情页就查不到对应卡片。
+ */
+function normalizeCardLink(link: string): string {
+	return link.replace(/[?#].*$/, '').replace(/\.html?$/, '').replace(/\/+$/, '')
+}
+
+/**
+ * 卡片锚点：由「文章/详情」列的详情页地址派生，`/pages/Zipo` → `org-zipo`。
+ * 详情页靠它回跳到汇总页的同一张卡；详情页 permalink 是 ASCII 且唯一，
+ * 因此锚点天然唯一。permalink 含中文等非 ASCII 字符时返回空串（不生成锚点）。
+ */
+function cardAnchorFromLink(link: string): string {
+	const slug = normalizeCardLink(link).split('/').pop() || ''
+	const clean = slug.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '')
+	return clean ? `org-${clean}` : ''
+}
+
+/** 汇总表里的一行（一张卡片）的原始数据，供详情页复用 */
+export interface CardRow {
+	/** 所属分组：汇总页里这张表上方的 ## 标题，没有则空串 */
+	group: string
+	headers: string[]
+	/** 已渲染成 HTML 的单元格，与 markdown-it 渲染结果逐字一致 */
+	cells: string[]
+	/** 「文章/详情」列指向的详情页地址 */
+	link?: string
+	/** 该卡片在汇总页的锚点 id */
+	anchor?: string
+}
+
+/**
+ * 渲染一张卡片。汇总页与详情页共用这一份实现（后者见 config.mts 的 org-card-recap），
+ * 因此两处的列名解析、图标、徽章永远一致。
+ *
+ * `linkTitle` 只写给整卡覆盖层链接的 title 属性（鼠标悬停时的原生提示），
+ * 汇总页不传——那里的卡片只是「进入详情」，不需要额外解释。
+ */
+export function renderCard({ headers, cells, link, anchor, linkTitle }: Omit<CardRow, 'group'> & { linkTitle?: string }): string {
+	const isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
+	const avatarIndex = headers.findIndex(header => /头像/.test(header))
+	// QQ 号列也按表头名定位：写死第 2 列的话，列序不同的表格
+	// （名称 | 头像 | 群号 …）会拿头像单元格去匹配号码
+	const qqIndex = headers.findIndex(header => /群号|加入方式|QQ/i.test(header))
+	// “文章/详情”列存放整卡跳转链接（与标题解耦，标题只作展示）。
+	const articleIndex = headers.findIndex(header => /文章|详情/.test(header))
+
+	const html: string[] = []
+	// 整卡跳转链接取自“文章/详情”列：注入一个铺满整卡的覆盖层 <a> 作为跳转入口，
+	// 卡片内交互元素（加入方式、二维码、复制等）通过 z-index 置于其上，仍可正常点击。
+	html.push(`<article class="campus-card"${link ? ' data-card-link' : ''}${anchor ? ` id="${escapeAttr(anchor)}"` : ''} role="listitem">`)
+	if (link)
+		html.push(`<a class="card-overlay-link" href="${escapeAttr(link)}"${linkTitle ? ` title="${escapeAttr(linkTitle)}"` : ''} aria-hidden="true" tabindex="-1"></a>`)
+	if (isGroup) {
+		const qq = plainText(qqIndex > -1 ? cells[qqIndex] : cells[1]).match(/\b\d{5,12}\b/)?.[0] || ''
+		const avatar = avatarIndex > -1 ? pickImageSrc(cells[avatarIndex]) : ''
+		// 群名传给 GroupAvatar 作头像 alt（群头像是内容图，不是装饰）。
+		// cells[0] 是 renderInline 的输出，markdown-it 已转义（& < > " 均为
+		// 实体），不能再整体 escapeAttr——那会把 &amp; 变成 &amp;amp;，
+		// 页面上显示成字面量实体；剥掉标签后直接进属性就是安全的
+		const nameAttr = plainText(cells[0])
+		html.push(avatar
+			? `<GroupAvatar qq="${qq}" avatar="${avatar}" name="${nameAttr}" />`
+			: `<GroupAvatar qq="${qq}" name="${nameAttr}" />`)
+	}
+	else {
+		html.push(`<span class="food-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#${SPRITE_PREFIX}kitchen"></use></svg></span>`)
+	}
+	html.push(`<h3 class="campus-card-title">${cells[0]}</h3>`)
+	for (let i = 1; i < cells.length; i++) {
+		const label = headers[i] || ''
+		// 跳过空单元格、头像列，以及仅供整卡跳转的“文章/详情”列（该列只作数据，不显示在卡片上）。
+		if (!cells[i].trim() || i === avatarIndex || i === articleIndex || /文章|详情/.test(label))
+			continue
+		const value = renderCardIcons(cells[i].replace(/<QrCode\b/g, '<HoverMedia kind="qr"'))
+		if (isGroup && /备注/.test(label)) {
+			html.push(`<div class="card-badges">${value}</div>`)
+		}
+		else if (/菜品/.test(label)) {
+			const scores = value.split('-')
+			html.push(`<div class="food-scores" aria-label="${label}">${scores.map((score, index) => `<span>${['菜品', '菜量', '环境', '总体'][index] || ''} <b>${score}</b></span>`).join('')}</div>`)
+		}
+		else if (/评价|主要工作/.test(label)) {
+			html.push(`<div class="card-description">${value}</div>`)
+		}
+		else if (isGroup && /群号|加入方式/.test(label)) {
+			html.push(`<div class="group-contact">${value}</div>`)
+		}
+		else if (isGroup && /二维码/.test(label)) {
+			html.push(value)
+		}
+		else {
+			html.push(`<div class="campus-card-field"><span class="campus-card-label">${label}</span><div>${value}</div></div>`)
+		}
+	}
+	html.push('</article>')
+	return html.join('\n')
+}
+
+/** 把一段 `::: cardlist` 里的表格解析成行；表头若带「文章/详情」列就取链接与锚点 */
+function parseCardTable(md: MarkdownRenderer, tableSource: string, group: string): CardRow[] {
+	const rows: CardRow[] = []
+	const env: Record<string, unknown> = {}
+	let headers: string[] = []
+	let cells: string[] = []
+	let isHeader = false
+	for (const token of md.parse(tableSource, env)) {
+		switch (token.type) {
+			case 'thead_open':
+				isHeader = true
+				break
+			case 'thead_close':
+				isHeader = false
+				break
+			case 'tr_open':
+				cells = []
+				break
+			case 'tr_close': {
+				if (isHeader) {
+					headers = cells
+					break
+				}
+				if (!headers.length)
+					break
+				const rawLink = pickHref(cells[headers.findIndex(header => /文章|详情/.test(header))] ?? '')
+				const link = rawLink ? normalizeCardLink(rawLink) : ''
+				rows.push({ group, headers, cells, link, anchor: link ? cardAnchorFromLink(link) : undefined })
+				break
+			}
+			case 'inline':
+				cells.push(md.renderer.renderInline(token.children || [], md.options, env))
+				break
+		}
+	}
+	return rows
+}
+
+/**
+ * 解析汇总页里所有 `::: cardlist` 表格。
+ *
+ * 详情页的「所属汇总」卡片就靠这张索引自动同步：汇总表改了名称、群号、头像，
+ * 详情页下次构建跟上，不需要在详情页再维护一份数据。
+ */
+export function parseCardTables(md: MarkdownRenderer, source: string): CardRow[] {
+	const rows: CardRow[] = []
+	// frontmatter 里的 `---` 会被当成 setext 标题，先剥掉
+	const lines = source.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').split(/\r?\n/)
+	let group = ''
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i].trim()
+		if (line.startsWith('## ')) {
+			group = line.slice(3).trim()
+			continue
+		}
+		if (line !== '::: cardlist')
+			continue
+		// 收集到独占一行的 `:::` 为止（卡片表本身不含容器嵌套）
+		let end = i + 1
+		while (end < lines.length && lines[end].trim() !== ':::') end++
+		rows.push(...parseCardTable(md, lines.slice(i + 1, end).join('\n'), group))
+		i = end
+	}
+	return rows
+}
 
 /**
  * 飞书官方 logo（取自 Flathub 应用图标，256×256 视图），单色化以与整套图标统一。
@@ -43,8 +212,6 @@ const cardIcons: Record<string, { body: string, vb: string }> = {
 	kitchen: { body: kitchen.body, vb: '0 0 24 24' },
 	// 如需更多，在此追加并 import 对应 @iconify-icons/ri/* 图标
 }
-
-const SPRITE_PREFIX = 'wiki-card-icon-'
 
 /**
  * 页面级图标精灵图：cardlist 的图标 path 不小（飞书 logo 约 4.5KB），
@@ -95,9 +262,6 @@ export function cardlist(md: MarkdownRenderer) {
 		let isGroup = false
 		let isHeader = false
 		let inTable = false
-		let avatarIndex = -1
-		let articleIndex = -1
-		let qqIndex = -1
 		for (const token of tokens) {
 			switch (token.type) {
 				case 'table_open':
@@ -122,64 +286,13 @@ export function cardlist(md: MarkdownRenderer) {
 					if (isHeader) {
 						headers = cells
 						isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
-						avatarIndex = headers.findIndex(header => /头像/.test(header))
-						// QQ 号列也按表头名定位：写死第 2 列的话，列序不同的表格
-						// （名称 | 头像 | 群号 …）会拿头像单元格去匹配号码
-						qqIndex = headers.findIndex(header => /群号|加入方式|QQ/i.test(header))
-						// “文章/详情”列存放整卡跳转链接（与标题解耦，标题只作展示）。
-						articleIndex = headers.findIndex(header => /文章|详情/.test(header))
 						html[html.length - 1] = `<div class="campus-card-grid ${isGroup ? 'group-cards' : 'food-cards'}" role="list">`
 						break
 					}
-					// 整卡跳转链接取自“文章/详情”列：注入一个铺满整卡的覆盖层 <a> 作为跳转入口，
-					// 卡片内交互元素（加入方式、二维码、复制等）通过 z-index 置于其上，仍可正常点击。
-					const titleHref = articleIndex > -1 ? pickHref(cells[articleIndex]) : undefined
-					html.push(`<article class="campus-card"${titleHref ? ' data-card-link' : ''} role="listitem">`)
-					if (titleHref)
-						html.push(`<a class="card-overlay-link" href="${escapeAttr(titleHref)}" aria-hidden="true" tabindex="-1"></a>`)
-					if (isGroup) {
-						const qq = plainText(qqIndex > -1 ? cells[qqIndex] : cells[1]).match(/\b\d{5,12}\b/)?.[0] || ''
-						const avatar = avatarIndex > -1 ? pickImageSrc(cells[avatarIndex]) : ''
-						// 群名传给 GroupAvatar 作头像 alt（群头像是内容图，不是装饰）。
-						// cells[0] 是 renderInline 的输出，markdown-it 已转义（& < > " 均为
-						// 实体），不能再整体 escapeAttr——那会把 &amp; 变成 &amp;amp;，
-						// 页面上显示成字面量实体；剥掉标签后直接进属性就是安全的
-						const nameAttr = plainText(cells[0])
-						html.push(avatar
-							? `<GroupAvatar qq="${qq}" avatar="${avatar}" name="${nameAttr}" />`
-							: `<GroupAvatar qq="${qq}" name="${nameAttr}" />`)
-					}
-					else {
-						html.push(`<span class="food-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#${SPRITE_PREFIX}kitchen"></use></svg></span>`)
-					}
-					html.push(`<h3 class="campus-card-title">${cells[0]}</h3>`)
-					for (let i = 1; i < cells.length; i++) {
-						const label = headers[i] || ''
-						// 跳过空单元格、头像列，以及仅供整卡跳转的“文章/详情”列（该列只作数据，不显示在卡片上）。
-						if (!cells[i].trim() || i === avatarIndex || i === articleIndex || /文章|详情/.test(label))
-							continue
-						const value = renderCardIcons(cells[i].replace(/<QrCode\b/g, '<HoverMedia kind="qr"'))
-						if (isGroup && /备注/.test(label)) {
-							html.push(`<div class="card-badges">${value}</div>`)
-						}
-						else if (/菜品/.test(label)) {
-							const scores = value.split('-')
-							html.push(`<div class="food-scores" aria-label="${label}">${scores.map((score, index) => `<span>${['菜品', '菜量', '环境', '总体'][index] || ''} <b>${score}</b></span>`).join('')}</div>`)
-						}
-						else if (/评价|主要工作/.test(label)) {
-							html.push(`<div class="card-description">${value}</div>`)
-						}
-						else if (isGroup && /群号|加入方式/.test(label)) {
-							html.push(`<div class="group-contact">${value}</div>`)
-						}
-						else if (isGroup && /二维码/.test(label)) {
-							html.push(value)
-						}
-						else {
-							html.push(`<div class="campus-card-field"><span class="campus-card-label">${label}</span><div>${value}</div></div>`)
-						}
-					}
-					html.push('</article>')
+					// 卡片本身由 renderCard 渲染：汇总页与详情页的「所属汇总」共用同一份实现，
+					// 详情页不做第二套卡片，改汇总表就够了
+					const link = pickHref(cells[headers.findIndex(header => /文章|详情/.test(header))] ?? '')
+					html.push(renderCard({ headers, cells, link, anchor: link ? cardAnchorFromLink(link) : undefined }))
 					break
 				}
 				case 'inline':

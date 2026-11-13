@@ -118,6 +118,11 @@ function flash(element: HTMLElement): void {
 	highlightTimer = setTimeout(() => element.classList.remove(HIGHLIGHT_CLASS), HIGHLIGHT_DURATION)
 }
 
+/** 跳转后需要亮一下的元素：标题，以及汇总页上的卡片（详情页回跳的落点） */
+function isFlashTarget(element: HTMLElement): boolean {
+	return /^H[1-6]$/.test(element.tagName) || element.classList.contains('campus-card')
+}
+
 /** 跳到某个锚点；scroll=false 时只高亮、不接管滚动 */
 function jump(hash: string, scroll = true): boolean {
 	const target = findTarget(hash)
@@ -125,7 +130,7 @@ function jump(hash: string, scroll = true): boolean {
 		return false
 	if (scroll)
 		smoothScrollTo(targetOffset(target))
-	if (/^H[1-6]$/.test(target.tagName))
+	if (isFlashTarget(target))
 		flash(target)
 	// 地址栏同步指向该标题，刷新和分享链接仍然落在同一处；
 	// 地址已经是这个 hash（重复点击、或 VitePress 刚更新过）时不重复压历史记录
@@ -194,5 +199,10 @@ export function installHeadingHighlight(): void {
 export function highlightHashTarget(): void {
 	if (typeof window === 'undefined' || !window.location.hash)
 		return
-	requestAnimationFrame(() => jump(window.location.hash, false))
+	requestAnimationFrame(() => {
+		const target = findTarget(window.location.hash)
+		// 标题：位置由 VitePress 自己滚好，这里只补高亮；
+		// 卡片：VitePress 那套偏移是给标题算的，自己按 scroll-margin-top 再定位一次
+		jump(window.location.hash, target ? !/^H[1-6]$/.test(target.tagName) : false)
+	})
 }

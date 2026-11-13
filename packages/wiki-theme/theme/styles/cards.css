@@ -65,6 +65,96 @@
 	padding: 1rem;
 }
 
+/* 详情页会带着 #org-xxx 跳回汇总页的某张卡片：让开固定顶栏，避免卡片顶部被盖住。
+   标题的 scroll-margin 由 VitePress 默认样式给，卡片得自己补一条 */
+.campus-card {
+	scroll-margin-top: calc(var(--vp-nav-height, 64px) + 1rem);
+}
+
+/* 详情页末尾的「所属汇总」：不另做卡片，直接放汇总页那张，只是收窄成单列 */
+.org-recap {
+	margin-top: 2rem;
+	padding-top: 1rem;
+	border-top: 1px dashed var(--vp-c-divider);
+}
+
+.org-recap-caption {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.25rem 1rem;
+	margin: 0 0 0.75rem;
+	font-size: 0.8rem;
+	color: var(--vp-c-text-3);
+}
+
+/* 详情页这张卡与汇总页的卡长得一模一样，光看外观读不出「点它会跳走」。
+   提示只用短标签（返回汇总），完整说明在 title 里悬停时才出现，
+   避免正文末尾多出一句长文案把卡片压下去 */
+.org-recap-hint {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	font-size: 0.75rem;
+	color: var(--vp-c-text-3);
+	text-decoration: none;
+	white-space: nowrap;
+	transition: color var(--wiki-duration);
+}
+
+.org-recap-hint:hover {
+	color: var(--vp-c-brand-1);
+}
+
+.org-recap-hint-icon {
+	flex: none;
+	width: 0.9em;
+	height: 0.9em;
+	transition: transform var(--wiki-duration) var(--wiki-ease-out);
+}
+
+.org-recap-hint:hover .org-recap-hint-icon {
+	transform: translateX(-2px);
+}
+
+.org-recap-caption a {
+	font-weight: 500;
+}
+
+.org-recap-grid {
+	grid-template-columns: minmax(min(100%, 17rem), 21rem);
+	margin: 0 0 0.5rem;
+}
+
+/* 从详情页回跳到汇总页时，被定位的卡片亮一下边框。
+   class 与标题高亮共用（见 composables/headingHighlight.ts），动画各自一套 */
+.vp-doc .campus-card.wiki-heading-highlight {
+	position: relative;
+}
+
+.vp-doc .campus-card.wiki-heading-highlight::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	box-shadow: inset 0 0 0 2px var(--vp-c-brand-1);
+	animation: wiki-card-flash 2s ease-out both;
+	pointer-events: none;
+}
+
+@keyframes wiki-card-flash {
+	0%,
+	100% {
+		opacity: 0;
+	}
+
+	15%,
+	60% {
+		opacity: 1;
+	}
+}
+
 .vp-doc .campus-card-title {
 	margin: 0;
 	font-size: 1rem;
