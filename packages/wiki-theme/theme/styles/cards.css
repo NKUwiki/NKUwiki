@@ -97,9 +97,9 @@
 	align-items: center;
 	gap: 0.2rem;
 	font-size: 0.75rem;
-	color: var(--vp-c-text-3);
-	text-decoration: none;
 	white-space: nowrap;
+	text-decoration: none;
+	color: var(--vp-c-text-3);
 	transition: color var(--wiki-duration);
 }
 

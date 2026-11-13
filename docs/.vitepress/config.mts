@@ -97,8 +97,9 @@ function buildOrgCardIndex(md: MarkdownRenderer): Map<string, CardRow> {
 	if (!existsSync(file))
 		return index
 	for (const row of parseCardTables(md, readFileSync(file, 'utf8'))) {
+		// parseCardTables 已经把链接归一化（去查询串、.html、尾斜杠），这里直接用
 		if (row.link)
-			index.set(row.link.replace(/\/$/, ''), row)
+			index.set(row.link, row)
 	}
 	return index
 }
