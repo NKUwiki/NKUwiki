@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 // 显式导入而非直接用全局：ESLint 的 node/prefer-global/process 要求如此
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { cardlist, parseCardTables, renderCard } from '@nkuwiki/theme/lib/content/cardlist.ts'
+import { cardGridClass, cardlist, parseCardTables, renderCard } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
@@ -118,7 +118,9 @@ function renderOrgRecap(row: CardRow): string {
 	return [
 		'<section class="org-recap">',
 		`<p class="org-recap-caption"><span>所属汇总：<a href="${href}">${target}</a></span><a class="org-recap-hint" href="${href}" title="${hintTitle}"><svg class="org-recap-hint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h9a7 7 0 0 1 0 14h-3" /></svg>${hint}</a></p>`,
-		'<div class="campus-card-grid org-recap-grid" role="list">',
+		// 容器的类名必须和汇总页一致（group-cards 决定卡片内部居中、间距），
+		// 否则同一张卡在详情页会退回左对齐，备注徽章与汇总页对不上
+		`<div class="campus-card-grid ${cardGridClass(row.headers)} org-recap-grid" role="list">`,
 		renderCard({ headers: row.headers, cells: row.cells, link: href, linkTitle: hintTitle }),
 		'</div>',
 		'</section>',

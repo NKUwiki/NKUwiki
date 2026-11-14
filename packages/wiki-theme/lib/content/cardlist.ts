@@ -22,6 +22,17 @@ const pickHref = (cell = '') => cell.match(/<a\b[^>]*?\shref="([^"]+)"/i)?.[1]
 /** 转义 HTML 属性值，避免链接里的 & 等字符破坏标签 */
 const escapeAttr = (value = '') => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
+/** 群/组织卡与美食卡的版式不同，判断只看表头 */
+const isGroupCard = (headers: string[]) => headers.some(header => /群号|加入方式|二维码/.test(header))
+
+/**
+ * 卡片容器的附加类名。详情页的「所属汇总」也用它，否则容器少了 group-cards，
+ * 卡片内部退回默认的 align-items: stretch，备注徽章就会贴在左边、和汇总页不一致。
+ */
+export function cardGridClass(headers: string[]): string {
+	return isGroupCard(headers) ? 'group-cards' : 'food-cards'
+}
+
 /**
  * 归一化站内链接：去掉查询串与锚点，以及 VitePress 在某些渲染环境里追加的 `.html`。
  * 同一个 `/pages/Zipo` 在正式渲染里可能是 `/pages/Zipo.html`（取决于 env），
@@ -63,7 +74,7 @@ export interface CardRow {
  * 汇总页不传——那里的卡片只是「进入详情」，不需要额外解释。
  */
 export function renderCard({ headers, cells, link, anchor, linkTitle }: Omit<CardRow, 'group'> & { linkTitle?: string }): string {
-	const isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
+	const isGroup = isGroupCard(headers)
 	const avatarIndex = headers.findIndex(header => /头像/.test(header))
 	// QQ 号列也按表头名定位：写死第 2 列的话，列序不同的表格
 	// （名称 | 头像 | 群号 …）会拿头像单元格去匹配号码
@@ -259,7 +270,6 @@ export function cardlist(md: MarkdownRenderer) {
 		}
 		let headers: string[] = []
 		let cells: string[] = []
-		let isGroup = false
 		let isHeader = false
 		let inTable = false
 		for (const token of tokens) {
@@ -285,8 +295,7 @@ export function cardlist(md: MarkdownRenderer) {
 				case 'tr_close': {
 					if (isHeader) {
 						headers = cells
-						isGroup = headers.some(header => /群号|加入方式|二维码/.test(header))
-						html[html.length - 1] = `<div class="campus-card-grid ${isGroup ? 'group-cards' : 'food-cards'}" role="list">`
+						html[html.length - 1] = `<div class="campus-card-grid ${cardGridClass(headers)}" role="list">`
 						break
 					}
 					// 卡片本身由 renderCard 渲染：汇总页与详情页的「所属汇总」共用同一份实现，
