@@ -21,12 +21,27 @@
 .wiki-annotation {
 	position: relative;
 	margin: 0 1px;
+	padding: 0 0.1em;
 	cursor: help;
 }
 
+/* 图标用内联 SVG（见 lib/markdown/annotation.ts），尺寸与位置都以 em 计，
+   字号一变（正文 / 小屏 / 打印）就跟着缩放，不依赖具体字体里的 ※ 或 ⓘ 字形。 */
 .wiki-annotation-dot {
-	font-size: 0.72em;
+	font-size: 1.08em;
+	line-height: 1;
 	color: var(--vp-c-brand-1);
+	transition: color var(--wiki-duration-fast) var(--wiki-ease-out);
+}
+
+.wiki-annotation-dot svg {
+	display: inline-block;
+	vertical-align: -0.18em;
+}
+
+.wiki-annotation:hover .wiki-annotation-dot,
+.wiki-annotation:focus .wiki-annotation-dot {
+	color: var(--vp-c-brand-2);
 }
 
 .wiki-annotation-bubble {
@@ -215,6 +230,27 @@
 
 .dark .vp-doc mark.warning {
 	--wiki-mark-linear-color: #C66;
+}
+
+/* ================= 删除线 ~~...~~ =================
+   浏览器默认给的是 1px、与正文同色的线：中文笔画密，那条线几乎融进字形里
+   （实测 DOM 与计算样式都正常，放大 6 倍才看得清，读者会以为语法没生效）。
+   所以把文字压到 --vp-c-text-3，让「已废弃」的语义一眼可辨。
+   线单独用深一档的 --vp-c-text-2 并加到 1.5px：1px 的灰线在浅底上被抗锯齿
+   冲淡到接近背景，文字淡了线也跟着淡，等于没有删除线。深线的观感也更像
+   「划掉淡色文字」，而不是给文字加了一道装饰。
+   限定 .vp-doc 内，与 mark 同理，避免误伤正文之外的删除线。 */
+.vp-doc s,
+.vp-doc del {
+	text-decoration-color: var(--vp-c-text-2);
+	text-decoration-thickness: 1.5px;
+	color: var(--vp-c-text-3);
+}
+
+/* 删除线里嵌了链接或加粗时，它们自带颜色会跳出来抢戏，统一压回灰阶 */
+.vp-doc s :is(a, strong, em, code),
+.vp-doc del :is(a, strong, em, code) {
+	color: inherit;
 }
 
 @media print {

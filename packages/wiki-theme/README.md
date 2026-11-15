@@ -108,7 +108,7 @@ packages/wiki-theme/
 | `sidebar.css` | 左侧目录树与右侧大纲的交互样式 |
 | `search.css` | 搜索入口、弹窗与结果摘要的视觉 |
 | `share.css` | 分享操作区样式 |
-| `enhance.css` | 内容增强 DOM 的样式：行内注释气泡、隐秘文本黑幕、马克笔高亮、代码块标题栏、步骤条、时间线 |
+| `enhance.css` | 内容增强 DOM 的样式：行内注释气泡、隐秘文本黑幕、马克笔高亮、删除线淡化、代码块标题栏、步骤条、时间线 |
 | `nolebase.css` | Nolebase 阅读增强插件的主题适配 |
 
 ## lib/ — 构建期业务库（双端共享）
@@ -126,7 +126,7 @@ packages/wiki-theme/
 | `data/activity.ts` | 活动页数据：扫描 `docs/activity/` 生成活动列表 |
 | `data/site.ts` | 站点常量**注入点**：真实值由站点侧 `docs/.vitepress/data/site.ts` 经 `vite.define` 编译期注入（`__SITE_URL__` / `__REPO_URL__`），导出名不变 |
 | `data/announcement.ts` | 公告横条配置**注入点**：真实值由站点侧 `announcement.ts` 经 `vite.define` 注入（`__ANNOUNCEMENT__`）；未注入或解析失败返回 null，横条不渲染 |
-| `markdown/annotation.ts` | 行内注释规则：`{^注释内容}` → 可悬停/聚焦的 ※ 气泡（^ 后紧跟数字时不生效，避免误伤数学上标） |
+| `markdown/annotation.ts` | 行内注释规则：`{^注释内容}` → 可悬停/聚焦的圆圈 i 图标气泡（^ 后紧跟数字时不生效，避免误伤数学上标） |
 | `markdown/plot.ts` | 隐秘文本规则：`!!内容!!`（可带 `{.click}`/`{.blur}` 属性）→ 黑幕/模糊 span，交互参考 plume plugin-md-power |
 | `markdown/mark.ts` | 马克笔规则：`==内容==`（可带 `{.tip}` 等配色）→ 描线动画高亮 `<mark>`，等价于 @mdit/plugin-mark + attrs（手写零依赖） |
 | `markdown/code-title.ts` | 代码块标题规则：fence 信息串 `语言 title="文件名"` → 顶栏标题（CSS `::before` 画） |
