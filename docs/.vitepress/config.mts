@@ -251,7 +251,7 @@ export default defineConfig({
 		build: {
 			// 剩余超 500KB 的 chunk 都已核实无害：chunks/metadata 是站点数据
 			// （侧栏树按文章序列化 149 份，gzip 后仅 ~21KB），chunks/markmap.es
-			// 是懒加载的脑图依赖（当前没有页面用到，不会被下载）。
+			// 是懒加载的脑图依赖（仅 Markdown 扩展语法页用到，其他页不下载）。
 			chunkSizeWarningLimit: 1400,
 		},
 		// Nolebase 系列的 client 包直接引用 .vue 文件，SSR 外部化时 Node 无法加载，需一并打包；
@@ -321,7 +321,18 @@ export default defineConfig({
 		},
 		languageAlias: { gitignore: 'text' },
 		math: true,
-		container: { tipLabel: '提示', warningLabel: '注意', dangerLabel: '警告', infoLabel: '信息', detailsLabel: '详细信息' },
+		// 8 种容器的默认标题（VitePress 的 `::: note/important/caution` 与 `> [!NOTE]` 告警共用这张表，
+		// 漏配会显示英文 NOTE / IMPORTANT / CAUTION）
+		container: {
+			tipLabel: '提示',
+			infoLabel: '信息',
+			noteLabel: '备注',
+			warningLabel: '注意',
+			dangerLabel: '警告',
+			cautionLabel: '当心',
+			importantLabel: '重要',
+			detailsLabel: '详细信息',
+		},
 	},
 	// 最终 HTML 的 <head>（favicon、字体 preload）是 VitePress 在 bundle 之后拼出来的，
 	// Vite 插件的 generateBundle 够不到，靠这个钩子补上，与 assets.plugin 配合使用

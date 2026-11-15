@@ -64,8 +64,8 @@ export const seoTitleMap: Record<string, string> = {
 	'/pages/wsl-install/': 'WSL 安装教程：在 Windows 上安装 Linux 子系统',
 	'/pages/linux-commands/': 'Linux 常用命令速查：文件、权限与网络',
 	'/pages/markdown-basic/': 'Markdown 基础语法教程：标题、列表与链接',
-	'/pages/markdown-extended/': 'Markdown 扩展语法：表格、公式与脚注',
-	'/pages/MarkdownGuide/': '本站特有的 Markdown 语法：卡片与标注',
+	'/pages/markdown-extended/': 'Markdown 扩展语法：表格、高亮、提示容器与思维导图',
+	'/pages/MarkdownGuide/': '本站特有的 Markdown 语法：马克笔、注释与正文组件',
 	'/pages/MarkdownEditors/': 'Markdown 编辑软件对比：Typora 与 Obsidian',
 	'/pages/MarkdownCheatsheet/': 'Markdown 语法速查表：一页掌握常用写法',
 	// 贡献与其他
