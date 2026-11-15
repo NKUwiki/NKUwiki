@@ -1,6 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16848.0 3931.2" width="16848" height="3931" role="img" aria-label="第二主教学楼标准层平面图">
 <title>第二主教学楼标准层平面图</title>
 <rect width="16848.0" height="3931.2" fill="#ffffff"/>
+<g fill="#b8dcab">
+<rect x="13026.0" y="529.2" width="156.0" height="945.0"/>
+<rect x="546.0" y="907.2" width="195.0" height="567.0"/>
+<rect x="4212.0" y="907.2" width="195.0" height="567.0"/>
+<rect x="7332.0" y="907.2" width="195.0" height="567.0"/>
+<rect x="11076.0" y="907.2" width="195.0" height="567.0"/>
+<rect x="156.0" y="1474.2" width="13026.0" height="189.0"/>
+<rect x="156.0" y="1663.2" width="12636.0" height="37.8"/>
+<rect x="156.0" y="1701.0" width="12207.0" height="37.8"/>
+<rect x="156.0" y="1738.8" width="11778.0" height="37.8"/>
+<rect x="156.0" y="1776.6" width="11310.0" height="37.8"/>
+<rect x="1716.0" y="1814.4" width="702.0" height="37.8"/>
+<rect x="6006.0" y="1814.4" width="351.0" height="1171.8"/>
+<rect x="7176.0" y="1814.4" width="351.0" height="1171.8"/>
+<rect x="11076.0" y="1814.4" width="351.0" height="1171.8"/>
+<rect x="1521.0" y="1852.2" width="858.0" height="37.8"/>
+<rect x="1482.0" y="1890.0" width="858.0" height="37.8"/>
+<rect x="1443.0" y="1927.8" width="858.0" height="37.8"/>
+<rect x="1404.0" y="1965.6" width="858.0" height="37.8"/>
+<rect x="1365.0" y="2003.4" width="858.0" height="37.8"/>
+<rect x="1326.0" y="2041.2" width="858.0" height="37.8"/>
+<rect x="1287.0" y="2079.0" width="858.0" height="37.8"/>
+<rect x="1248.0" y="2116.8" width="858.0" height="37.8"/>
+<rect x="1209.0" y="2154.6" width="858.0" height="75.6"/>
+<rect x="1170.0" y="2230.2" width="858.0" height="75.6"/>
+<rect x="1131.0" y="2305.8" width="858.0" height="75.6"/>
+<rect x="1092.0" y="2381.4" width="858.0" height="75.6"/>
+<rect x="1053.0" y="2457.0" width="858.0" height="75.6"/>
+<rect x="1014.0" y="2532.6" width="858.0" height="75.6"/>
+<rect x="975.0" y="2608.2" width="858.0" height="75.6"/>
+<rect x="936.0" y="2683.8" width="858.0" height="75.6"/>
+<rect x="897.0" y="2759.4" width="858.0" height="75.6"/>
+<rect x="5226.0" y="2797.2" width="351.0" height="189.0"/>
+<rect x="11466.0" y="2797.2" width="5226.0" height="151.2"/>
+<rect x="858.0" y="2835.0" width="858.0" height="75.6"/>
+<rect x="819.0" y="2910.6" width="858.0" height="75.6"/>
+<rect x="11466.0" y="2948.4" width="546.0" height="37.8"/>
+<rect x="156.0" y="2986.2" width="11856.0" height="151.2"/>
+<rect x="1716.0" y="3137.4" width="546.0" height="340.2"/>
+<rect x="6396.0" y="3137.4" width="741.0" height="340.2"/>
+</g>
 <g fill="#2f3336">
 <rect x="12987.0" y="113.4" width="1053.0" height="37.8"/>
 <rect x="12987.0" y="151.2" width="39.0" height="151.2"/>
@@ -65,20 +106,20 @@
 <rect x="11037.0" y="1323.0" width="39.0" height="113.4"/>
 <rect x="12987.0" y="1323.0" width="39.0" height="113.4"/>
 <rect x="117.0" y="1436.4" width="429.0" height="37.8"/>
-<rect x="663.0" y="1436.4" width="390.0" height="37.8"/>
+<rect x="741.0" y="1436.4" width="312.0" height="37.8"/>
 <rect x="1170.0" y="1436.4" width="1053.0" height="37.8"/>
 <rect x="2340.0" y="1436.4" width="273.0" height="37.8"/>
 <rect x="2730.0" y="1436.4" width="1053.0" height="37.8"/>
-<rect x="3900.0" y="1436.4" width="390.0" height="37.8"/>
+<rect x="3900.0" y="1436.4" width="312.0" height="37.8"/>
 <rect x="4407.0" y="1436.4" width="546.0" height="37.8"/>
 <rect x="5070.0" y="1436.4" width="1053.0" height="37.8"/>
-<rect x="6240.0" y="1436.4" width="1170.0" height="37.8"/>
+<rect x="6240.0" y="1436.4" width="1092.0" height="37.8"/>
 <rect x="7527.0" y="1436.4" width="546.0" height="37.8"/>
 <rect x="8190.0" y="1436.4" width="741.0" height="37.8"/>
 <rect x="9048.0" y="1436.4" width="195.0" height="37.8"/>
 <rect x="9360.0" y="1436.4" width="1053.0" height="37.8"/>
 <rect x="10530.0" y="1436.4" width="546.0" height="37.8"/>
-<rect x="11193.0" y="1436.4" width="390.0" height="37.8"/>
+<rect x="11271.0" y="1436.4" width="312.0" height="37.8"/>
 <rect x="11700.0" y="1436.4" width="1326.0" height="37.8"/>
 <rect x="117.0" y="1474.2" width="39.0" height="340.2"/>
 <rect x="12792.0" y="1663.2" width="429.0" height="37.8"/>
@@ -270,38 +311,38 @@
 <rect x="12012.0" y="3780.0" width="4719.0" height="37.8"/>
 </g>
 <g text-anchor="middle" font-family="HarmonyOS Sans SC, Noto Sans SC, Microsoft YaHei, sans-serif" fill="#1b1e20">
-<text x="13591.5" y="313.0" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
-<text x="331.5" y="880.0" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
-<text x="721.5" y="596.5" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="13591.5" y="314.3" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="331.5" y="881.3" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
+<text x="721.5" y="597.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
 <text x="1696.5" y="952.9" font-size="190.0" font-weight="600">BX01</text>
 <text x="3256.5" y="952.9" font-size="190.0" font-weight="600">BX02</text>
-<text x="4231.5" y="596.5" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
-<text x="4621.5" y="880.0" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
+<text x="4231.5" y="597.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="4621.5" y="881.3" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
 <text x="5596.5" y="952.9" font-size="190.0" font-weight="600">BX03</text>
-<text x="7351.5" y="596.5" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
-<text x="7741.5" y="880.0" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
+<text x="7351.5" y="597.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="7741.5" y="881.3" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
 <text x="8521.5" y="952.9" font-size="190.0" font-weight="600">BX04</text>
 <text x="9886.5" y="952.9" font-size="190.0" font-weight="600">BX05</text>
-<text x="11251.5" y="596.5" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="11251.5" y="597.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
 <text x="12226.5" y="952.9" font-size="190.0" font-weight="600">BX06</text>
-<text x="10861.5" y="1069.0" dominant-baseline="central" font-size="165.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
-<text x="819.0" y="1317.7" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="4134.0" y="1317.7" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="7254.0" y="1317.7" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="11349.0" y="1317.7" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="14176.5" y="2678.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶📶📶</text>
-<text x="3451.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
-<text x="4134.0" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
-<text x="4914.0" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
-<text x="5791.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🛗🛗</text>
-<text x="7741.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🛗🛗</text>
-<text x="8326.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
-<text x="8716.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
-<text x="9886.5" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
-<text x="10569.0" y="2867.9" dominant-baseline="central" font-size="98.3" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
-<text x="3159.0" y="2925.8" dominant-baseline="central" font-size="73.7" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="8034.0" y="2925.8" dominant-baseline="central" font-size="73.7" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
-<text x="10959.0" y="2925.8" dominant-baseline="central" font-size="73.7" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="10861.5" y="1070.3" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
+<text x="819.0" y="1316.0" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="4134.0" y="1316.0" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="7254.0" y="1316.0" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="11349.0" y="1316.0" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="14176.5" y="2676.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶📶📶</text>
+<text x="3451.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
+<text x="4134.0" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
+<text x="4914.0" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="5791.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🛗🛗</text>
+<text x="7741.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🛗🛗</text>
+<text x="8326.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
+<text x="8716.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
+<text x="9886.5" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚹</text>
+<text x="10569.0" y="2865.8" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚺</text>
+<text x="3159.0" y="2922.5" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="8034.0" y="2922.5" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
+<text x="10959.0" y="2922.5" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">🚰</text>
 <text x="12616.5" y="3447.7" font-size="190.0" font-weight="600">AY04</text>
 <text x="13786.5" y="3447.7" font-size="190.0" font-weight="600">AY03</text>
 <text x="14956.5" y="3447.7" font-size="190.0" font-weight="600">AY02</text>
@@ -309,15 +350,15 @@
 <text x="234.0" y="3420.7" dominant-baseline="central" font-size="98.1" font-weight="600">AY</text>
 <text x="234.0" y="3534.5" dominant-baseline="central" font-size="98.1" font-weight="600">15</text>
 <text x="1014.0" y="3542.2" font-size="190.0" font-weight="600">AY14</text>
-<text x="2379.0" y="3472.3" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="2379.0" y="3470.6" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
 <text x="2964.0" y="3542.2" font-size="190.0" font-weight="600">AY13</text>
 <text x="3939.0" y="3542.2" font-size="190.0" font-weight="600">AY12</text>
 <text x="4914.0" y="3542.2" font-size="190.0" font-weight="600">AY11</text>
 <text x="5889.0" y="3542.2" font-size="190.0" font-weight="600">AY10</text>
 <text x="7644.0" y="3542.2" font-size="190.0" font-weight="600">AY09</text>
-<text x="8424.0" y="3541.3" font-size="187.3" font-weight="600">AY08</text>
-<text x="8814.0" y="3472.3" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
-<text x="9789.0" y="3472.3" dominant-baseline="central" font-size="106.1" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="8424.0" y="3541.1" font-size="186.8" font-weight="600">AY08</text>
+<text x="8814.0" y="3470.6" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
+<text x="9789.0" y="3470.6" dominant-baseline="central" font-size="140.0" font-family="Segoe UI Emoji, Apple Color Emoji, sans-serif">📶</text>
 <text x="10276.5" y="3542.2" font-size="190.0" font-weight="600">AY07</text>
 <text x="11056.5" y="3542.2" font-size="190.0" font-weight="600">AY06</text>
 <text x="11739.0" y="3361.4" font-size="102.8" font-weight="600">AY05</text>
