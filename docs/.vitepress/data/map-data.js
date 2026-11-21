@@ -622,6 +622,18 @@ export const BUILDINGS = [
     "article": "/pages/BalitaiLabBuilding"
   },
   {
+    "id": "n_teaching_09",
+    "name": "第三教学楼（物理科学学院）",
+    "category": "teaching",
+    "campusId": "n",
+    "coord": [
+      117.172328,
+      39.10243
+    ],
+    "desc": "主楼东北侧的物理科学学院楼，共三层；一层不设卫生间，二层只有男厕、三层只有女厕。",
+    "article": "/pages/TeachingBuilding3"
+  },
+  {
     "id": "n_admin_02",
     "name": "专家楼",
     "category": "admin",
