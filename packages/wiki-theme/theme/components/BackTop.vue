@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { shouldReduceMotion } from '../composables/motion'
 
 /**
  * 右下角悬浮球：环形进度展示**正文**阅读进度，点击平滑回到顶部。
@@ -170,8 +171,7 @@ function markScrolling() {
 }
 
 function scrollToTop() {
-	const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
-	window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+	window.scrollTo({ top: 0, behavior: shouldReduceMotion() ? 'auto' : 'smooth' })
 }
 
 /** 内容高度变化（图片加载完、评论展开、路由切换）时重算可滚动高度 */

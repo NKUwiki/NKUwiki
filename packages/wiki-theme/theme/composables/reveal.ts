@@ -1,17 +1,20 @@
 /**
  * 滚动进入渐显（reveal）：带 data-reveal 属性的元素首次进入视口时淡入并上移。
  *
- * 降级链路（三层，缺一层都不白屏）：
+ * 降级链路（四层，缺一层都不白屏）：
  * 1. CSS 默认就是可见态——隐藏只在 <html class="wiki-reveal-ready"> 下生效，
  *    而这个 class 由本模块在客户端执行时添加：禁用 JS 的爬虫、
  *    hydrate 之前的 SSR 输出，内容都直接显示；
  * 2. 不支持 IntersectionObserver 的旧环境直接返回，class 不加，同样保持可见；
- * 3. reduced-motion 下 --wiki-duration-slow 为 0s，元素即时到位。
+ * 3. reduced-motion 下 --wiki-duration-slow 为 0s，元素即时到位；
+ * 4. 低端机 / 省流模式（见 composables/motion.ts）不启用渐显，内容直接可见。
  *
  * 接入方式：任何元素的属性里写 data-reveal 即可（markdown 容器规则与
  * Vue 模板都能加）。SPA 路由切换后新渲染的节点由 wiki:route-change 触发补扫，
  * 已观察过的元素记在 WeakSet 里，不会重复观察。
  */
+import { shouldReduceMotion } from './motion'
+
 const REVEAL_ATTR = 'data-reveal'
 const REVEAL_IN_CLASS = 'wiki-reveal-in'
 const READY_CLASS = 'wiki-reveal-ready'
@@ -20,6 +23,12 @@ export function installReveal() {
 	if (typeof window === 'undefined' || typeof document === 'undefined')
 		return
 	if (!('IntersectionObserver' in window))
+		return
+	// 降级第 4 层：低端机 / 省流模式下干脆不做渐显。
+	// 此时不加 READY_CLASS，元素保持 CSS 默认的可见态，与 reduced-motion 下
+	// 「令牌为 0s、即时到位」的观感一致，但省掉了观察器与整批元素的合成开销
+	// （列表页一次进场上百个元素，在四核以下的机器上是实打实的掉帧来源）。
+	if (shouldReduceMotion())
 		return
 
 	const observed = new WeakSet<Element>()

@@ -23,6 +23,8 @@
  * 降级：不支持 View Transitions（如 Firefox 旧版）或用户开了
  * prefers-reduced-motion 时直接放行，交给 VitePress 原本的瞬时切换，行为不变。
  */
+import { shouldReduceMotion } from './motion'
+
 /** 切换按钮：导航栏与移动端全屏菜单里是同一个组件 */
 const SWITCH_SELECTOR = '.VPSwitchAppearance'
 /**
@@ -35,7 +37,8 @@ const FLIP_TIMEOUT = 300
 function canAnimate(): boolean {
 	if (typeof document.startViewTransition !== 'function')
 		return false
-	return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+	// 与标题滚动、返回顶部共用同一套降级判据（含省流模式与低端触屏机）
+	return !shouldReduceMotion()
 }
 
 /**

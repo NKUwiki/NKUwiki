@@ -8,6 +8,7 @@ import { Icon } from '@iconify/vue'
 import { useData, withBase } from 'vitepress'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { tagChips } from '../composables/chips'
+import { shouldReduceMotion } from '../composables/motion'
 import WikiChips from './WikiChips.vue'
 
 const { frontmatter: fm } = useData()
@@ -47,16 +48,12 @@ const displayWordCount = ref(wordCount.value)
 const displayReadingMinutes = ref(readingMinutes.value)
 let countFrame: number | undefined
 
-function prefersReducedMotion(): boolean {
-	return typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
-}
-
 onMounted(() => {
 	const pairs: Array<[Ref<number>, number]> = [
 		[displayWordCount, wordCount.value],
 		[displayReadingMinutes, readingMinutes.value],
 	]
-	if (prefersReducedMotion() || pairs.every(([, target]) => !target))
+	if (shouldReduceMotion() || pairs.every(([, target]) => !target))
 		return
 	const started = performance.now()
 	// easeOutCubic：数字快速接近终值、尾部自然收敛，比匀速更不机械

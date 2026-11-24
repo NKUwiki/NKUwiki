@@ -14,6 +14,7 @@ import GitHistory from './GitHistory.vue'
 import ImagePreview from './ImagePreview.vue'
 import OnlineEdit from './OnlineEdit.vue'
 import PrintButton from './PrintButton.vue'
+import RelatedArticles from './RelatedArticles.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import SiteIcon from './SiteIcon.vue'
 import TwikooComments from './TwikooComments.vue'
@@ -82,8 +83,10 @@ onUnmounted(() => {
 		<PrintButton />
 	</template>
 	<!-- 评论与文件历史：两个组件各自带门控（环境变量 + frontmatter 开关），
-	comments: false 关单篇评论，hideChangelog: true 关单篇历史 -->
+	comments: false 关单篇评论，hideChangelog: true 关单篇历史。
+	相关文章放在评论之前：读者读完正文就有下一个去处，不必滚过评论区 -->
 	<template #doc-after>
+		<RelatedArticles v-if="frontmatter.related !== false" />
 		<TwikooComments :key="changelogKey" />
 		<GitHistory v-if="frontmatter.hideChangelog !== true" :key="changelogKey" />
 	</template>

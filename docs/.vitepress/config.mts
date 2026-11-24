@@ -1,12 +1,14 @@
 import type { CardRow } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import type { MarkdownRenderer } from 'vitepress'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 // 显式导入而非直接用全局：ESLint 的 node/prefer-global/process 要求如此
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { cardGridClass, cardlist, parseCardTables, renderCard } from '@nkuwiki/theme/lib/content/cardlist.ts'
 import { buildTree, excerptFromContent, getArticleContent, outputPath, scanArticles } from '@nkuwiki/theme/lib/content/catalog.ts'
 import { flink } from '@nkuwiki/theme/lib/content/flink.ts'
+import { buildRelatedIndex } from '@nkuwiki/theme/lib/content/related.ts'
 import { collectAuthors } from '@nkuwiki/theme/lib/data/authors.ts'
 import { annotation } from '@nkuwiki/theme/lib/markdown/annotation.ts'
 import { codeTitle } from '@nkuwiki/theme/lib/markdown/code-title.ts'
@@ -22,7 +24,8 @@ import { defineConfig } from 'vitepress'
 import { announcement } from './data/announcement.ts'
 import { fallbackAuthor, members } from './data/members.ts'
 import { repoUrl, siteUrl, watermarkSubtitle } from './data/site.ts'
-import { assertSeoTitleMapMatches, seoTitleFor, standaloneSeo } from './seo.ts'
+import { buildRssFeed } from './feed.ts'
+import { assertSeoTitleMapMatches, pageSeoHead, seoTitleFor, standaloneSeo } from './seo.ts'
 
 /** gen-history.mjs 生成的每页 Git 提交历史（键为相对 docs 的源文档路径） */
 interface CommitEntry {
@@ -64,6 +67,22 @@ function stripMarkmapInjection() {
 const articles = scanArticles()
 // seoTitleMap 靠 permalink 匹配，permalink 一改就静默失效，构建期先炸掉
 assertSeoTitleMapMatches(articles)
+
+/**
+ * 相关文章索引：构建期把全站两两算一次（165 篇约 110ms），客户端零计算。
+ *
+ * 只在 config 加载时算一次——dev 下改了文章正文后相关推荐不会立即更新，
+ * 需要重启 dev server。这与侧栏树、分类页的行为一致（它们同样在 config 顶层生成），
+ * 不值得为它引入文件监听与增量重算。
+ *
+ * 空正文占位页不参与：它们没有可用于建模的文本，被推出来也没有意义。
+ */
+const relatedIndex = buildRelatedIndex(
+	articles.filter(article => !article.empty).map(article => ({
+		...article,
+		text: getArticleContent(article.source) ?? '',
+	})),
+)
 const base = ''
 /* 拼资源地址：base 可能是 ''（当前自定义域名根部署），将来若改成 '/xxx/' 带尾斜杠，
    直接写 `${base}/a.png` 会拼成双斜杠。这里统一剥掉尾斜杠。 */
@@ -71,13 +90,19 @@ const assetUrl = (path: string) => `${base.replace(/\/+$/, '')}/${path}`
 const description = 'NKUwiki（南开校园 wiki、南开维基）是南开大学学生共同维护的非官方校园知识库，收录新生入学、学习、校园生活、群组等指南。'
 
 /**
- * frontmatter 里的日期写的是 "2026-09-01" 这种裸日期，直接塞进 og:article 与
- * JSON-LD 时没有时区、部分抓取方会判为无效。统一补成 ISO 8601；
- * 解析不了的原始值原样返回，宁可格式不完美也不要丢日期。
+ * vite.define 的取值必须是「源码表达式」而不是值本身：
+ *
+ * - 字符串序列化一层，注入的是 `"https://..."` 这样的字面量
+ * - 对象序列化两层，注入的是 `"{\"message\":\"...\"}"`，由包内的
+ *   lib/data/announcement.ts 再 JSON.parse 一次
+ *
+ * 两层之差记错就是静默 bug：对象少一层会变成裸对象字面量，包里的
+ * `typeof __ANNOUNCEMENT__ !== 'string'` 判断失效；字符串多一层则解析成
+ * 普通字符串后字段全丢。统一走这个函数，层数由类型决定，调用处不用再数。
  */
-function isoDate(value: string) {
-	const time = new Date(value)
-	return Number.isNaN(time.getTime()) ? value : time.toISOString()
+function defineConstant(value: unknown): string {
+	const json = JSON.stringify(value) ?? 'null'
+	return typeof value === 'string' ? json : JSON.stringify(json)
 }
 
 /** 把一段块内容插到 frontmatter（若在）之后、正文最前面。 */
@@ -176,6 +201,8 @@ export default defineConfig({
 		// 不经过 rollup 打包，所以插件看不到它——里面的图标路径始终指向站点，
 		// 文件也一直在站内，切图床后照旧从 Pages 取。
 		['link', { rel: 'manifest', href: assetUrl('manifest.webmanifest') }],
+		// RSS 自动发现：聚合器与浏览器扩展读到这行就能订阅，不必手动粘贴地址
+		['link', { rel: 'alternate', type: 'application/rss+xml', title: 'NKUwiki', href: assetUrl('feed.xml') }],
 		['meta', { property: 'og:locale', content: 'zh_CN' }],
 		['meta', { name: 'keywords', content: 'NKUwiki,nkuwiki,南开wiki,南开 wiki,南开维基,南开大学维基,南开大学wiki,南开大学,校园知识库,新生入学,校园生活' }],
 		['meta', { name: 'author', content: 'NKUwiki-Group' }],
@@ -225,13 +252,13 @@ export default defineConfig({
 	},
 	vite: {
 		// 站点常量编译期注入主题包（包内 lib/data/site.ts、announcement.ts 消费；
-		// config 自身走 Node 侧直接 import）。公告是对象，需双重序列化成
-		// JSON 字符串字面量，包内再 JSON.parse（site.ts 的字符串值只需一层）
+		// config 自身走 Node 侧直接 import）。层数由 defineConstant 按类型决定，
+		// 字符串一层、对象两层，不再需要手写双重 JSON.stringify
 		define: {
-			__SITE_URL__: JSON.stringify(siteUrl),
-			__REPO_URL__: JSON.stringify(repoUrl),
-			__WATERMARK_SUBTITLE__: JSON.stringify(watermarkSubtitle),
-			__ANNOUNCEMENT__: JSON.stringify(JSON.stringify(announcement)),
+			__SITE_URL__: defineConstant(siteUrl),
+			__REPO_URL__: defineConstant(repoUrl),
+			__WATERMARK_SUBTITLE__: defineConstant(watermarkSubtitle),
+			__ANNOUNCEMENT__: defineConstant(announcement),
 		},
 		base,
 		plugins: [
@@ -348,15 +375,19 @@ export default defineConfig({
 		const isHome = page.relativePath === 'index.md'
 		const standalone = standaloneSeo[page.relativePath]
 		const pagePath = article ? article.url : page.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
-		// article.url 恒带前导斜杠，直通页的 pagePath 则形态不一（categories/index.md →
-		// "categories/"、map.md → "map"），与去尾斜杠的域名直接拼接会拼出
-		// freshnkuer.wiki categories 这种不存在的地址——canonical 与 og:url 一起失效，
-		// 这里统一剥前导斜杠后用 "/" 连接
-		const pageUrl = `${siteUrl.replace(/\/$/, '')}/${pagePath.replace(/^\//, '')}`
 
+		// 404 只需要一条 noindex：标题与描述都不必算，pageSeoHead 在 is404 时提前返回
 		if (is404) {
 			page.frontmatter.head ??= []
-			page.frontmatter.head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
+			page.frontmatter.head.push(...pageSeoHead({
+				siteUrl,
+				pagePath,
+				pageTitle: '',
+				ogTitle: '',
+				description: '',
+				fallbackAuthor,
+				is404: true,
+			}))
 			return
 		}
 
@@ -375,114 +406,56 @@ export default defineConfig({
 		// scanArticles 在 config 顶层已执行，正文缓存可直接复用（避免二次读盘）。
 		const bodyDescription = article ? excerptFromContent(getArticleContent(article.source) ?? '') : ''
 		const pageDescription = (page.frontmatter.description as string | undefined) || bodyDescription || description
-		// 社交卡片统一用这张 1200×630 的默认大图（尺寸与 og-default.png 实际像素一致，
-		// 平台据此预留版位，写错会拉伸）。卡片比 <title> 多一个品牌尾巴：站外分享时
-		// 页面标题里的「| NKUwiki」容易被平台切掉，图片替代文本里补上更稳。
-		const ogImage = `${siteUrl.replace(/\/$/, '')}/og-default.png`
-		// 首页标题主体本身就叫「NKUwiki」，无条件追加品牌会得到「NKUwiki… · NKUwiki」
-		const ogImageAlt = /nkuwiki/i.test(ogTitle) ? ogTitle : `${ogTitle} · NKUwiki`
-		const head: [string, Record<string, string>, string?][] = [
-			['link', { rel: 'canonical', href: pageUrl }],
-			['meta', { property: 'og:title', content: ogTitle }],
-			['meta', { property: 'og:description', content: pageDescription }],
-			['meta', { property: 'og:url', content: pageUrl }],
-			['meta', { property: 'og:image', content: ogImage }],
-			['meta', { property: 'og:image:width', content: '1200' }],
-			['meta', { property: 'og:image:height', content: '630' }],
-			['meta', { property: 'og:image:alt', content: ogImageAlt }],
-			['meta', { property: 'og:type', content: article ? 'article' : 'website' }],
-			// twitter:image 不会被任何平台从 og:image 推导：只写 og:image 时 X 卡片
-			// 会退回无图样式，summary_large_image 也就白设了。全站共用一张 1200×630
-			// 大图，所以文章页与索引页都用大图版式
-			['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-			['meta', { name: 'twitter:image', content: ogImage }],
-			['meta', { name: 'twitter:image:alt', content: ogImageAlt }],
-			// max-image-preview:large 让 Google 结果页可以用大缩略图（默认只有 small/none，
-			// 校园指南带图的页面在 SERP 里会明显吃亏）。noindex 页另有更严格的 robots，
-			// 多个 robots meta 由 Google 合并取最严，不会互相抵消。
-			['meta', { name: 'robots', content: 'index, follow, max-image-preview:large' }],
-		]
-
+		// 页面数据改写留在配置里：pageSeoHead 只产出 <head> 标签，不碰 page 对象
 		if (article) {
 			page.title = pageTitle
 			page.lastUpdated = article.lastUpdatedTime || undefined
 			Object.assign(page.frontmatter, { title: article.title, breadcrumbs: article.folders, tags: article.tags, empty: article.empty, wordCount: article.wordCount, readingMinutes: article.readingMinutes })
+			// 相关文章：构建期算好的前 5 条（单页约 150 字节），客户端只负责渲染。
+			// frontmatter 里手写 related: false 可以单篇关掉（WikiLayout 里门控），
+			// 因此不能无条件覆盖——那是文章作者唯一能关掉这块的开关
+			if (page.frontmatter.related !== false)
+				page.frontmatter.related = relatedIndex.get(article.url) ?? []
 			// 页尾作者列表：按 frontmatter 声明的 author 生成，构建期算好后随页面数据下发；
 			// 成员表是站点数据，显式注入给主题包的纯函数
 			page.frontmatter.authors = collectAuthors(page.frontmatter.author, { members, fallbackName: fallbackAuthor })
-			const articleAuthor = (page.frontmatter.authors as Array<{ name?: string }> | undefined)?.[0]?.name
-			// collectAuthors 在文章没写 author 时会回退成组织名，那不是一个自然人，
-			// 标成 Person 反而误导（「NKUwiki-Group」被当成作者姓名）
-			const isNamedAuthor = Boolean(articleAuthor) && articleAuthor !== fallbackAuthor
-			// article:* 只在 og:type=article 时有意义，Facebook / LinkedIn 读它判断
-			// 发布时间与分区；日期统一转成带时区的 ISO 字符串（frontmatter 写的是
-			// "2026-09-01" 这种裸日期，部分抓取方会当成无效值）。
-			if (article.date)
-				head.push(['meta', { property: 'article:published_time', content: isoDate(article.date) }])
-			const modifiedTime = article.lastUpdated || article.date
-			if (modifiedTime)
-				head.push(['meta', { property: 'article:modified_time', content: isoDate(modifiedTime) }])
-			// 分区取最外层分类（「新生入学」「群汇总」），子目录留给 JSON-LD 的 articleSection
-			if (article.folders[0])
-				head.push(['meta', { property: 'article:section', content: article.folders[0] }])
-			for (const tag of article.tags.slice(0, 6))
-				head.push(['meta', { property: 'article:tag', content: tag }])
-			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
-				'@context': 'https://schema.org',
-				'@type': 'Article',
-				// headline 与 <title> 主体保持一致，否则结构化数据与页面标题对不上
-				'headline': pageTitle,
-				'description': pageDescription,
-				// Article 的 image 是必填：缺了这条结构化数据基本拿不到富结果。
-				// publisher 不给 logo 是刻意的——favicon 是 1540×1760 非正方形，
-				// Google 要求 logo 为 1:1，硬塞会被判不合格，不如不写。
-				'image': { '@type': 'ImageObject', 'url': ogImage, 'width': 1200, 'height': 630 },
-				'datePublished': article.date ? isoDate(article.date) : undefined,
-				'dateModified': modifiedTime ? isoDate(modifiedTime) : undefined,
-				// 有站内成员名就标 Person（Org 标在具体人名上是错的），没有则回退组织
-				'author': isNamedAuthor
-					? { '@type': 'Person', 'name': articleAuthor }
-					: { '@type': 'Organization', 'name': fallbackAuthor },
-				'publisher': { '@type': 'Organization', 'name': 'NKUwiki-Group', 'url': `${siteUrl.replace(/\/$/, '')}/` },
-				'articleSection': article.folders.join(' - '),
-				'mainEntityOfPage': { '@type': 'WebPage', '@id': pageUrl },
-				'inLanguage': 'zh-CN',
-			})])
-			// 只有 frontmatter、没有正文的占位页不索引：收录进去就是薄内容
-			if (article.empty)
-				head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
 		}
 		else if (standalone?.title) {
 			page.title = standalone.title
 		}
 
-		if (standalone?.noindex)
-			head.push(['meta', { name: 'robots', content: 'noindex, nofollow' }])
-
-		// 站点级 WebSite 结构化数据只给首页：每页都挂一份会把「这是哪一站」的信号打散
-		if (isHome) {
-			head.push(['script', { type: 'application/ld+json' }, JSON.stringify({
-				'@context': 'https://schema.org',
-				'@type': 'WebSite',
-				'name': 'NKUwiki',
-				'alternateName': ['NKUwiki', 'nkuwiki', 'NKU wiki', '南开wiki', '南开 wiki', '南开维基', '南开大学 wiki', '南开大学维基'],
-				'url': `${siteUrl.replace(/\/$/, '')}/`,
-				'description': pageDescription,
-				'inLanguage': 'zh-CN',
-				'publisher': {
-					'@type': 'Organization',
-					'name': 'NKUwiki-Group',
-					'url': `${siteUrl.replace(/\/$/, '')}/`,
-				},
-			})])
-		}
-
 		page.frontmatter.head ??= []
-		page.frontmatter.head.push(...head)
+		page.frontmatter.head.push(...pageSeoHead({
+			siteUrl,
+			pagePath,
+			pageTitle,
+			ogTitle,
+			description: pageDescription,
+			article: article ?? null,
+			authors: page.frontmatter.authors,
+			fallbackAuthor,
+			isHome,
+			noindex: standalone?.noindex,
+		}))
 
 		// Git 提交历史按页注入：history.json 全量约 138KB，静态打进主题入口包的话
 		// 每个页面都要下载全站提交，按页注入后单页只有自己的几条。
 		// 文章页的键是源路径（sourcePath 同源），直通页（map.md 等）用 relativePath。
 		page.frontmatter.pageHistory = gitHistory[article?.source || page.relativePath] ?? []
+	},
+	// 构建收尾生成 RSS：走 buildEnd 而不是在 docs/public 放静态文件，
+	// 因为条目要按本次构建的文章列表与更新时间现算。产物落在 dist/feed.xml，
+	// 与 sitemap.xml 同级，随静态站一起发布。
+	buildEnd(siteConfig) {
+		const xml = buildRssFeed({
+			siteUrl,
+			title: 'NKUwiki',
+			description,
+			// 只有 frontmatter 的空占位页不进订阅源（与 sitemap 的过滤口径一致）
+			articles: articles.filter(article => !article.empty),
+			// 摘要用正文首段：RSS 读者在阅读器里就能判断这篇要不要点开
+			summaryFor: article => excerptFromContent(getArticleContent(article.source) ?? '', 120),
+		})
+		writeFileSync(join(siteConfig.outDir, 'feed.xml'), xml, 'utf8')
 	},
 })

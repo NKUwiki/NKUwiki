@@ -14,6 +14,8 @@
  * VitePress 会抢先做一次瞬时跳转，自定义动画就失效了。
  */
 
+import { shouldReduceMotion } from './motion'
+
 /** 高亮色块的 class，样式见 styles/article.css */
 const HIGHLIGHT_CLASS = 'wiki-heading-highlight'
 /** 略长于 CSS 动画（2s），保证动画播完再摘掉 class */
@@ -35,10 +37,6 @@ let highlightTimer: ReturnType<typeof setTimeout> | undefined
 /** 自增代号：期间又点了别的标题时，用它让上一次动画自行退出 */
 let animationGeneration = 0
 
-function prefersReducedMotion(): boolean {
-	return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-}
-
 /** href 是否指向当前页面内的锚点；跨页、外部、空 hash 一律交回 VitePress 处理 */
 function inPageHash(href: string | null): string | null {
 	if (!href || !href.includes('#'))
@@ -56,12 +54,24 @@ function inPageHash(href: string | null): string | null {
 }
 
 function hashId(hash: string): string {
+	const raw = hash.slice(1)
+	let decoded = raw
 	try {
-		return decodeURIComponent(hash.slice(1))
+		// 链接可能被编码不止一次（`%25E5%25AD%25A6` → `%E5%AD%A6` → `学`）：
+		// 从别的站点/编辑器粘贴过来的中文锚点经常是双层编码，只解一次会找不到元素。
+		// 解到不再变化为止，上限 5 次——正常编码最多两层，限制次数是为了防止
+		// 畸形输入（如反复出现 %25 的长串）把这里变成死循环。
+		for (let round = 0; round < 5 && decoded.includes('%'); round++) {
+			const next = decodeURIComponent(decoded)
+			if (next === decoded)
+				break
+			decoded = next
+		}
 	}
 	catch {
-		return hash.slice(1)
+		// 含非法百分号序列（如标题里的字面 "50%"）时保留已成功解出的部分
 	}
+	return decoded
 }
 
 /** 解析锚点元素：优先在正文里找，避免命中侧栏等同名 id */
@@ -86,7 +96,7 @@ function smoothScrollTo(top: number): void {
 	const generation = ++animationGeneration
 	const from = window.scrollY
 	const distance = top - from
-	if (prefersReducedMotion() || Math.abs(distance) < 2) {
+	if (shouldReduceMotion() || Math.abs(distance) < 2) {
 		window.scrollTo(0, top)
 		return
 	}
